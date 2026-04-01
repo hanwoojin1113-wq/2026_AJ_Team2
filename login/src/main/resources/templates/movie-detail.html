@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="|${movie.movieName} — CineMatch|">영화 상세</title>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <style>
+        :root {
+            --blue:      #0048FF;
+            --blue-dark: #003AD1;
+            --blue-soft: #EEF2FF;
+            --blue-mid:  #C7D2FE;
+            --bg:        #F7F8FC;
+            --surface:   #FFFFFF;
+            --text:      #0F172A;
+            --text-sub:  #475569;
+            --text-hint: #94A3B8;
+            --border:    rgba(15,23,42,0.08);
+            --shadow-sm: 0 2px 8px rgba(0,72,255,0.06);
+            --shadow-md: 0 8px 24px rgba(0,72,255,0.10);
+            --shadow-lg: 0 20px 48px rgba(0,72,255,0.14);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Pretendard', 'Segoe UI', sans-serif;
+            background: var(--bg); color: var(--text); min-height: 100vh;
+        }
+
+        /* 네비게이션 */
+        .navbar {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 32px; height: 64px;
+            background: rgba(255,255,255,0.92); backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+        .back-btn {
+            display: flex; align-items: center; gap: 6px;
+            color: var(--blue); font-weight: 700; font-size: 0.9rem;
+            text-decoration: none; transition: gap 0.15s;
+        }
+        .back-btn:hover { gap: 10px; }
+        .navbar-right { display: flex; align-items: center; gap: 12px; }
+        .user-badge {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 14px; background: var(--blue-soft);
+            border-radius: 999px; font-size: 0.875rem; font-weight: 600; color: var(--blue);
+        }
+        .logout-btn {
+            padding: 8px 18px; background: var(--text); color: white;
+            border-radius: 999px; font-size: 0.875rem; font-weight: 600;
+            text-decoration: none; transition: background 0.15s;
+        }
+        .logout-btn:hover { background: #334155; }
+
+        .page { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+
+        /* 히어로 카드 */
+        .hero-card {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 40px;
+            padding: 36px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 32px;
+        }
+
+        /* 포스터 */
+        .poster-wrap {
+            position: relative;
+        }
+        .poster-img {
+            width: 100%; aspect-ratio: 2/3;
+            object-fit: cover; border-radius: 16px;
+            box-shadow: 0 12px 32px rgba(0,72,255,0.18);
+            display: block;
+        }
+        .poster-fallback {
+            width: 100%; aspect-ratio: 2/3;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--blue-soft), #DBEAFE);
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 12px;
+            color: var(--blue); font-weight: 700; font-size: 0.9rem;
+        }
+        .poster-fallback svg { width: 48px; height: 48px; opacity: 0.3; }
+
+        .rank-pill {
+            position: absolute; top: -10px; left: -10px;
+            padding: 6px 14px;
+            background: linear-gradient(135deg, #F59E0B, #EF4444);
+            color: white; border-radius: 999px;
+            font-size: 0.8rem; font-weight: 900;
+            box-shadow: 0 4px 14px rgba(239,68,68,0.35);
+        }
+        .rank-pill.blue-pill {
+            background: var(--blue);
+            box-shadow: 0 4px 14px rgba(0,72,255,0.35);
+        }
+
+        /* 영화 정보 */
+        .movie-info { display: flex; flex-direction: column; }
+        .info-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+        .info-badge {
+            padding: 4px 12px; border-radius: 999px;
+            font-size: 0.75rem; font-weight: 700;
+        }
+        .badge-type {
+            background: var(--blue-soft); color: var(--blue);
+            border: 1px solid var(--blue-mid);
+        }
+        .badge-nation {
+            background: #F0FDF4; color: #166534;
+            border: 1px solid #BBF7D0;
+        }
+        .badge-status {
+            background: #FFFBEB; color: #92400E;
+            border: 1px solid #FDE68A;
+        }
+
+        .movie-title {
+            font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+            font-weight: 900; line-height: 1.15;
+            letter-spacing: -0.03em; margin-bottom: 6px;
+        }
+        .movie-title-en {
+            font-size: 1rem; color: var(--text-hint);
+            margin-bottom: 24px; font-style: italic;
+        }
+
+        /* 통계 그리드 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px; margin-bottom: 24px;
+        }
+        .stat-card {
+            padding: 14px 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+        }
+        .stat-label {
+            font-size: 0.72rem; font-weight: 700; color: var(--text-hint);
+            letter-spacing: 0.08em; text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .stat-value {
+            font-size: 1rem; font-weight: 800; color: var(--text);
+        }
+        .stat-value.highlight { color: var(--blue); }
+
+        /* 누적 관객 강조 */
+        .audi-banner {
+            display: flex; align-items: center; gap: 14px;
+            padding: 18px 22px;
+            background: linear-gradient(135deg, var(--blue) 0%, #2563EB 100%);
+            border-radius: 16px; margin-bottom: 0;
+        }
+        .audi-icon {
+            width: 44px; height: 44px; background: rgba(255,255,255,0.18);
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+        }
+        .audi-icon svg { width: 22px; height: 22px; stroke: white; fill: none; stroke-width: 2; }
+        .audi-label { font-size: 0.8rem; color: rgba(255,255,255,0.7); margin-bottom: 2px; }
+        .audi-value { font-size: 1.4rem; font-weight: 900; color: white; }
+
+        /* 하단 섹션들 */
+        .sections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+        .section-card {
+            padding: 22px; background: var(--surface);
+            border: 1px solid var(--border); border-radius: 18px;
+            box-shadow: var(--shadow-sm);
+        }
+        .section-card h2 {
+            font-size: 0.8rem; font-weight: 700; color: var(--text-hint);
+            letter-spacing: 0.1em; text-transform: uppercase;
+            margin-bottom: 14px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .section-card h2 span {
+            width: 6px; height: 6px; background: var(--blue); border-radius: 50%; display: inline-block;
+        }
+
+        /* 칩 */
+        .chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip {
+            padding: 7px 14px; background: var(--blue-soft);
+            border: 1px solid var(--blue-mid); color: var(--blue);
+            border-radius: 999px; font-size: 0.85rem; font-weight: 600;
+        }
+        .chip.gray {
+            background: var(--bg); border-color: var(--border); color: var(--text-sub);
+        }
+
+        /* 스택 아이템 */
+        .stack { display: grid; gap: 10px; }
+        .stack-item {
+            padding: 12px 14px; background: var(--bg);
+            border: 1px solid var(--border); border-radius: 12px;
+        }
+        .stack-item strong { display: block; font-size: 0.9rem; margin-bottom: 3px; }
+        .stack-item span { font-size: 0.8rem; color: var(--text-hint); }
+
+        .empty-text { font-size: 0.9rem; color: var(--text-hint); }
+
+        /* 모바일 */
+        @media (max-width: 768px) {
+            .hero-card { grid-template-columns: 1fr; }
+            .poster-wrap { max-width: 220px; margin: 0 auto; }
+            .navbar { padding: 0 16px; }
+            .page { padding: 24px 16px 60px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <a class="back-btn" th:href="@{/charts}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        차트로 돌아가기
+    </a>
+    <div class="navbar-right">
+        <div class="user-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+            </svg>
+            <span th:text="${loginUserId}">user</span>
+        </div>
+        <a class="logout-btn" th:href="@{/logout}">로그아웃</a>
+    </div>
+</nav>
+
+<main class="page">
+
+    <!-- 히어로 카드 -->
+    <div class="hero-card">
+
+        <!-- 포스터 -->
+        <div class="poster-wrap">
+            <div class="rank-pill"
+                 th:classappend="${movie.ranking > 3} ? ' blue-pill' : ''"
+                 th:text="|TOP ${movie.ranking}|">TOP 1</div>
+
+            <img class="poster-img"
+                 th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                 th:src="${movie.posterImageUrl}"
+                 th:alt="${movie.movieName}">
+
+            <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2zM8 8h3v4H8V8zm0 6h8v1H8v-1zm0 2h8v1H8v-1zm5-8h3v4h-3V8z"/>
+                </svg>
+                <span>포스터 없음</span>
+            </div>
+        </div>
+
+        <!-- 영화 정보 -->
+        <div class="movie-info">
+            <div class="info-badges">
+                <span class="info-badge badge-type"
+                      th:if="${movie.typeName != null}"
+                      th:text="${movie.typeName}">극영화</span>
+                <span class="info-badge badge-nation"
+                      th:if="${movie.nationName != null}"
+                      th:text="${movie.nationName}">한국</span>
+                <span class="info-badge badge-status"
+                      th:if="${movie.productionStatusName != null}"
+                      th:text="${movie.productionStatusName}">개봉</span>
+            </div>
+
+            <h1 class="movie-title" th:text="${movie.movieName}">영화 제목</h1>
+            <p class="movie-title-en"
+               th:if="${!#strings.isEmpty(movie.movieNameEn)}"
+               th:text="${movie.movieNameEn}">English Title</p>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">개봉일</div>
+                    <div class="stat-value" th:text="${movie.boxOfficeOpenDate != null ? movie.boxOfficeOpenDate : '-'}">2014-07-30</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">제작 연도</div>
+                    <div class="stat-value" th:text="${movie.productionYear != null ? movie.productionYear : '-'}">2013</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">러닝타임</div>
+                    <div class="stat-value"
+                         th:text="${movie.showTime != null ? movie.showTime + ' 분' : '-'}">128 분</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">스크린 수</div>
+                    <div class="stat-value highlight"
+                         th:text="${movie.boxOfficeScrnCnt != null ? #numbers.formatInteger(movie.boxOfficeScrnCnt, 0, 'COMMA') + '개' : '-'}">1,587개</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">상영 횟수</div>
+                    <div class="stat-value highlight"
+                         th:text="${movie.boxOfficeShowCnt != null ? #numbers.formatInteger(movie.boxOfficeShowCnt, 0, 'COMMA') + '회' : '-'}">188,734회</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">영화 코드</div>
+                    <div class="stat-value" th:text="${movie.movieCode}">20129370</div>
+                </div>
+            </div>
+
+            <!-- 누적 관객 강조 배너 -->
+            <div class="audi-banner" th:if="${movie.boxOfficeAudiAcc != null}">
+                <div class="audi-icon">
+                    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                </div>
+                <div>
+                    <div class="audi-label">누적 관객 수</div>
+                    <div class="audi-value"
+                         th:text="${#numbers.formatInteger(movie.boxOfficeAudiAcc, 0, 'COMMA') + '명'}">17,616,661명</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 하단 상세 섹션 -->
+    <div class="sections-grid">
+
+        <div class="section-card">
+            <h2><span></span>장르</h2>
+            <div class="chip-list" th:if="${!#lists.isEmpty(genres)}">
+                <span class="chip" th:each="g : ${genres}" th:text="${g}">액션</span>
+            </div>
+            <p class="empty-text" th:if="${#lists.isEmpty(genres)}">장르 정보 없음</p>
+        </div>
+
+        <div class="section-card">
+            <h2><span></span>감독</h2>
+            <div class="chip-list" th:if="${!#lists.isEmpty(directors)}">
+                <span class="chip gray" th:each="d : ${directors}" th:text="${d}">감독명</span>
+            </div>
+            <p class="empty-text" th:if="${#lists.isEmpty(directors)}">감독 정보 없음</p>
+        </div>
+
+        <div class="section-card">
+            <h2><span></span>출연 배우</h2>
+            <div class="chip-list" th:if="${!#lists.isEmpty(actors)}">
+                <span class="chip gray" th:each="a : ${actors}" th:text="${a}">배우명</span>
+            </div>
+            <p class="empty-text" th:if="${#lists.isEmpty(actors)}">배우 정보 없음</p>
+        </div>
+
+        <div class="section-card">
+            <h2><span></span>제작사 / 배급사</h2>
+            <div class="stack" th:if="${!#lists.isEmpty(companies)}">
+                <div class="stack-item" th:each="c : ${companies}">
+                    <strong th:text="${c.name}">회사명</strong>
+                    <span th:text="${#strings.isEmpty(c.role) ? '역할 미기재' : c.role}">배급</span>
+                </div>
+            </div>
+            <p class="empty-text" th:if="${#lists.isEmpty(companies)}">제작사 정보 없음</p>
+        </div>
+
+        <div class="section-card">
+            <h2><span></span>심의 / 관람 등급</h2>
+            <div class="stack" th:if="${!#lists.isEmpty(audits)}">
+                <div class="stack-item" th:each="a : ${audits}">
+                    <strong th:text="${#strings.isEmpty(a.auditNo) ? '심의번호 없음' : a.auditNo}">심의번호</strong>
+                    <span th:text="${#strings.isEmpty(a.watchGradeName) ? '등급 없음' : a.watchGradeName}">15세 이상</span>
+                </div>
+            </div>
+            <p class="empty-text" th:if="${#lists.isEmpty(audits)}">심의 정보 없음</p>
+        </div>
+
+    </div>
+</main>
+</body>
+</html>
