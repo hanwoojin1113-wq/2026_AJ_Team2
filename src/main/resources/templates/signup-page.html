@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입 — CineMatch</title>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <style>
+        :root {
+            --blue:      #0048FF;
+            --blue-dark: #003AD1;
+            --blue-soft: #EEF2FF;
+            --blue-mid:  #C7D2FE;
+            --bg:        #F7F8FC;
+            --surface:   #FFFFFF;
+            --text:      #0F172A;
+            --text-sub:  #475569;
+            --text-hint: #94A3B8;
+            --border:    rgba(15,23,42,0.10);
+            --shadow:    0 20px 60px rgba(0,72,255,0.12);
+            --error-bg:  #FEF2F2;
+            --error:     #DC2626;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Pretendard', 'Segoe UI', sans-serif;
+            min-height: 100vh; display: grid; place-items: center;
+            padding: 24px;
+            background:
+                radial-gradient(ellipse at top right, rgba(0,72,255,0.10) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom left, rgba(14,165,233,0.07) 0%, transparent 50%),
+                var(--bg);
+            color: var(--text);
+        }
+
+        .card {
+            width: min(100%, 480px);
+            padding: 40px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            box-shadow: var(--shadow);
+        }
+
+        .logo {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 32px;
+        }
+        .logo-icon {
+            width: 40px; height: 40px; background: var(--blue);
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+        }
+        .logo-icon svg { width: 20px; height: 20px; fill: white; }
+        .logo-text { font-size: 1.4rem; font-weight: 900; color: var(--blue); letter-spacing: -0.04em; }
+
+        .eyebrow {
+            font-size: 0.75rem; font-weight: 700; color: var(--blue);
+            letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px;
+        }
+        h1 { font-size: 2rem; font-weight: 900; letter-spacing: -0.04em; margin-bottom: 6px; }
+        .subtitle { font-size: 0.9rem; color: var(--text-hint); line-height: 1.6; margin-bottom: 28px; }
+
+        .error-box {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 12px 16px; margin-bottom: 20px;
+            background: var(--error-bg); border: 1px solid #FECACA;
+            border-radius: 12px; font-size: 0.875rem; color: var(--error);
+        }
+
+        label {
+            display: block; font-size: 0.875rem; font-weight: 700;
+            color: var(--text-sub); margin-bottom: 6px;
+        }
+        input[type="text"], input[type="password"], input[type="number"] {
+            width: 100%; padding: 13px 16px;
+            border: 1.5px solid var(--border); border-radius: 12px;
+            background: var(--bg); font-family: inherit; font-size: 1rem;
+            color: var(--text); margin-bottom: 16px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            outline: none;
+        }
+        input:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(0,72,255,0.12);
+            background: white;
+        }
+
+        /* 성별 선택 */
+        .gender-label { margin-bottom: 8px; }
+        .gender-group { display: flex; gap: 10px; margin-bottom: 16px; }
+        .gender-option {
+            flex: 1; position: relative;
+        }
+        .gender-option input[type="radio"] {
+            position: absolute; opacity: 0; width: 0; height: 0;
+        }
+        .gender-option label {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 13px; border: 1.5px solid var(--border);
+            border-radius: 12px; background: var(--bg);
+            cursor: pointer; font-size: 0.95rem; font-weight: 600;
+            color: var(--text-sub); transition: all 0.15s; margin: 0;
+        }
+        .gender-option input:checked + label {
+            border-color: var(--blue); background: var(--blue-soft); color: var(--blue);
+        }
+        .gender-option label:hover { border-color: var(--blue-mid); }
+
+        .btn-primary {
+            width: 100%; padding: 14px;
+            background: var(--blue); color: white;
+            border: none; border-radius: 12px;
+            font-family: inherit; font-size: 1rem; font-weight: 700;
+            cursor: pointer; margin-bottom: 10px;
+            transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+        }
+        .btn-primary:hover {
+            background: var(--blue-dark);
+            box-shadow: 0 6px 20px rgba(0,72,255,0.35);
+        }
+        .btn-primary:active { transform: scale(0.98); }
+
+        .btn-secondary {
+            display: block; width: 100%; padding: 13px;
+            background: var(--bg); color: var(--text-sub);
+            border: 1.5px solid var(--border); border-radius: 12px;
+            font-family: inherit; font-size: 1rem; font-weight: 700;
+            text-align: center; text-decoration: none;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .btn-secondary:hover { border-color: var(--blue); color: var(--blue); }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="logo">
+        <div class="logo-icon">
+            <svg viewBox="0 0 16 16"><path d="M2 2h3v3H2zm0 4.5h3v3H2zm0 4.5h3v3H2zM6.5 2h3v3h-3zm0 4.5h3v3h-3zm0 4.5h3v3h-3zM11 2h3v3h-3zm0 4.5h3v3H11zm0 4.5h3v3H11z"/></svg>
+        </div>
+        <span class="logo-text">CineMatch</span>
+    </div>
+
+    <p class="eyebrow">Create Account</p>
+    <h1>회원가입</h1>
+    <p class="subtitle">가입 정보는 DB에 저장되며, 이후 영화 추천 알고리즘에 활용됩니다.</p>
+
+    <div class="error-box" th:if="${signupError}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+        </svg>
+        <span th:text="${signupError}">오류</span>
+    </div>
+
+    <form th:action="@{/signup}" method="post">
+        <label for="id">아이디</label>
+        <input id="id" name="id" type="text" placeholder="사용할 아이디를 입력하세요" required autocomplete="username">
+
+        <label for="pw">비밀번호</label>
+        <input id="pw" name="pw" type="password" placeholder="비밀번호를 입력하세요" required autocomplete="new-password">
+
+        <label for="nickname">NickName</label>
+        <input id="nickname" name="nickname" type="text" placeholder="NickName을 입력하세요" required maxlength="100" autocomplete="nickname">
+
+        <p class="gender-label" style="font-size:0.875rem;font-weight:700;color:var(--text-sub)">성별</p>
+        <div class="gender-group">
+            <div class="gender-option">
+                <input id="male" name="gender" type="radio" value="MALE" required>
+                <label for="male">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="10" cy="14" r="5"/><path d="M19 5l-5.5 5.5M19 5h-4M19 5v4"/>
+                    </svg>
+                    남성
+                </label>
+            </div>
+            <div class="gender-option">
+                <input id="female" name="gender" type="radio" value="FEMALE">
+                <label for="female">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="9" r="5"/><path d="M12 14v6M9 17h6"/>
+                    </svg>
+                    여성
+                </label>
+            </div>
+        </div>
+
+        <label for="age">나이</label>
+        <input id="age" name="age" type="number" min="1" max="120" placeholder="나이를 입력하세요" required>
+
+        <button class="btn-primary" type="submit">가입 완료</button>
+        <a class="btn-secondary" th:href="@{/login}">로그인으로 돌아가기</a>
+    </form>
+</div>
+</body>
+</html>
