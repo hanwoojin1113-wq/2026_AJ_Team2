@@ -9,7 +9,10 @@
 
 환경변수 설정
 $env:KOBIS_API_KEY="본인_KOBIS_API_KEY"
+
 $env:TMDB_TOKEN="본인_TMDB_TOKEN"
+
+서버 실행
 .\mvnw.cmd spring-boot:run
 
 서버 실행 후 아래 명령을 호출합니다.
