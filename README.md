@@ -1,3 +1,31 @@
+## 실행 방법
+
+### 1. 프로젝트 실행 위치
+반드시 프로젝트 **루트 경로**에서 실행합니다.
+
+
+최초 1회 데이터 파이프라인 실행
+처음 실행하거나 로컬 DB가 비어 있는 경우에만 한 번 수행합니다.
+
+환경변수 설정
+$env:KOBIS_API_KEY="본인_KOBIS_API_KEY"
+$env:TMDB_TOKEN="본인_TMDB_TOKEN"
+.\mvnw.cmd spring-boot:run
+
+서버 실행 후 아래 명령을 호출합니다.
+
+Invoke-RestMethod -Method Post "http://localhost:8080/admin/pipeline/run?startYear=2005&endYear=2025&targetPerYear=35&tmdbLimit=800"
+
+이 작업으로 아래가 한 번에 수행됩니다.
+
+KOBIS 기반 영화 수집
+TMDB 영화 정보 보강
+영화 정보 정규화
+추천 태그 생성
+4. 이후 실행 방법
+
+
+
 # Group 2 - MoM (Movie Match)
 > 개인맞춤 영화 추천 및 커뮤니티 서비스
 
