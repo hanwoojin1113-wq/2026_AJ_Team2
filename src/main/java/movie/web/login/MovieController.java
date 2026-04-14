@@ -1,7 +1,9 @@
 package movie.web.login;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -17,12 +19,48 @@ import org.springframework.web.server.ResponseStatusException;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
+import movie.web.login.tag.RecommendationTag;
+import movie.web.login.tag.RecommendationTagType;
+
 @Controller
 public class MovieController {
 
     private static final String LOGIN_SESSION_KEY = "loginUserId";
     private static final String LOGIN_NICKNAME_SESSION_KEY = "loginUserNickname";
     private static final int PAGE_SIZE = 10;
+    private static final Map<String, String> TAG_TYPE_LABELS = Map.of(
+            "MOOD", "분위기",
+            "CONTEXT", "추천 상황",
+            "CAUTION", "주의 요소",
+            "THEME", "주제"
+    );
+    private static final Map<String, String> TAG_LABELS = Map.ofEntries(
+            Map.entry("funny", "유쾌한"),
+            Map.entry("tense", "긴장감 있는"),
+            Map.entry("dark", "어두운"),
+            Map.entry("emotional", "감정적인"),
+            Map.entry("romantic", "로맨틱한"),
+            Map.entry("hopeful", "희망적인"),
+            Map.entry("healing", "힐링되는"),
+            Map.entry("spectacle", "볼거리 있는"),
+            Map.entry("creepy", "기괴한"),
+            Map.entry("with_family", "가족과 보기 좋은"),
+            Map.entry("with_partner", "연인과 보기 좋은"),
+            Map.entry("late_night", "늦은 밤 보기 좋은"),
+            Map.entry("violent", "폭력적인"),
+            Map.entry("sad", "슬픈"),
+            Map.entry("slow_burn", "잔잔하게 쌓이는"),
+            Map.entry("long_running", "러닝타임 긴"),
+            Map.entry("investigation", "수사"),
+            Map.entry("mystery", "미스터리"),
+            Map.entry("zombie", "좀비"),
+            Map.entry("disaster", "재난"),
+            Map.entry("true_story", "실화 기반"),
+            Map.entry("coming_of_age", "성장"),
+            Map.entry("friendship", "우정"),
+            Map.entry("survival", "생존"),
+            Map.entry("revenge", "복수")
+    );
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -105,6 +143,8 @@ public class MovieController {
     public String home(@RequestParam(defaultValue = "1") int page,
                        @RequestParam(required = false) String query,
                        @RequestParam(required = false) String genre,
+                       @RequestParam(required = false) String tagType,
+                       @RequestParam(required = false) String tagName,
                        @RequestParam(required = false, defaultValue = "false") boolean showAdvanced,
                        Model model, HttpSession session) {
         if (!isLoggedIn(session)) {
@@ -113,36 +153,69 @@ public class MovieController {
 
         String normalizedQuery = query == null ? "" : query.trim();
         String normalizedGenre = genre == null ? "" : genre.trim();
+        String normalizedTagType = tagType == null ? "" : tagType.trim().toUpperCase();
+        String normalizedTagName = tagName == null ? "" : tagName.trim();
+        if (normalizedTagType.isEmpty() || normalizedTagName.isEmpty()) {
+            normalizedTagType = "";
+            normalizedTagName = "";
+        }
         boolean hasQuery = !normalizedQuery.isEmpty();
         boolean hasGenre = !normalizedGenre.isEmpty();
+        boolean hasTag = !normalizedTagType.isEmpty();
 
         String countSql = """
                 SELECT COUNT(DISTINCT m.id)
                 FROM movie m
                 LEFT JOIN movie_genre mg ON mg.movie_id = m.id
                 LEFT JOIN genre g ON g.id = mg.genre_id
-                WHERE (? = '' OR UPPER(m.movie_name) LIKE UPPER(?)
-                       OR UPPER(COALESCE(m.movie_name_en, '')) LIKE UPPER(?)
+                WHERE (? = '' OR UPPER(COALESCE(m.title, m.movie_name, '')) LIKE UPPER(?)
+                       OR UPPER(COALESCE(m.movie_name, '')) LIKE UPPER(?)
+                       OR UPPER(COALESCE(m.movie_name_en, m.original_title, m.movie_name_original, '')) LIKE UPPER(?)
+                       OR UPPER(COALESCE(m.movie_name_original, m.original_title, '')) LIKE UPPER(?)
                        OR UPPER(m.movie_cd) LIKE UPPER(?))
                   AND (? = '' OR g.name = ?)
+                  AND (? = '' OR EXISTS (
+                        SELECT 1
+                        FROM movie_tag mt
+                        JOIN tag t ON t.id = mt.tag_id
+                        WHERE mt.movie_id = m.id
+                          AND t.tag_type = ?
+                          AND t.tag_name = ?
+                  ))
                 """;
         String queryPattern = "%" + normalizedQuery + "%";
         int totalMovies = jdbcTemplate.queryForObject(countSql, Integer.class,
-                normalizedQuery, queryPattern, queryPattern, queryPattern,
-                normalizedGenre, normalizedGenre);
+                normalizedQuery, queryPattern, queryPattern, queryPattern, queryPattern, queryPattern,
+                normalizedGenre, normalizedGenre,
+                normalizedTagName, normalizedTagType, normalizedTagName);
         int totalPages = Math.max(1, (int) Math.ceil((double) totalMovies / PAGE_SIZE));
         int currentPage = Math.min(Math.max(page, 1), totalPages);
         int offset = (currentPage - 1) * PAGE_SIZE;
 
         List<MoviePosterView> movies = jdbcTemplate.query("""
-                SELECT DISTINCT m.ranking, m.movie_cd, m.movie_name, m.movie_name_en, m.poster_image_url
+                SELECT DISTINCT
+                    m.ranking,
+                    m.movie_cd,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    m.poster_image_url
                 FROM movie m
                 LEFT JOIN movie_genre mg ON mg.movie_id = m.id
                 LEFT JOIN genre g ON g.id = mg.genre_id
-                WHERE (? = '' OR UPPER(m.movie_name) LIKE UPPER(?)
-                       OR UPPER(COALESCE(m.movie_name_en, '')) LIKE UPPER(?)
+                WHERE (? = '' OR UPPER(COALESCE(m.title, m.movie_name, '')) LIKE UPPER(?)
+                       OR UPPER(COALESCE(m.movie_name, '')) LIKE UPPER(?)
+                       OR UPPER(COALESCE(m.movie_name_en, m.original_title, m.movie_name_original, '')) LIKE UPPER(?)
+                       OR UPPER(COALESCE(m.movie_name_original, m.original_title, '')) LIKE UPPER(?)
                        OR UPPER(m.movie_cd) LIKE UPPER(?))
                   AND (? = '' OR g.name = ?)
+                  AND (? = '' OR EXISTS (
+                        SELECT 1
+                        FROM movie_tag mt
+                        JOIN tag t ON t.id = mt.tag_id
+                        WHERE mt.movie_id = m.id
+                          AND t.tag_type = ?
+                          AND t.tag_name = ?
+                  ))
                 ORDER BY m.ranking ASC
                 LIMIT ? OFFSET ?
                 """, (rs, rowNum) -> new MoviePosterView(
@@ -151,8 +224,10 @@ public class MovieController {
                 rs.getString("movie_name"),
                 rs.getString("movie_name_en"),
                 rs.getString("poster_image_url")
-        ), normalizedQuery, queryPattern, queryPattern, queryPattern,
-                normalizedGenre, normalizedGenre, PAGE_SIZE, offset);
+        ), normalizedQuery, queryPattern, queryPattern, queryPattern, queryPattern, queryPattern,
+                normalizedGenre, normalizedGenre,
+                normalizedTagName, normalizedTagType, normalizedTagName,
+                PAGE_SIZE, offset);
 
         model.addAttribute("movies", movies);
         addCurrentUserAttributes(model, session);
@@ -165,8 +240,12 @@ public class MovieController {
         model.addAttribute("pages", java.util.stream.IntStream.rangeClosed(1, totalPages).boxed().toList());
         model.addAttribute("query", normalizedQuery);
         model.addAttribute("selectedGenre", normalizedGenre);
-        model.addAttribute("showAdvanced", showAdvanced || hasGenre);
+        model.addAttribute("selectedTagType", normalizedTagType);
+        model.addAttribute("selectedTagName", normalizedTagName);
+        model.addAttribute("selectedTagLabel", labelForTag(normalizedTagName));
+        model.addAttribute("showAdvanced", showAdvanced || hasGenre || hasTag);
         model.addAttribute("genres", fetchChartGenres());
+        model.addAttribute("tagGroups", fetchChartTagGroups());
         return "index";
     }
 
@@ -230,9 +309,9 @@ public class MovieController {
                 SELECT
                     m.ranking,
                     m.movie_cd,
-                    m.movie_name,
-                    m.movie_name_en,
-                    m.movie_name_original,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    COALESCE(m.movie_name_original, m.original_title) AS movie_name_original,
                     m.poster_image_url,
                     (
                         SELECT COUNT(*)
@@ -312,6 +391,27 @@ public class MovieController {
                 WHERE m.movie_cd = ?
                 ORDER BY mg.display_order
                 """, movieCode));
+        model.addAttribute("recommendationTags", jdbcTemplate.query("""
+                SELECT t.tag_type, t.tag_name
+                FROM movie_tag mt
+                JOIN tag t ON t.id = mt.tag_id
+                JOIN movie m ON m.id = mt.movie_id
+                WHERE m.movie_cd = ?
+                ORDER BY
+                    CASE t.tag_type
+                        WHEN 'MOOD' THEN 1
+                        WHEN 'CONTEXT' THEN 2
+                        WHEN 'CAUTION' THEN 3
+                        WHEN 'THEME' THEN 4
+                        ELSE 5
+                    END,
+                    t.tag_name
+                """, (rs, rowNum) -> new MovieTagView(
+                rs.getString("tag_type"),
+                labelForTagType(rs.getString("tag_type")),
+                rs.getString("tag_name"),
+                labelForTag(rs.getString("tag_name"))
+        ), movieCode));
         model.addAttribute("directors", fetchOrderedNames("""
                 SELECT p.name
                 FROM movie_director md
@@ -338,6 +438,31 @@ public class MovieController {
                 """, (rs, rowNum) -> new CompanyView(
                 rs.getString("name"),
                 rs.getString("company_role")
+        ), movieCode));
+        model.addAttribute("providers", jdbcTemplate.query("""
+                SELECT
+                    p.provider_name,
+                    CASE mp.provider_type
+                        WHEN 'FLATRATE' THEN '구독'
+                        WHEN 'RENT' THEN '대여'
+                        WHEN 'BUY' THEN '구매'
+                        ELSE mp.provider_type
+                    END AS provider_type
+                FROM movie_provider mp
+                JOIN provider p ON p.id = mp.provider_id
+                JOIN movie m ON m.id = mp.movie_id
+                WHERE m.movie_cd = ?
+                ORDER BY
+                    CASE mp.provider_type
+                        WHEN 'FLATRATE' THEN 1
+                        WHEN 'RENT' THEN 2
+                        WHEN 'BUY' THEN 3
+                        ELSE 4
+                    END,
+                    mp.display_order
+                """, (rs, rowNum) -> new ProviderView(
+                rs.getString("provider_name"),
+                rs.getString("provider_type")
         ), movieCode));
         model.addAttribute("audits", jdbcTemplate.query("""
                 SELECT a.audit_no, wg.name AS watch_grade_name
@@ -492,7 +617,12 @@ public class MovieController {
 
     private List<MoviePosterView> fetchStoredMovies(Long userId, Integer limit) {
         String sql = """
-                SELECT m.ranking, m.movie_cd, m.movie_name, m.movie_name_en, m.poster_image_url
+                SELECT
+                    m.ranking,
+                    m.movie_cd,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    m.poster_image_url
                 FROM user_movie_store ums
                 JOIN movie m ON m.id = ums.movie_id
                 WHERE ums.user_id = ?
@@ -530,7 +660,12 @@ public class MovieController {
 
     private List<MoviePosterView> fetchLifeMovies(Long userId, Integer limit) {
         String sql = """
-                SELECT m.ranking, m.movie_cd, m.movie_name, m.movie_name_en, m.poster_image_url
+                SELECT
+                    m.ranking,
+                    m.movie_cd,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    m.poster_image_url
                 FROM user_movie_life uml
                 JOIN movie m ON m.id = uml.movie_id
                 WHERE uml.user_id = ?
@@ -566,8 +701,8 @@ public class MovieController {
         return jdbcTemplate.query("""
                 SELECT
                     m.movie_cd,
-                    m.movie_name,
-                    m.movie_name_en,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
                     m.poster_image_url,
                     EXISTS(
                         SELECT 1
@@ -575,8 +710,10 @@ public class MovieController {
                         WHERE uml.user_id = ? AND uml.movie_id = m.id
                     ) AS already_added
                 FROM movie m
-                WHERE UPPER(m.movie_name) LIKE UPPER(?)
-                   OR UPPER(COALESCE(m.movie_name_en, '')) LIKE UPPER(?)
+                WHERE UPPER(COALESCE(m.title, m.movie_name, '')) LIKE UPPER(?)
+                   OR UPPER(COALESCE(m.movie_name, '')) LIKE UPPER(?)
+                   OR UPPER(COALESCE(m.movie_name_en, m.original_title, m.movie_name_original, '')) LIKE UPPER(?)
+                   OR UPPER(COALESCE(m.movie_name_original, m.original_title, '')) LIKE UPPER(?)
                 ORDER BY m.ranking ASC, m.movie_name ASC
                 LIMIT 12
                 """, (rs, rowNum) -> new LifeMovieSearchResultView(
@@ -585,7 +722,7 @@ public class MovieController {
                 rs.getString("movie_name_en"),
                 rs.getString("poster_image_url"),
                 rs.getBoolean("already_added")
-        ), userId, keyword, keyword);
+        ), userId, keyword, keyword, keyword, keyword);
     }
 
     private List<String> fetchOrderedNames(String sql, String movieCode) {
@@ -598,6 +735,34 @@ public class MovieController {
                 FROM genre
                 ORDER BY name ASC
                 """, (rs, rowNum) -> rs.getString("name"));
+    }
+
+    private List<TagFilterGroupView> fetchChartTagGroups() {
+        return Arrays.stream(RecommendationTagType.values())
+                .map(type -> new TagFilterGroupView(
+                        type.name(),
+                        labelForTagType(type.name()),
+                        Arrays.stream(RecommendationTag.values())
+                                .filter(tag -> tag.type() == type)
+                                .map(tag -> new TagChipView(
+                                        type.name(),
+                                        tag.code(),
+                                        labelForTag(tag.code())
+                                ))
+                                .toList()
+                ))
+                .toList();
+    }
+
+    private String labelForTagType(String tagType) {
+        return TAG_TYPE_LABELS.getOrDefault(tagType, tagType);
+    }
+
+    private String labelForTag(String tagName) {
+        if (tagName == null || tagName.isBlank()) {
+            return "";
+        }
+        return TAG_LABELS.getOrDefault(tagName, tagName);
     }
 
     public record MoviePosterView(int ranking, String movieCode, String movieName, String movieNameEn, String posterImageUrl) {
@@ -630,7 +795,19 @@ public class MovieController {
     public record CompanyView(String name, String role) {
     }
 
+    public record ProviderView(String name, String type) {
+    }
+
     public record AuditView(String auditNo, String watchGradeName) {
+    }
+
+    public record MovieTagView(String tagType, String tagTypeLabel, String tagName, String tagLabel) {
+    }
+
+    public record TagChipView(String tagType, String tagName, String displayName) {
+    }
+
+    public record TagFilterGroupView(String key, String label, List<TagChipView> tags) {
     }
 
     public record UserProfileView(String loginId, String nickname, String gender, int age) {

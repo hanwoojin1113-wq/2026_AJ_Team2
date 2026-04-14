@@ -9,7 +9,9 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -57,19 +59,10 @@ public class MovieTagService {
                  OR LOWER(COALESCE(m.title, m.movie_name, '')) LIKE '%s'
                  OR LOWER(COALESCE(m.title, m.movie_name, '')) LIKE '%s'
               )
-              AND (
-                    EXISTS (
-                        SELECT 1
-                        FROM movie_source ms
-                        WHERE ms.movie_id = m.id
-                          AND ms.source_type = 'KOBIS'
-                    )
-                 OR EXISTS (
-                        SELECT 1
-                        FROM movie_provider mp
-                        WHERE mp.movie_id = m.id
-                          AND mp.region_code = 'KR'
-                    )
+              AND EXISTS (
+                    SELECT 1
+                    FROM movie_genre mg
+                    WHERE mg.movie_id = m.id
               )
             """.formatted(
             GenreNames.CONCERT,
@@ -132,6 +125,108 @@ public class MovieTagService {
 
         int totalTaggedRows = insertedCounts.values().stream().mapToInt(Integer::intValue).sum();
         return new RebuildResult(candidates.size(), totalTaggedRows, insertedCounts);
+    }
+
+    public TagStats stats() {
+        List<MovieTagInput> candidates = loadCandidateMovies();
+        Set<Long> candidateMovieIds = new LinkedHashSet<>();
+        for (MovieTagInput candidate : candidates) {
+            candidateMovieIds.add(candidate.movieId());
+        }
+
+        int movieCount = queryInt("SELECT COUNT(*) FROM movie");
+        int keywordMovieCount = queryInt("SELECT COUNT(DISTINCT movie_id) FROM movie_keyword");
+        int keywordRowCount = queryInt("SELECT COUNT(*) FROM movie_keyword");
+        int taggedMovieCount = queryInt("SELECT COUNT(DISTINCT movie_id) FROM movie_tag");
+        int movieTagRowCount = queryInt("SELECT COUNT(*) FROM movie_tag");
+        int untaggedKeywordedMovieCount = queryInt("""
+                SELECT COUNT(*)
+                FROM movie m
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM movie_keyword mk
+                    WHERE mk.movie_id = m.id
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM movie_tag mt
+                    WHERE mt.movie_id = m.id
+                )
+                """);
+
+        List<TagCount> tagDistribution = jdbcTemplate.query("""
+                SELECT t.tag_type, t.tag_name, COUNT(*) AS movie_count
+                FROM movie_tag mt
+                JOIN tag t ON t.id = mt.tag_id
+                GROUP BY t.tag_type, t.tag_name
+                ORDER BY t.tag_type, movie_count DESC, t.tag_name
+                """, (rs, rowNum) -> new TagCount(
+                rs.getString("tag_type"),
+                rs.getString("tag_name"),
+                rs.getInt("movie_count")
+        ));
+
+        Map<Long, Set<String>> genresByMovie = loadGenresByMovie();
+        Set<Long> taggedMovieIds = new HashSet<>(jdbcTemplate.query("""
+                SELECT DISTINCT movie_id
+                FROM movie_tag
+                """, (rs, rowNum) -> rs.getLong("movie_id")));
+
+        Map<String, Integer> totalByGenre = new LinkedHashMap<>();
+        Map<String, Integer> taggedByGenre = new LinkedHashMap<>();
+        Map<String, Integer> untaggedKeywordedByGenre = new LinkedHashMap<>();
+
+        Set<Long> keywordedMovieIds = new HashSet<>(jdbcTemplate.query("""
+                SELECT DISTINCT movie_id
+                FROM movie_keyword
+                """, (rs, rowNum) -> rs.getLong("movie_id")));
+
+        for (Long movieId : candidateMovieIds) {
+            Set<String> genres = genresByMovie.getOrDefault(movieId, Collections.emptySet());
+            boolean tagged = taggedMovieIds.contains(movieId);
+            boolean keyworded = keywordedMovieIds.contains(movieId);
+            for (String genre : genres) {
+                totalByGenre.merge(genre, 1, Integer::sum);
+                if (tagged) {
+                    taggedByGenre.merge(genre, 1, Integer::sum);
+                }
+                if (keyworded && !tagged) {
+                    untaggedKeywordedByGenre.merge(genre, 1, Integer::sum);
+                }
+            }
+        }
+
+        List<GenreCoverage> genreCoverage = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : totalByGenre.entrySet()) {
+            String genre = entry.getKey();
+            int total = entry.getValue();
+            int tagged = taggedByGenre.getOrDefault(genre, 0);
+            genreCoverage.add(new GenreCoverage(genre, total, tagged, ratio(tagged, total)));
+        }
+        genreCoverage.sort(Comparator.comparingInt(GenreCoverage::candidateMovieCount).reversed()
+                .thenComparing(GenreCoverage::genreName));
+
+        List<GenreCount> untaggedKeywordedGenreDistribution = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : untaggedKeywordedByGenre.entrySet()) {
+            untaggedKeywordedGenreDistribution.add(new GenreCount(entry.getKey(), entry.getValue()));
+        }
+        untaggedKeywordedGenreDistribution.sort(Comparator.comparingInt(GenreCount::movieCount).reversed()
+                .thenComparing(GenreCount::genreName));
+
+        return new TagStats(
+                movieCount,
+                candidates.size(),
+                keywordMovieCount,
+                keywordRowCount,
+                taggedMovieCount,
+                movieTagRowCount,
+                untaggedKeywordedMovieCount,
+                ratio(movieTagRowCount, Math.max(1, taggedMovieCount)),
+                ratio(movieTagRowCount, Math.max(1, candidates.size())),
+                tagDistribution,
+                genreCoverage,
+                untaggedKeywordedGenreDistribution
+        );
     }
 
     private List<MovieTagInput> loadCandidateMovies() {
@@ -281,6 +376,18 @@ public class MovieTagService {
                 """, rs -> rs.next() ? rs.getLong("id") : null, tagType, tagName);
     }
 
+    private int queryInt(String sql) {
+        Integer value = jdbcTemplate.queryForObject(sql, Integer.class);
+        return value == null ? 0 : value;
+    }
+
+    private double ratio(int numerator, int denominator) {
+        if (denominator <= 0) {
+            return 0.0;
+        }
+        return Math.round((numerator * 1000.0) / denominator) / 1000.0;
+    }
+
     private void seedTags() {
         for (RecommendationTag recommendationTag : RecommendationTag.values()) {
             seedTag(recommendationTag.type().name(), recommendationTag.code());
@@ -338,6 +445,43 @@ public class MovieTagService {
             int candidateCount,
             int totalTaggedRows,
             Map<String, Integer> insertedCounts
+    ) {
+    }
+
+    public record TagStats(
+            int movieCount,
+            int candidateCount,
+            int keywordMovieCount,
+            int keywordRowCount,
+            int taggedMovieCount,
+            int movieTagRowCount,
+            int untaggedKeywordedMovieCount,
+            double averageTagsPerTaggedMovie,
+            double averageTagsPerCandidateMovie,
+            List<TagCount> tagDistribution,
+            List<GenreCoverage> genreCoverage,
+            List<GenreCount> untaggedKeywordedGenreDistribution
+    ) {
+    }
+
+    public record TagCount(
+            String tagType,
+            String tagName,
+            int movieCount
+    ) {
+    }
+
+    public record GenreCoverage(
+            String genreName,
+            int candidateMovieCount,
+            int taggedMovieCount,
+            double coverageRate
+    ) {
+    }
+
+    public record GenreCount(
+            String genreName,
+            int movieCount
     ) {
     }
 }

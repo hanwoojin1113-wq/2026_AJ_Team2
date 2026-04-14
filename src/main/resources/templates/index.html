@@ -264,6 +264,15 @@
             flex-wrap: wrap;
             gap: 10px;
         }
+        .filter-section + .filter-section {
+            margin-top: 18px;
+        }
+        .filter-section-title {
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: var(--text);
+        }
         .genre-chip {
             display: inline-flex;
             align-items: center;
@@ -495,6 +504,9 @@
                 </svg>
                 <input class="search-input" type="text" name="query" th:value="${query}" placeholder="예: 명량, Parasite, 20129370">
             </div>
+            <input type="hidden" name="genre" th:if="${!#strings.isEmpty(selectedGenre)}" th:value="${selectedGenre}">
+            <input type="hidden" name="tagType" th:if="${!#strings.isEmpty(selectedTagType)}" th:value="${selectedTagType}">
+            <input type="hidden" name="tagName" th:if="${!#strings.isEmpty(selectedTagName)}" th:value="${selectedTagName}">
             <button class="search-submit" type="submit">검색하기</button>
             <button class="search-detail" type="button" onclick="openGenrePopup()">상세 검색</button>
         </form>
@@ -504,25 +516,46 @@
         <div class="genre-popup-card" onclick="event.stopPropagation()">
             <div class="genre-popup-head">
                 <div>
-                    <div class="genre-popup-title">장르 상세 검색</div>
-                    <div class="genre-popup-sub">장르 칩을 누르면 바로 해당 장르 영화 목록으로 이동합니다.</div>
+                    <div class="genre-popup-title">상세 필터</div>
+                    <div class="genre-popup-sub">장르와 추천 태그를 눌러 바로 영화 목록을 좁힐 수 있습니다.</div>
                 </div>
                 <button class="genre-popup-close" type="button" onclick="closeGenrePopup()">×</button>
             </div>
-            <div class="genre-popup-list">
-                <a class="genre-chip"
-                   th:classappend="${#strings.isEmpty(selectedGenre)} ? ' active' : ''"
-                   th:href="@{|/charts${#strings.isEmpty(query) ? '' : '?query=' + query}|}">
-                    <span class="genre-icon">All</span>
-                    <span>전체</span>
-                </a>
-                <a class="genre-chip"
-                   th:each="genreName : ${genres}"
-                   th:classappend="${genreName == selectedGenre} ? ' active' : ''"
-                   th:href="@{|/charts?genre=${genreName}${#strings.isEmpty(query) ? '' : '&query=' + query}|}">
-                    <span class="genre-icon">#</span>
-                    <span th:text="${genreName}">장르</span>
-                </a>
+            <div class="filter-section">
+                <div class="filter-section-title">장르</div>
+                <div class="genre-popup-list">
+                    <a class="genre-chip"
+                       th:classappend="${#strings.isEmpty(selectedGenre)} ? ' active' : ''"
+                       th:href="@{/charts(query=${query}, tagType=${selectedTagType}, tagName=${selectedTagName})}">
+                        <span class="genre-icon">All</span>
+                        <span>전체</span>
+                    </a>
+                    <a class="genre-chip"
+                       th:each="genreName : ${genres}"
+                       th:classappend="${genreName == selectedGenre} ? ' active' : ''"
+                       th:href="@{/charts(query=${query}, genre=${genreName}, tagType=${selectedTagType}, tagName=${selectedTagName})}">
+                        <span class="genre-icon">#</span>
+                        <span th:text="${genreName}">장르</span>
+                    </a>
+                </div>
+            </div>
+            <div class="filter-section" th:each="tagGroup : ${tagGroups}">
+                <div class="filter-section-title" th:text="${tagGroup.label}">분위기</div>
+                <div class="genre-popup-list">
+                    <a class="genre-chip"
+                       th:classappend="${tagGroup.key == selectedTagType and #strings.isEmpty(selectedTagName)} ? ' active' : ''"
+                       th:href="@{/charts(query=${query}, genre=${selectedGenre})}">
+                        <span class="genre-icon">All</span>
+                        <span>전체</span>
+                    </a>
+                    <a class="genre-chip"
+                       th:each="tag : ${tagGroup.tags}"
+                       th:classappend="${tag.tagType == selectedTagType and tag.tagName == selectedTagName} ? ' active' : ''"
+                       th:href="@{/charts(query=${query}, genre=${selectedGenre}, tagType=${tag.tagType}, tagName=${tag.tagName})}">
+                        <span class="genre-icon">#</span>
+                        <span th:text="${tag.displayName}">태그</span>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -583,13 +616,17 @@
     </section>
 
     <nav class="pagination" th:if="${totalPages > 1}">
-        <a class="page-link" th:if="${hasPrevious}" th:href="@{|/charts?page=${previousPage}|}">← 이전</a>
+        <a class="page-link"
+           th:if="${hasPrevious}"
+           th:href="@{/charts(page=${previousPage}, query=${query}, genre=${selectedGenre}, tagType=${selectedTagType}, tagName=${selectedTagName})}">← 이전</a>
         <a class="page-link"
            th:each="pageNumber : ${pages}"
            th:classappend="${pageNumber == currentPage} ? ' current' : ''"
-           th:href="@{|/charts?page=${pageNumber}|}"
+           th:href="@{/charts(page=${pageNumber}, query=${query}, genre=${selectedGenre}, tagType=${selectedTagType}, tagName=${selectedTagName})}"
            th:text="${pageNumber}">1</a>
-        <a class="page-link" th:if="${hasNext}" th:href="@{|/charts?page=${nextPage}|}">다음 →</a>
+        <a class="page-link"
+           th:if="${hasNext}"
+           th:href="@{/charts(page=${nextPage}, query=${query}, genre=${selectedGenre}, tagType=${selectedTagType}, tagName=${selectedTagName})}">다음 →</a>
     </nav>
 </main>
 <script>

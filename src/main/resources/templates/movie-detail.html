@@ -478,6 +478,27 @@
             <p class="empty-text" th:if="${#lists.isEmpty(audits)}">심의 정보 없음</p>
         </div>
 
+        <div class="section-card">
+            <h2><span></span>추천 태그</h2>
+            <div class="chip-list" th:if="${!#lists.isEmpty(recommendationTags)}">
+                <span class="chip gray"
+                      th:each="tag : ${recommendationTags}"
+                      th:text="|${tag.tagTypeLabel} · ${tag.tagLabel}|">분위기 · 긴장감 있는</span>
+            </div>
+            <p class="empty-text" th:if="${#lists.isEmpty(recommendationTags)}">추천 태그 정보 없음</p>
+        </div>
+
+        <div class="section-card">
+            <h2><span></span>OTT / 제공 형태</h2>
+            <div class="stack" th:if="${!#lists.isEmpty(providers)}">
+                <div class="stack-item" th:each="provider : ${providers}">
+                    <strong th:text="${provider.name}">넷플릭스</strong>
+                    <span th:text="${provider.type}">구독</span>
+                </div>
+            </div>
+            <p class="empty-text" th:if="${#lists.isEmpty(providers)}">제공처 정보 없음</p>
+        </div>
+
     </div>
 </main>
 </body>

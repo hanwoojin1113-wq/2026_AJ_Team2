@@ -46,4 +46,9 @@ public class MovieTagController {
     ) {
         return movieTagKeywordService.movieKeywords(tagType, tagName, limit);
     }
+
+    @GetMapping("/tags/stats")
+    public MovieTagService.TagStats stats() {
+        return movieTagService.stats();
+    }
 }

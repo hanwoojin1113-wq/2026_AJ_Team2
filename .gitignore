@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Runtime artifacts ###
+spring-boot*.log
+data/*.mv.db
+data/*.trace.db

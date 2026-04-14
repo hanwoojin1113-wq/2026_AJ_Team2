@@ -12,13 +12,13 @@ import java.util.Map;
 public class MovieTagGenerator {
 
     private static final Map<RecommendationTagType, Integer> TYPE_LIMITS = Map.of(
-            RecommendationTagType.MOOD, 3,
+            RecommendationTagType.MOOD, 5,
             RecommendationTagType.CONTEXT, 2,
             RecommendationTagType.CAUTION, 2,
-            RecommendationTagType.THEME, 2
+            RecommendationTagType.THEME, 4
     );
 
-    private static final int OVERALL_LIMIT = 7;
+    private static final int OVERALL_LIMIT = 10;
 
     private final DefaultRecommendationTagRules defaultRecommendationTagRules;
     private final TagScoreCalculator tagScoreCalculator;
