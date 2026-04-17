@@ -7,6 +7,11 @@ import java.util.List;
 
 import movie.web.login.kobis.KobisMovieImportService;
 import movie.web.login.kobis.KobisMovieNormalizeService;
+import movie.web.login.recommendation.RecommendationBlockService;
+import movie.web.login.recommendation.RecommendationMaintenanceService;
+import movie.web.login.recommendation.RecommendationRankingService;
+import movie.web.login.recommendation.RecommendationValidationService;
+import movie.web.login.recommendation.UserPreferenceProfileService;
 import movie.web.login.tag.MovieTagService;
 import movie.web.login.tmdb.TmdbMovieImportService;
 import movie.web.login.tmdb.TmdbMovieNormalizeService;
@@ -27,6 +32,13 @@ public class MovieDataBatchService {
     private final TmdbMovieImportService tmdbMovieImportService;
     private final TmdbMovieNormalizeService tmdbMovieNormalizeService;
     private final MovieTagService movieTagService;
+    private final UserPreferenceProfileService userPreferenceProfileService;
+    private final RecommendationRankingService recommendationRankingService;
+    private final RecommendationMaintenanceService recommendationMaintenanceService;
+    private final RecommendationBlockService recommendationBlockService;
+    private final RecommendationValidationService recommendationValidationService;
+    private final DummyUserSeedService dummyUserSeedService;
+    private final DummyUserActivitySeedService dummyUserActivitySeedService;
 
     public MovieDataBatchService(
             JdbcTemplate jdbcTemplate,
@@ -35,7 +47,14 @@ public class MovieDataBatchService {
             KobisMovieNormalizeService kobisMovieNormalizeService,
             TmdbMovieImportService tmdbMovieImportService,
             TmdbMovieNormalizeService tmdbMovieNormalizeService,
-            MovieTagService movieTagService
+            MovieTagService movieTagService,
+            UserPreferenceProfileService userPreferenceProfileService,
+            RecommendationRankingService recommendationRankingService,
+            RecommendationMaintenanceService recommendationMaintenanceService,
+            RecommendationBlockService recommendationBlockService,
+            RecommendationValidationService recommendationValidationService,
+            DummyUserSeedService dummyUserSeedService,
+            DummyUserActivitySeedService dummyUserActivitySeedService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -44,6 +63,13 @@ public class MovieDataBatchService {
         this.tmdbMovieImportService = tmdbMovieImportService;
         this.tmdbMovieNormalizeService = tmdbMovieNormalizeService;
         this.movieTagService = movieTagService;
+        this.userPreferenceProfileService = userPreferenceProfileService;
+        this.recommendationRankingService = recommendationRankingService;
+        this.recommendationMaintenanceService = recommendationMaintenanceService;
+        this.recommendationBlockService = recommendationBlockService;
+        this.recommendationValidationService = recommendationValidationService;
+        this.dummyUserSeedService = dummyUserSeedService;
+        this.dummyUserActivitySeedService = dummyUserActivitySeedService;
     }
 
     public JobRunResponse runKobisYearlyImport(Integer startYear, Integer endYear, int targetPerYear) {
@@ -76,6 +102,66 @@ public class MovieDataBatchService {
 
     public JobRunResponse runTagRebuild() {
         return executeJob("TAG_REBUILD", null, movieTagService::rebuildTags);
+    }
+
+    public JobRunResponse runPreferenceProfileRebuild(Long userId) {
+        return executeJob(
+                "USER_PREFERENCE_PROFILE_REBUILD",
+                new PreferenceProfileRebuildRequest(userId),
+                () -> userPreferenceProfileService.rebuildProfile(userId)
+        );
+    }
+
+    public JobRunResponse runRecommendationRankingRebuild(Long userId, Integer limit) {
+        return executeJob(
+                "USER_RECOMMENDATION_RANKING_REBUILD",
+                new RecommendationRankingRebuildRequest(userId, limit),
+                () -> recommendationRankingService.rebuildRanking(userId, limit)
+        );
+    }
+
+    public JobRunResponse runTestUserSeed(boolean reset) {
+        return executeJob(
+                "TEST_USER_SEED",
+                new TestUserSeedRequest(reset),
+                () -> dummyUserSeedService.seedTestUsers(reset)
+        );
+    }
+
+    public JobRunResponse runTestUserActivitySeed(boolean reset, boolean refreshRecommendations) {
+        return executeJob(
+                "TEST_USER_ACTIVITY_SEED",
+                new TestUserActivitySeedRequest(reset, refreshRecommendations),
+                () -> dummyUserActivitySeedService.seedActivities(reset, refreshRecommendations)
+        );
+    }
+
+    public JobRunResponse runRefreshDirtyRecommendations(int batchSize, Integer limit) {
+        return executeJob(
+                "USER_RECOMMENDATION_REFRESH_DIRTY",
+                new RefreshDirtyRecommendationsRequest(batchSize, limit),
+                () -> recommendationMaintenanceService.refreshDirtyUsers(batchSize, limit)
+        );
+    }
+
+    public RecommendationBlockService.RecommendationBlockResponse previewRecommendationBlocks(
+            Long userId,
+            boolean refreshIfDirty,
+            Integer sliceLimit,
+            Integer itemLimit
+    ) {
+        if (refreshIfDirty) {
+            recommendationMaintenanceService.ensureRecommendations(userId, null);
+        }
+        return recommendationBlockService.buildBlocks(userId, sliceLimit, itemLimit);
+    }
+
+    public RecommendationValidationService.ValidationResponse validateRecommendations(
+            String loginId,
+            boolean refreshIfDirty,
+            Integer topRecommendationLimit
+    ) {
+        return recommendationValidationService.inspectTestUsers(loginId, refreshIfDirty, topRecommendationLimit);
     }
 
     public PipelineRunResponse runPipeline(Integer startYear, Integer endYear, int targetPerYear, int tmdbLimit) {
@@ -241,5 +327,20 @@ public class MovieDataBatchService {
     }
 
     private record TmdbImportExistingRequest(int limit) {
+    }
+
+    private record PreferenceProfileRebuildRequest(Long userId) {
+    }
+
+    private record RecommendationRankingRebuildRequest(Long userId, Integer limit) {
+    }
+
+    private record TestUserSeedRequest(boolean reset) {
+    }
+
+    private record TestUserActivitySeedRequest(boolean reset, boolean refreshRecommendations) {
+    }
+
+    private record RefreshDirtyRecommendationsRequest(int batchSize, Integer limit) {
     }
 }

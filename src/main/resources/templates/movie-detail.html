@@ -3,503 +3,373 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="|${movie.movieName} — CineMatch|">영화 상세</title>
-    <link rel="stylesheet" as="style" crossorigin
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <title th:text="${movie.movieName} + ' | CineMatch'">영화 상세 | CineMatch</title>
     <style>
-        :root {
-            --blue:      #0048FF;
-            --blue-dark: #003AD1;
-            --blue-soft: #EEF2FF;
-            --blue-mid:  #C7D2FE;
-            --bg:        #F7F8FC;
-            --surface:   #FFFFFF;
-            --text:      #0F172A;
-            --text-sub:  #475569;
-            --text-hint: #94A3B8;
-            --border:    rgba(15,23,42,0.08);
-            --shadow-sm: 0 2px 8px rgba(0,72,255,0.06);
-            --shadow-md: 0 8px 24px rgba(0,72,255,0.10);
-            --shadow-lg: 0 20px 48px rgba(0,72,255,0.14);
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root { --bg:#08101d; --surface:#0f172a; --surface-2:#111b2d; --border:rgba(148,163,184,.18); --text:#f8fafc; --sub:#94a3b8; --rose:#f43f5e; --gray:#64748b; --amber:#f59e0b; --sky:#38bdf8; --blue:#2563eb; --purple:#8b5cf6; }
+        * { box-sizing:border-box; margin:0; padding:0; }
         body {
-            font-family: 'Pretendard', 'Segoe UI', sans-serif;
-            background: var(--bg); color: var(--text); min-height: 100vh;
+            font-family:Pretendard,'Segoe UI',sans-serif;
+            min-height:100vh;
+            color:var(--text);
+            background:
+                radial-gradient(circle at top right, rgba(56,189,248,.14), transparent 24%),
+                radial-gradient(circle at left center, rgba(37,99,235,.12), transparent 28%),
+                linear-gradient(180deg,#050b14 0%,#09111d 48%,#0b1322 100%);
         }
-
-        /* 네비게이션 */
-        .navbar {
-            position: sticky; top: 0; z-index: 100;
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 32px; height: 64px;
-            background: rgba(255,255,255,0.92); backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border);
+        .nav { display:flex; justify-content:space-between; align-items:center; padding:18px 24px; border-bottom:1px solid rgba(148,163,184,.12); background:rgba(6,11,20,.86); position:sticky; top:0; backdrop-filter:blur(16px); z-index:20; }
+        .nav a { color:#fff; text-decoration:none; font-weight:800; }
+        .nav-right { display:flex; gap:12px; align-items:center; }
+        .pill { padding:10px 14px; border-radius:999px; background:rgba(255,255,255,.08); }
+        .logout { background:#fff; color:#0f172a !important; }
+        .page { max-width:1320px; margin:0 auto; padding:32px 20px 64px; }
+        .hero {
+            position:relative;
+            overflow:hidden;
+            display:grid;
+            grid-template-columns:300px minmax(0,1fr);
+            gap:30px;
+            background:
+                linear-gradient(145deg, rgba(13,20,34,.98), rgba(14,26,43,.92) 52%, rgba(11,19,34,.96) 100%);
+            border:1px solid rgba(148,163,184,.14);
+            border-radius:32px;
+            padding:28px;
+            box-shadow:0 28px 70px rgba(2,6,23,.46);
         }
-        .back-btn {
-            display: flex; align-items: center; gap: 6px;
-            color: var(--blue); font-weight: 700; font-size: 0.9rem;
-            text-decoration: none; transition: gap 0.15s;
+        .hero::after {
+            content:'';
+            position:absolute;
+            inset:auto -80px -80px auto;
+            width:220px;
+            height:220px;
+            border-radius:50%;
+            background:rgba(125,211,252,.07);
         }
-        .back-btn:hover { gap: 10px; }
-        .navbar-right { display: flex; align-items: center; gap: 12px; }
-        .user-badge {
-            display: flex; align-items: center; gap: 6px;
-            padding: 6px 14px; background: var(--blue-soft);
-            border-radius: 999px; font-size: 0.875rem; font-weight: 600; color: var(--blue);
-            text-decoration: none; transition: background 0.15s, transform 0.15s;
+        .poster,.fallback {
+            width:100%;
+            aspect-ratio:2/3;
+            border-radius:24px;
+            object-fit:cover;
+            background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+            border:1px solid rgba(148,163,184,.16);
+            display:block;
+            box-shadow:0 24px 50px rgba(2,6,23,.38);
         }
-        .user-badge:hover { background: #dfe7ff; transform: translateY(-1px); }
-        .logout-btn {
-            padding: 8px 18px; background: var(--text); color: white;
-            border-radius: 999px; font-size: 0.875rem; font-weight: 600;
-            text-decoration: none; transition: background 0.15s;
+        .fallback { display:flex; align-items:center; justify-content:center; text-align:center; padding:24px; font-weight:800; }
+        .badges,.chips { display:flex; flex-wrap:wrap; gap:10px; }
+        .badge,.chip,.meta-item { padding:10px 14px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid rgba(148,163,184,.14); font-size:.84rem; }
+        .title { font-size:clamp(2rem,4vw,3.3rem); line-height:1.04; margin-top:16px; letter-spacing:-.04em; }
+        .subtitle { margin-top:10px; color:#dde7f4; font-size:1rem; }
+        .year { margin-top:10px; color:#b8c7da; font-size:.94rem; }
+        .actions {
+            margin-top:26px;
+            padding:22px;
+            border-radius:24px;
+            background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03));
+            border:1px solid rgba(148,163,184,.12);
+            box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
         }
-        .logout-btn:hover { background: #334155; }
-
-        .page { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
-
-        /* 히어로 카드 */
-        .hero-card {
-            display: grid;
-            grid-template-columns: 260px 1fr;
-            gap: 40px;
-            padding: 36px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            box-shadow: var(--shadow-md);
-            margin-bottom: 32px;
+        .actions h2 { font-size:1rem; margin-bottom:6px; }
+        .actions p { color:#b7c7dc; font-size:.88rem; margin-bottom:16px; }
+        .row { display:grid; gap:12px; margin-top:12px; }
+        .row.two { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .row.three { grid-template-columns:repeat(3,minmax(0,1fr)); }
+        .btn { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:76px; padding:14px 16px; border-radius:20px; border:1px solid rgba(148,163,184,.16); background:rgba(15,23,42,.78); color:var(--text); cursor:pointer; transition:transform .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease,color .16s ease; }
+        .btn:hover { transform:translateY(-2px); box-shadow:0 14px 24px rgba(2,6,23,.22); }
+        .btn::after { content:attr(data-tip); position:absolute; left:50%; bottom:calc(100% + 8px); transform:translateX(-50%); opacity:0; pointer-events:none; padding:8px 10px; border-radius:10px; background:rgba(15,23,42,.96); border:1px solid rgba(148,163,184,.18); font-size:.76rem; white-space:nowrap; transition:opacity .15s ease; }
+        .btn:hover::after { opacity:1; }
+        .icon { width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.06); flex:0 0 auto; transition:background .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease; }
+        .icon svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:fill .16s ease,stroke .16s ease,color .16s ease; }
+        .copy { text-align:left; display:grid; gap:4px; }
+        .label { font-weight:800; }
+        .hint { color:var(--sub); font-size:.78rem; transition:color .16s ease; }
+        .btn.active,
+        .btn.watching,
+        .btn.watched {
+            color:#fff;
+            box-shadow:0 18px 32px rgba(2,6,23,.28), inset 0 1px 0 rgba(255,255,255,.08);
         }
-
-        /* 포스터 */
-        .poster-wrap {
-            position: relative;
+        .btn.active .hint,
+        .btn.watching .hint,
+        .btn.watched .hint {
+            color:rgba(255,255,255,.82);
         }
-        .poster-img {
-            width: 100%; aspect-ratio: 2/3;
-            object-fit: cover; border-radius: 16px;
-            box-shadow: 0 12px 32px rgba(0,72,255,0.18);
-            display: block;
+        .btn.active .icon,
+        .btn.watching .icon,
+        .btn.watched .icon {
+            background:rgba(255,255,255,.18);
+            box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+            transform:scale(1.02);
         }
-        .poster-fallback {
-            width: 100%; aspect-ratio: 2/3;
-            border-radius: 16px;
-            background: linear-gradient(135deg, var(--blue-soft), #DBEAFE);
-            display: flex; flex-direction: column; align-items: center;
-            justify-content: center; gap: 12px;
-            color: var(--blue); font-weight: 700; font-size: 0.9rem;
+        .btn.active.dislike {
+            background:linear-gradient(135deg, rgba(100,116,139,.82), rgba(71,85,105,.74));
+            border-color:rgba(203,213,225,.42);
         }
-        .poster-fallback svg { width: 48px; height: 48px; opacity: 0.3; }
-        .poster-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 16px;
+        .btn.active.like {
+            background:linear-gradient(135deg, rgba(244,63,94,.84), rgba(190,24,93,.78));
+            border-color:rgba(255,182,193,.45);
         }
-        .like-form, .store-form { margin: 0; }
-        .like-btn {
-            width: 100%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 14px 18px;
-            border: none;
-            border-radius: 14px;
-            background: #fff1f4;
-            color: #e11d48;
-            font-family: inherit;
-            font-size: 0.95rem;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 8px 20px rgba(225, 29, 72, 0.12);
-            transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+        .btn.active.later {
+            background:linear-gradient(135deg, rgba(245,158,11,.82), rgba(217,119,6,.76));
+            border-color:rgba(253,230,138,.42);
         }
-        .like-btn:hover {
-            background: #ffe4ea;
-            transform: translateY(-1px);
-            box-shadow: 0 12px 24px rgba(225, 29, 72, 0.18);
+        .btn.active.collection {
+            background:linear-gradient(135deg, rgba(139,92,246,.84), rgba(109,40,217,.76));
+            border-color:rgba(221,214,254,.42);
         }
-        .like-btn.active {
-            background: #e11d48;
-            color: white;
-            box-shadow: 0 12px 24px rgba(225, 29, 72, 0.24);
+        .btn.watching {
+            background:linear-gradient(135deg, rgba(56,189,248,.84), rgba(14,165,233,.76));
+            border-color:rgba(186,230,253,.44);
         }
-        .like-btn.active .like-count { color: rgba(255,255,255,0.92); }
-        .like-btn svg {
-            width: 18px;
-            height: 18px;
-            fill: currentColor;
+        .btn.watched {
+            background:linear-gradient(135deg, rgba(37,99,235,.86), rgba(29,78,216,.78));
+            border-color:rgba(191,219,254,.42);
         }
-        .like-count {
-            display: inline-flex;
-            align-items: center;
-            color: #be123c;
+        #like-btn.active .icon {
+            color:#ffe6ec;
+            background:rgba(255,255,255,.22);
         }
-        .store-btn {
-            width: 100%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 14px 18px;
-            border: none;
-            border-radius: 14px;
-            background: #eff6ff;
-            color: #1d4ed8;
-            font-family: inherit;
-            font-size: 0.95rem;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 8px 20px rgba(29, 78, 216, 0.10);
-            transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+        #like-btn.active .icon svg {
+            fill:currentColor;
+            stroke:currentColor;
         }
-        .store-btn:hover {
-            background: #dbeafe;
-            transform: translateY(-1px);
-            box-shadow: 0 12px 24px rgba(29, 78, 216, 0.16);
+        .rating { display:none; gap:12px; margin-top:16px; padding:16px; border-radius:18px; background:rgba(2,6,23,.46); border:1px solid rgba(148,163,184,.12); }
+        .rating.active { display:grid; }
+        .rating-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+        .rating-title { font-weight:900; }
+        .rating-copy,.rating-note,.rating-off { color:var(--sub); font-size:.84rem; line-height:1.5; }
+        .rating-badge { padding:8px 12px; border-radius:999px; background:rgba(245,158,11,.18); border:1px solid rgba(245,158,11,.4); color:#fde68a; font-weight:900; }
+        .stars { display:flex; gap:6px; }
+        .star { border:none; background:transparent; color:rgba(148,163,184,.5); font-size:1.8rem; cursor:pointer; transition:transform .14s ease,color .14s ease; }
+        .star:hover { transform:translateY(-1px); }
+        .star.active { color:#fbbf24; }
+        .stats,.sections { display:grid; gap:16px; margin-top:24px; }
+        .stats { grid-template-columns:repeat(6,minmax(0,1fr)); }
+        .sections { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .card {
+            padding:18px;
+            border-radius:22px;
+            background:linear-gradient(180deg, rgba(14,23,38,.94), rgba(11,18,31,.92));
+            border:1px solid rgba(148,163,184,.14);
+            box-shadow:0 18px 40px rgba(2,6,23,.24);
         }
-        .store-btn.active {
-            background: #1d4ed8;
-            color: white;
-        }
-        .store-btn svg {
-            width: 18px;
-            height: 18px;
-            fill: currentColor;
-        }
-
-        .rank-pill {
-            position: absolute; top: -10px; left: -10px;
-            padding: 6px 14px;
-            background: linear-gradient(135deg, #F59E0B, #EF4444);
-            color: white; border-radius: 999px;
-            font-size: 0.8rem; font-weight: 900;
-            box-shadow: 0 4px 14px rgba(239,68,68,0.35);
-        }
-        .rank-pill.blue-pill {
-            background: var(--blue);
-            box-shadow: 0 4px 14px rgba(0,72,255,0.35);
-        }
-
-        /* 영화 정보 */
-        .movie-info { display: flex; flex-direction: column; }
-        .info-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-        .info-badge {
-            padding: 4px 12px; border-radius: 999px;
-            font-size: 0.75rem; font-weight: 700;
-        }
-        .badge-type {
-            background: var(--blue-soft); color: var(--blue);
-            border: 1px solid var(--blue-mid);
-        }
-        .badge-nation {
-            background: #F0FDF4; color: #166534;
-            border: 1px solid #BBF7D0;
-        }
-        .badge-status {
-            background: #FFFBEB; color: #92400E;
-            border: 1px solid #FDE68A;
-        }
-
-        .movie-title {
-            font-size: clamp(1.8rem, 3.5vw, 2.8rem);
-            font-weight: 900; line-height: 1.15;
-            letter-spacing: -0.03em; margin-bottom: 6px;
-        }
-        .movie-title-en {
-            font-size: 1rem; color: var(--text-hint);
-            margin-bottom: 24px; font-style: italic;
-        }
-
-        /* 통계 그리드 */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 12px; margin-bottom: 24px;
-        }
-        .stat-card {
-            padding: 14px 16px;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-        }
-        .stat-label {
-            font-size: 0.72rem; font-weight: 700; color: var(--text-hint);
-            letter-spacing: 0.08em; text-transform: uppercase;
-            margin-bottom: 6px;
-        }
-        .stat-value {
-            font-size: 1rem; font-weight: 800; color: var(--text);
-        }
-        .stat-value.highlight { color: var(--blue); }
-
-        /* 누적 관객 강조 */
-        .audi-banner {
-            display: flex; align-items: center; gap: 14px;
-            padding: 18px 22px;
-            background: linear-gradient(135deg, var(--blue) 0%, #2563EB 100%);
-            border-radius: 16px; margin-bottom: 0;
-        }
-        .audi-icon {
-            width: 44px; height: 44px; background: rgba(255,255,255,0.18);
-            border-radius: 12px; display: flex; align-items: center; justify-content: center;
-        }
-        .audi-icon svg { width: 22px; height: 22px; stroke: white; fill: none; stroke-width: 2; }
-        .audi-label { font-size: 0.8rem; color: rgba(255,255,255,0.7); margin-bottom: 2px; }
-        .audi-value { font-size: 1.4rem; font-weight: 900; color: white; }
-
-        /* 하단 섹션들 */
-        .sections-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 20px;
-        }
-        .section-card {
-            padding: 22px; background: var(--surface);
-            border: 1px solid var(--border); border-radius: 18px;
-            box-shadow: var(--shadow-sm);
-        }
-        .section-card h2 {
-            font-size: 0.8rem; font-weight: 700; color: var(--text-hint);
-            letter-spacing: 0.1em; text-transform: uppercase;
-            margin-bottom: 14px;
-            display: flex; align-items: center; gap: 6px;
-        }
-        .section-card h2 span {
-            width: 6px; height: 6px; background: var(--blue); border-radius: 50%; display: inline-block;
-        }
-
-        /* 칩 */
-        .chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
-        .chip {
-            padding: 7px 14px; background: var(--blue-soft);
-            border: 1px solid var(--blue-mid); color: var(--blue);
-            border-radius: 999px; font-size: 0.85rem; font-weight: 600;
-        }
-        .chip.gray {
-            background: var(--bg); border-color: var(--border); color: var(--text-sub);
-        }
-
-        /* 스택 아이템 */
-        .stack { display: grid; gap: 10px; }
-        .stack-item {
-            padding: 12px 14px; background: var(--bg);
-            border: 1px solid var(--border); border-radius: 12px;
-        }
-        .stack-item strong { display: block; font-size: 0.9rem; margin-bottom: 3px; }
-        .stack-item span { font-size: 0.8rem; color: var(--text-hint); }
-
-        .empty-text { font-size: 0.9rem; color: var(--text-hint); }
-
-        /* 모바일 */
-        @media (max-width: 768px) {
-            .hero-card { grid-template-columns: 1fr; }
-            .poster-wrap { max-width: 220px; margin: 0 auto; }
-            .navbar { padding: 0 16px; }
-            .page { padding: 24px 16px 60px; }
-        }
+        .card h3 { margin-bottom:12px; font-size:1rem; }
+        .stat-label { color:#b2c0d3; font-size:.78rem; }
+        .stat-value { margin-top:8px; font-weight:800; line-height:1.4; }
+        .meta-list { display:grid; gap:10px; }
+        .meta-item { border-radius:16px; color:#d9e5f3; }
+        .empty { color:#b2c0d3; font-size:.9rem; }
+        @media (max-width:960px) { .hero { grid-template-columns:1fr; } .stats { grid-template-columns:repeat(3,minmax(0,1fr)); } .sections { grid-template-columns:1fr; } }
+        @media (max-width:720px) { .row.two,.row.three,.stats { grid-template-columns:1fr; } }
     </style>
 </head>
 <body>
-
-<nav class="navbar">
-    <a class="back-btn" th:href="@{/charts}">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-        </svg>
-        차트로 돌아가기
-    </a>
-    <div class="navbar-right">
-        <a class="user-badge" th:href="@{/mypage}">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-            </svg>
-            <span th:text="${loginUserNickname}">nickname</span>
-        </a>
-        <a class="logout-btn" th:href="@{/logout}">로그아웃</a>
+<nav class="nav">
+    <a th:href="@{/charts}">CineMatch</a>
+    <div class="nav-right">
+        <a class="pill" th:href="@{/mypage}" th:text="${loginUserNickname}">nickname</a>
+        <a class="pill logout" th:href="@{/logout}">로그아웃</a>
     </div>
 </nav>
 
 <main class="page">
-
-    <!-- 히어로 카드 -->
-    <div class="hero-card">
-
-        <!-- 포스터 -->
-        <div class="poster-wrap">
-            <div class="rank-pill"
-                 th:classappend="${movie.ranking > 3} ? ' blue-pill' : ''"
-                 th:text="|TOP ${movie.ranking}|">TOP 1</div>
-
-            <img class="poster-img"
-                 th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
-                 th:src="${movie.posterImageUrl}"
-                 th:alt="${movie.movieName}">
-
-            <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2zM8 8h3v4H8V8zm0 6h8v1H8v-1zm0 2h8v1H8v-1zm5-8h3v4h-3V8z"/>
-                </svg>
-                <span>포스터 없음</span>
+    <section class="hero">
+        <div>
+            <img class="poster" th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+            <div class="fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">영화 제목</span></div>
+        </div>
+        <div>
+            <div class="badges">
+                <span class="badge" th:if="${movie.typeName != null}" th:text="${movie.typeName}">영화</span>
+                <span class="badge" th:if="${movie.nationName != null}" th:text="${movie.nationName}">국가</span>
+                <span class="badge" th:if="${movie.productionStatusName != null}" th:text="${movie.productionStatusName}">상태</span>
             </div>
+            <h1 class="title" th:text="${movie.movieName}">영화 제목</h1>
+            <p class="subtitle" th:if="${!#strings.isEmpty(movie.movieNameEn)}" th:text="${movie.movieNameEn}">English Title</p>
+            <p class="year" th:text="${movie.productionYear != null ? movie.productionYear : (movie.boxOfficeOpenDate != null ? #temporals.format(movie.boxOfficeOpenDate, 'yyyy') : '연도 정보 없음')}">2024</p>
 
-            <div class="poster-actions">
-                <form class="like-form" th:action="@{|/movies/${movie.movieCode}/like|}" method="post">
-                    <button class="like-btn" type="submit" th:classappend="${movie.likedByCurrentUser} ? ' active' : ''">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                        </svg>
-                        <span th:text="${movie.likedByCurrentUser} ? '좋아하는 영화' : '좋아요'">좋아요</span>
-                        <span class="like-count" th:text="${#numbers.formatInteger(movie.likeCount, 0, 'COMMA')}">0</span>
+            <section class="actions">
+                <h2>이 영화를 어떻게 남길까요?</h2>
+                <p>버튼을 눌러도 페이지는 새로 쌓이지 않고 상태만 바로 바뀝니다.</p>
+                <div class="row two">
+                    <button type="button" id="dislike-btn" class="btn dislike" data-tip="별로에요">
+                        <span class="icon" id="dislike-icon"></span>
+                        <span class="copy"><span class="label">별로에요</span><span class="hint">좋아요와 동시에 켜지지 않습니다.</span></span>
                     </button>
-                </form>
-                <form class="store-form" th:action="@{|/movies/${movie.movieCode}/store|}" method="post">
-                    <button class="store-btn" type="submit" th:classappend="${movie.storedByCurrentUser} ? ' active' : ''">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/>
-                        </svg>
-                        <span th:text="${movie.storedByCurrentUser} ? '찜한 영화' : '찜'">찜</span>
+                    <button type="button" id="like-btn" class="btn like" data-tip="좋아요">
+                        <span class="icon" id="like-icon"></span>
+                        <span class="copy"><span class="label">좋아요</span><span class="hint">강한 호감 신호</span></span>
                     </button>
-                </form>
-            </div>
+                </div>
+                <div class="row three">
+                    <button type="button" id="later-btn" class="btn later" data-tip="나중에 볼래요">
+                        <span class="icon" id="later-icon"></span>
+                        <span class="copy"><span class="label">나중에 볼래요</span><span class="hint">다음 감상 후보</span></span>
+                    </button>
+                    <button type="button" id="watch-btn" class="btn" data-tip="보는중 / 봤어요">
+                        <span class="icon" id="watch-icon"></span>
+                        <span class="copy"><span class="label" id="watch-label">보는중 / 봤어요</span><span class="hint" id="watch-hint">한 번 누르면 보는중, 다시 누르면 봤어요</span></span>
+                    </button>
+                    <button type="button" id="collection-btn" class="btn collection" data-tip="컬렉션에 추가">
+                        <span class="icon" id="collection-icon"></span>
+                        <span class="copy"><span class="label">컬렉션에 추가</span><span class="hint">개인 컬렉션에 보관</span></span>
+                    </button>
+                </div>
+
+                <div class="rating" id="rating-box">
+                    <div class="rating-head">
+                        <div>
+                            <div class="rating-title">봤어요 상태에서 별점을 남겨보세요</div>
+                            <div class="rating-copy">별점은 watched 신호 강도를 보정하는 데 함께 반영됩니다.</div>
+                        </div>
+                        <div class="rating-badge" id="rating-badge">미평가</div>
+                    </div>
+                    <div class="stars" id="rating-stars">
+                        <button type="button" class="star" data-rating="1">★</button>
+                        <button type="button" class="star" data-rating="2">★</button>
+                        <button type="button" class="star" data-rating="3">★</button>
+                        <button type="button" class="star" data-rating="4">★</button>
+                        <button type="button" class="star" data-rating="5">★</button>
+                    </div>
+                    <div class="rating-note" id="rating-note">아직 별점이 없습니다.</div>
+                </div>
+                <div class="rating-off" id="rating-off">보는중 단계에서는 별점이 열리지 않습니다. 봤어요 상태에서만 별점을 남길 수 있습니다.</div>
+            </section>
+
+            <section class="stats">
+                <div class="card"><div class="stat-label">개봉일</div><div class="stat-value" th:text="${movie.boxOfficeOpenDate != null ? movie.boxOfficeOpenDate : '-'}">2014-07-30</div></div>
+                <div class="card"><div class="stat-label">제작연도</div><div class="stat-value" th:text="${movie.productionYear != null ? movie.productionYear : '-'}">2013</div></div>
+                <div class="card"><div class="stat-label">상영시간</div><div class="stat-value" th:text="${movie.showTime != null ? movie.showTime + '분' : '-'}">128분</div></div>
+                <div class="card"><div class="stat-label">스크린 수</div><div class="stat-value" th:text="${movie.boxOfficeScrnCnt != null ? #numbers.formatInteger(movie.boxOfficeScrnCnt, 0, 'COMMA') + '개' : '-'}">1,000개</div></div>
+                <div class="card"><div class="stat-label">상영 횟수</div><div class="stat-value" th:text="${movie.boxOfficeShowCnt != null ? #numbers.formatInteger(movie.boxOfficeShowCnt, 0, 'COMMA') + '회' : '-'}">1,000회</div></div>
+                <div class="card"><div class="stat-label">영화 코드</div><div class="stat-value" th:text="${movie.movieCode}">movieCode</div></div>
+            </section>
         </div>
+    </section>
 
-        <!-- 영화 정보 -->
-        <div class="movie-info">
-            <div class="info-badges">
-                <span class="info-badge badge-type"
-                      th:if="${movie.typeName != null}"
-                      th:text="${movie.typeName}">극영화</span>
-                <span class="info-badge badge-nation"
-                      th:if="${movie.nationName != null}"
-                      th:text="${movie.nationName}">한국</span>
-                <span class="info-badge badge-status"
-                      th:if="${movie.productionStatusName != null}"
-                      th:text="${movie.productionStatusName}">개봉</span>
-            </div>
-
-            <h1 class="movie-title" th:text="${movie.movieName}">영화 제목</h1>
-            <p class="movie-title-en"
-               th:if="${!#strings.isEmpty(movie.movieNameEn)}"
-               th:text="${movie.movieNameEn}">English Title</p>
-
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">개봉일</div>
-                    <div class="stat-value" th:text="${movie.boxOfficeOpenDate != null ? movie.boxOfficeOpenDate : '-'}">2014-07-30</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">제작 연도</div>
-                    <div class="stat-value" th:text="${movie.productionYear != null ? movie.productionYear : '-'}">2013</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">러닝타임</div>
-                    <div class="stat-value"
-                         th:text="${movie.showTime != null ? movie.showTime + ' 분' : '-'}">128 분</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">스크린 수</div>
-                    <div class="stat-value highlight"
-                         th:text="${movie.boxOfficeScrnCnt != null ? #numbers.formatInteger(movie.boxOfficeScrnCnt, 0, 'COMMA') + '개' : '-'}">1,587개</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">상영 횟수</div>
-                    <div class="stat-value highlight"
-                         th:text="${movie.boxOfficeShowCnt != null ? #numbers.formatInteger(movie.boxOfficeShowCnt, 0, 'COMMA') + '회' : '-'}">188,734회</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">영화 코드</div>
-                    <div class="stat-value" th:text="${movie.movieCode}">20129370</div>
-                </div>
-            </div>
-
-            <!-- 누적 관객 강조 배너 -->
-            <div class="audi-banner" th:if="${movie.boxOfficeAudiAcc != null}">
-                <div class="audi-icon">
-                    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-                </div>
-                <div>
-                    <div class="audi-label">누적 관객 수</div>
-                    <div class="audi-value"
-                         th:text="${#numbers.formatInteger(movie.boxOfficeAudiAcc, 0, 'COMMA') + '명'}">17,616,661명</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 하단 상세 섹션 -->
-    <div class="sections-grid">
-
-        <div class="section-card">
-            <h2><span></span>장르</h2>
-            <div class="chip-list" th:if="${!#lists.isEmpty(genres)}">
-                <span class="chip" th:each="g : ${genres}" th:text="${g}">액션</span>
-            </div>
-            <p class="empty-text" th:if="${#lists.isEmpty(genres)}">장르 정보 없음</p>
-        </div>
-
-        <div class="section-card">
-            <h2><span></span>감독</h2>
-            <div class="chip-list" th:if="${!#lists.isEmpty(directors)}">
-                <span class="chip gray" th:each="d : ${directors}" th:text="${d}">감독명</span>
-            </div>
-            <p class="empty-text" th:if="${#lists.isEmpty(directors)}">감독 정보 없음</p>
-        </div>
-
-        <div class="section-card">
-            <h2><span></span>출연 배우</h2>
-            <div class="chip-list" th:if="${!#lists.isEmpty(actors)}">
-                <span class="chip gray" th:each="a : ${actors}" th:text="${a}">배우명</span>
-            </div>
-            <p class="empty-text" th:if="${#lists.isEmpty(actors)}">배우 정보 없음</p>
-        </div>
-
-        <div class="section-card">
-            <h2><span></span>제작사 / 배급사</h2>
-            <div class="stack" th:if="${!#lists.isEmpty(companies)}">
-                <div class="stack-item" th:each="c : ${companies}">
-                    <strong th:text="${c.name}">회사명</strong>
-                    <span th:text="${#strings.isEmpty(c.role) ? '역할 미기재' : c.role}">배급</span>
-                </div>
-            </div>
-            <p class="empty-text" th:if="${#lists.isEmpty(companies)}">제작사 정보 없음</p>
-        </div>
-
-        <div class="section-card">
-            <h2><span></span>심의 / 관람 등급</h2>
-            <div class="stack" th:if="${!#lists.isEmpty(audits)}">
-                <div class="stack-item" th:each="a : ${audits}">
-                    <strong th:text="${#strings.isEmpty(a.auditNo) ? '심의번호 없음' : a.auditNo}">심의번호</strong>
-                    <span th:text="${#strings.isEmpty(a.watchGradeName) ? '등급 없음' : a.watchGradeName}">15세 이상</span>
-                </div>
-            </div>
-            <p class="empty-text" th:if="${#lists.isEmpty(audits)}">심의 정보 없음</p>
-        </div>
-
-        <div class="section-card">
-            <h2><span></span>추천 태그</h2>
-            <div class="chip-list" th:if="${!#lists.isEmpty(recommendationTags)}">
-                <span class="chip gray"
-                      th:each="tag : ${recommendationTags}"
-                      th:text="|${tag.tagTypeLabel} · ${tag.tagLabel}|">분위기 · 긴장감 있는</span>
-            </div>
-            <p class="empty-text" th:if="${#lists.isEmpty(recommendationTags)}">추천 태그 정보 없음</p>
-        </div>
-
-        <div class="section-card">
-            <h2><span></span>OTT / 제공 형태</h2>
-            <div class="stack" th:if="${!#lists.isEmpty(providers)}">
-                <div class="stack-item" th:each="provider : ${providers}">
-                    <strong th:text="${provider.name}">넷플릭스</strong>
-                    <span th:text="${provider.type}">구독</span>
-                </div>
-            </div>
-            <p class="empty-text" th:if="${#lists.isEmpty(providers)}">제공처 정보 없음</p>
-        </div>
-
-    </div>
+    <section class="sections">
+        <article class="card"><h3>장르</h3><div class="chips" th:if="${!#lists.isEmpty(genres)}"><span class="chip" th:each="genre : ${genres}" th:text="${genre}">장르</span></div><p class="empty" th:if="${#lists.isEmpty(genres)}">장르 정보가 없습니다.</p></article>
+        <article class="card"><h3>추천 태그</h3><div class="chips" th:if="${!#lists.isEmpty(recommendationTags)}"><span class="chip" th:each="tag : ${recommendationTags}" th:text="${tag.tagTypeLabel + ' · ' + tag.tagLabel}">태그</span></div><p class="empty" th:if="${#lists.isEmpty(recommendationTags)}">추천 태그가 없습니다.</p></article>
+        <article class="card"><h3>감독 / 배우</h3><div class="chips" th:if="${!#lists.isEmpty(directors)}"><span class="chip" th:each="director : ${directors}" th:text="${director}">감독</span></div><div class="chips" style="margin-top:10px" th:if="${!#lists.isEmpty(actors)}"><span class="chip" th:each="actor : ${actors}" th:text="${actor}">배우</span></div><p class="empty" th:if="${#lists.isEmpty(directors) and #lists.isEmpty(actors)}">감독/배우 정보가 없습니다.</p></article>
+        <article class="card"><h3>제공 서비스</h3><div class="meta-list" th:if="${!#lists.isEmpty(providers)}"><div class="meta-item" th:each="provider : ${providers}" th:text="${provider.name + ' · ' + provider.type}">Netflix · 구독</div></div><p class="empty" th:if="${#lists.isEmpty(providers)}">제공 서비스 정보가 없습니다.</p></article>
+        <article class="card"><h3>심의 / 제작사</h3><div class="meta-list" th:if="${!#lists.isEmpty(audits) or !#lists.isEmpty(companies)}"><div class="meta-item" th:each="audit : ${audits}" th:text="${(audit.auditNo != null ? audit.auditNo : '심의번호 없음') + ' · ' + (audit.watchGradeName != null ? audit.watchGradeName : '등급 정보 없음')}">심의번호 · 12세 관람가</div><div class="meta-item" th:each="company : ${companies}" th:text="${company.name + ' · ' + (company.role != null ? company.role : '참여사')}">제작사 · 배급</div></div><p class="empty" th:if="${#lists.isEmpty(audits) and #lists.isEmpty(companies)}">추가 정보가 없습니다.</p></article>
+    </section>
 </main>
+
+<script th:inline="javascript">
+    const movieCode = [[${movie.movieCode}]];
+    let movieState = {
+        liked: [[${movie.likedByCurrentUser}]],
+        disliked: [[${movie.dislikedByCurrentUser}]],
+        later: [[${movie.storedByCurrentUser}]],
+        collected: [[${movie.collectedByCurrentUser}]],
+        watchStatus: [[${movie.watchStatus}]],
+        rating: [[${movie.watchedRating}]]
+    };
+</script>
+<script>
+    const dislikeBtn = document.getElementById('dislike-btn');
+    const likeBtn = document.getElementById('like-btn');
+    const laterBtn = document.getElementById('later-btn');
+    const watchBtn = document.getElementById('watch-btn');
+    const collectionBtn = document.getElementById('collection-btn');
+    const watchIcon = document.getElementById('watch-icon');
+    const watchLabel = document.getElementById('watch-label');
+    const watchHint = document.getElementById('watch-hint');
+    const ratingBox = document.getElementById('rating-box');
+    const ratingOff = document.getElementById('rating-off');
+    const ratingBadge = document.getElementById('rating-badge');
+    const ratingNote = document.getElementById('rating-note');
+    const stars = [...document.querySelectorAll('.star')];
+
+    const iconMarkup = {
+        dislike: `<svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg>`,
+        like: `<svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg>`,
+        later: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg>`,
+        collection: `<svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg>`,
+        watching: `<svg viewBox="0 0 24 24"><path d="M1.5 12s4-6 10.5-6 10.5 6 10.5 6-4 6-10.5 6S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="2.8"/></svg>`,
+        watched: `<svg viewBox="0 0 24 24"><path d="M20 7 10 17l-5-5"/></svg>`
+    };
+
+    document.getElementById('dislike-icon').innerHTML = iconMarkup.dislike;
+    document.getElementById('like-icon').innerHTML = iconMarkup.like;
+    document.getElementById('later-icon').innerHTML = iconMarkup.later;
+    document.getElementById('collection-icon').innerHTML = iconMarkup.collection;
+
+    async function postAction(path, body = '') {
+        const response = await fetch(path, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body
+        });
+        if (response.status === 401) {
+            window.location.href = '/login';
+            throw new Error('Unauthorized');
+        }
+        if (!response.ok) {
+            alert((await response.text()) || '요청을 처리하지 못했습니다.');
+            throw new Error('Request failed');
+        }
+        return response.json();
+    }
+
+    function paintStars(value) {
+        stars.forEach((star) => star.classList.toggle('active', Number(star.dataset.rating) <= value));
+    }
+
+    function updateState(nextState) {
+        movieState = { ...movieState, ...nextState };
+        dislikeBtn.classList.toggle('active', !!movieState.disliked);
+        likeBtn.classList.toggle('active', !!movieState.liked);
+        laterBtn.classList.toggle('active', !!movieState.later);
+        collectionBtn.classList.toggle('active', !!movieState.collected);
+        watchBtn.classList.remove('watching', 'watched');
+
+        if (movieState.watchStatus === 'WATCHING') {
+            watchBtn.classList.add('watching');
+            watchIcon.innerHTML = iconMarkup.watching;
+            watchLabel.textContent = '보는중';
+            watchHint.textContent = '다시 누르면 봤어요로 전환됩니다.';
+        } else if (movieState.watchStatus === 'WATCHED') {
+            watchBtn.classList.add('watched');
+            watchIcon.innerHTML = iconMarkup.watched;
+            watchLabel.textContent = '봤어요';
+            watchHint.textContent = '다시 누르면 기록이 해제됩니다.';
+        } else {
+            watchIcon.innerHTML = iconMarkup.watching;
+            watchLabel.textContent = '보는중 / 봤어요';
+            watchHint.textContent = '한 번 누르면 보는중, 다시 누르면 봤어요';
+        }
+
+        const watched = movieState.watchStatus === 'WATCHED';
+        ratingBox.classList.toggle('active', watched);
+        ratingOff.style.display = watched ? 'none' : 'block';
+        ratingBadge.textContent = movieState.rating ? `${movieState.rating}점` : '미평가';
+        ratingNote.textContent = movieState.rating ? `${movieState.rating}점으로 저장되었습니다.` : '아직 별점이 없습니다.';
+        paintStars(movieState.rating || 0);
+    }
+
+    dislikeBtn.addEventListener('click', async () => updateState(await postAction(`/api/movies/${movieCode}/dislike`)));
+    likeBtn.addEventListener('click', async () => updateState(await postAction(`/api/movies/${movieCode}/like`)));
+    laterBtn.addEventListener('click', async () => updateState(await postAction(`/api/movies/${movieCode}/later`)));
+    collectionBtn.addEventListener('click', async () => updateState(await postAction(`/api/movies/${movieCode}/collection`)));
+    watchBtn.addEventListener('click', async () => updateState(await postAction(`/api/movies/${movieCode}/watch-state`)));
+
+    stars.forEach((star) => {
+        const value = Number(star.dataset.rating);
+        star.addEventListener('mouseenter', () => paintStars(value));
+        star.addEventListener('click', async () => {
+            if (movieState.watchStatus !== 'WATCHED') {
+                return;
+            }
+            updateState(await postAction(`/api/movies/${movieCode}/watched/rating`, `rating=${value}`));
+        });
+    });
+
+    document.getElementById('rating-stars').addEventListener('mouseleave', () => paintStars(movieState.rating || 0));
+    updateState(movieState);
+</script>
 </body>
 </html>

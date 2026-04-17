@@ -34,5 +34,5 @@ build/
 
 ### Runtime artifacts ###
 spring-boot*.log
-data/*.mv.db
-data/*.trace.db
+data/*
+!data/.gitkeep

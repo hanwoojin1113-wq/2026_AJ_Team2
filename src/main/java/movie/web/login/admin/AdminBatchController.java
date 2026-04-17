@@ -59,6 +59,63 @@ public class AdminBatchController {
         return movieDataBatchService.runTagRebuild();
     }
 
+    @PostMapping("/recommendation/profile")
+    public MovieDataBatchService.JobRunResponse rebuildPreferenceProfile(
+            @RequestParam Long userId
+    ) {
+        return movieDataBatchService.runPreferenceProfileRebuild(userId);
+    }
+
+    @PostMapping("/recommendation/ranking")
+    public MovieDataBatchService.JobRunResponse rebuildRecommendationRanking(
+            @RequestParam Long userId,
+            @RequestParam(required = false) Integer limit
+    ) {
+        return movieDataBatchService.runRecommendationRankingRebuild(userId, limit);
+    }
+
+    @PostMapping("/test-users/seed")
+    public MovieDataBatchService.JobRunResponse seedTestUsers(
+            @RequestParam(defaultValue = "false") boolean reset
+    ) {
+        return movieDataBatchService.runTestUserSeed(reset);
+    }
+
+    @PostMapping("/test-users/activities")
+    public MovieDataBatchService.JobRunResponse seedTestUserActivities(
+            @RequestParam(defaultValue = "false") boolean reset,
+            @RequestParam(defaultValue = "false") boolean refreshRecommendations
+    ) {
+        return movieDataBatchService.runTestUserActivitySeed(reset, refreshRecommendations);
+    }
+
+    @PostMapping("/recommendation/refresh-dirty")
+    public MovieDataBatchService.JobRunResponse refreshDirtyRecommendations(
+            @RequestParam(defaultValue = "20") int batchSize,
+            @RequestParam(required = false) Integer limit
+    ) {
+        return movieDataBatchService.runRefreshDirtyRecommendations(batchSize, limit);
+    }
+
+    @GetMapping("/recommendation/blocks")
+    public movie.web.login.recommendation.RecommendationBlockService.RecommendationBlockResponse recommendationBlocks(
+            @RequestParam Long userId,
+            @RequestParam(defaultValue = "true") boolean refreshIfDirty,
+            @RequestParam(required = false) Integer sliceLimit,
+            @RequestParam(required = false) Integer itemLimit
+    ) {
+        return movieDataBatchService.previewRecommendationBlocks(userId, refreshIfDirty, sliceLimit, itemLimit);
+    }
+
+    @GetMapping("/recommendation/validate")
+    public movie.web.login.recommendation.RecommendationValidationService.ValidationResponse validateRecommendations(
+            @RequestParam(required = false) String loginId,
+            @RequestParam(defaultValue = "true") boolean refreshIfDirty,
+            @RequestParam(required = false) Integer topRecommendationLimit
+    ) {
+        return movieDataBatchService.validateRecommendations(loginId, refreshIfDirty, topRecommendationLimit);
+    }
+
     @PostMapping("/run")
     public MovieDataBatchService.PipelineRunResponse runPipeline(
             @RequestParam(required = false) Integer startYear,

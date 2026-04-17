@@ -1,6 +1,11 @@
+DROP TABLE IF EXISTS user_movie_collection;
 DROP TABLE IF EXISTS user_movie_life;
+DROP TABLE IF EXISTS user_movie_watched;
 DROP TABLE IF EXISTS user_movie_store;
 DROP TABLE IF EXISTS user_movie_like;
+DROP TABLE IF EXISTS user_recommendation_result;
+DROP TABLE IF EXISTS user_preference_profile;
+DROP TABLE IF EXISTS user_recommendation_refresh_state;
 DROP TABLE IF EXISTS movie_audit;
 DROP TABLE IF EXISTS movie_company;
 DROP TABLE IF EXISTS movie_provider;
@@ -275,6 +280,28 @@ CREATE TABLE user_movie_store (
     CONSTRAINT fk_user_movie_store_movie FOREIGN KEY (movie_id) REFERENCES movie(id)
 );
 
+CREATE TABLE user_movie_watched (
+    user_id BIGINT NOT NULL,
+    movie_id BIGINT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'WATCHED',
+    rating INT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, movie_id),
+    CONSTRAINT fk_user_movie_watched_user FOREIGN KEY (user_id) REFERENCES "USER"(id),
+    CONSTRAINT fk_user_movie_watched_movie FOREIGN KEY (movie_id) REFERENCES movie(id),
+    CONSTRAINT ck_user_movie_watched_status CHECK (status IN ('WATCHING', 'WATCHED')),
+    CONSTRAINT ck_user_movie_watched_rating CHECK (rating IS NULL OR rating BETWEEN 1 AND 5)
+);
+
+CREATE TABLE user_movie_collection (
+    user_id BIGINT NOT NULL,
+    movie_id BIGINT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, movie_id),
+    CONSTRAINT fk_user_movie_collection_user FOREIGN KEY (user_id) REFERENCES "USER"(id),
+    CONSTRAINT fk_user_movie_collection_movie FOREIGN KEY (movie_id) REFERENCES movie(id)
+);
+
 CREATE TABLE user_movie_life (
     user_id BIGINT NOT NULL,
     movie_id BIGINT NOT NULL,
@@ -282,4 +309,48 @@ CREATE TABLE user_movie_life (
     PRIMARY KEY (user_id, movie_id),
     CONSTRAINT fk_user_movie_life_user FOREIGN KEY (user_id) REFERENCES "USER"(id),
     CONSTRAINT fk_user_movie_life_movie FOREIGN KEY (movie_id) REFERENCES movie(id)
+);
+
+CREATE TABLE user_recommendation_refresh_state (
+    user_id BIGINT NOT NULL PRIMARY KEY,
+    pending_event_count INT NOT NULL DEFAULT 0,
+    last_refreshed_at TIMESTAMP,
+    last_event_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_refresh_event_count INT NOT NULL DEFAULT 0,
+    algorithm_version VARCHAR(50) NOT NULL,
+    dirty BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT fk_user_recommendation_refresh_state_user FOREIGN KEY (user_id) REFERENCES "USER"(id)
+);
+
+CREATE INDEX idx_recommendation_refresh_state_dirty
+ON user_recommendation_refresh_state (dirty, last_event_at);
+
+CREATE TABLE user_preference_profile (
+    user_id BIGINT NOT NULL,
+    feature_type VARCHAR(20) NOT NULL,
+    feature_name VARCHAR(255) NOT NULL,
+    score DOUBLE PRECISION NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, feature_type, feature_name),
+    CONSTRAINT fk_user_preference_profile_user FOREIGN KEY (user_id) REFERENCES "USER"(id)
+);
+
+CREATE TABLE user_recommendation_result (
+    user_id BIGINT NOT NULL,
+    movie_id BIGINT NOT NULL,
+    rank_no INT NOT NULL,
+    final_score DOUBLE PRECISION NOT NULL,
+    tag_score DOUBLE PRECISION NOT NULL,
+    genre_score DOUBLE PRECISION NOT NULL,
+    people_score DOUBLE PRECISION NOT NULL,
+    keyword_score DOUBLE PRECISION NOT NULL,
+    provider_score DOUBLE PRECISION NOT NULL,
+    penalty_score DOUBLE PRECISION NOT NULL,
+    reason_summary VARCHAR(500),
+    algorithm_version VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, movie_id),
+    CONSTRAINT uk_user_recommendation_result_rank UNIQUE (user_id, rank_no),
+    CONSTRAINT fk_user_recommendation_result_user FOREIGN KEY (user_id) REFERENCES "USER"(id),
+    CONSTRAINT fk_user_recommendation_result_movie FOREIGN KEY (movie_id) REFERENCES movie(id)
 );
