@@ -25,6 +25,7 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -35,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Order(1)
+@ConditionalOnProperty(value = "app.csv-init.enabled", havingValue = "true")
 public class KobisCsvDataLoader implements ApplicationRunner {
 
     private static final String CSV_PATH = "data/kobis_boxoffice_top50_movie_details.csv";

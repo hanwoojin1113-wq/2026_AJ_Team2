@@ -1,7 +1,10 @@
 package movie.web.login;
 
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -13,9 +16,18 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+
+import movie.web.login.recommendation.RecommendationRefreshStateService;
+import movie.web.login.recommendation.RecommendationBlockService;
+import movie.web.login.recommendation.RecommendationMaintenanceService;
+import movie.web.login.tag.RecommendationTag;
+import movie.web.login.tag.RecommendationTagType;
 
 @Controller
 public class MovieController {
@@ -23,11 +35,55 @@ public class MovieController {
     private static final String LOGIN_SESSION_KEY = "loginUserId";
     private static final String LOGIN_NICKNAME_SESSION_KEY = "loginUserNickname";
     private static final int PAGE_SIZE = 10;
+    private static final int HOME_BLOCK_ITEM_LIMIT = 10;
+    private static final int LIFE_MOVIE_LIMIT = 10;
+    private static final Map<String, String> TAG_TYPE_LABELS = Map.of(
+            "MOOD", "분위기",
+            "CONTEXT", "추천 상황",
+            "CAUTION", "주의 요소",
+            "THEME", "주제"
+    );
+    private static final Map<String, String> TAG_LABELS = Map.ofEntries(
+            Map.entry("funny", "유쾌한"),
+            Map.entry("tense", "긴장감 있는"),
+            Map.entry("dark", "어두운"),
+            Map.entry("emotional", "감정적인"),
+            Map.entry("romantic", "로맨틱한"),
+            Map.entry("hopeful", "희망적인"),
+            Map.entry("healing", "힐링되는"),
+            Map.entry("spectacle", "볼거리 있는"),
+            Map.entry("creepy", "기괴한"),
+            Map.entry("with_family", "가족과 보기 좋은"),
+            Map.entry("with_partner", "연인과 보기 좋은"),
+            Map.entry("late_night", "늦은 밤 보기 좋은"),
+            Map.entry("violent", "폭력적인"),
+            Map.entry("sad", "슬픈"),
+            Map.entry("slow_burn", "잔잔하게 쌓이는"),
+            Map.entry("long_running", "러닝타임 긴"),
+            Map.entry("investigation", "수사"),
+            Map.entry("mystery", "미스터리"),
+            Map.entry("zombie", "좀비"),
+            Map.entry("disaster", "재난"),
+            Map.entry("true_story", "실화 기반"),
+            Map.entry("coming_of_age", "성장"),
+            Map.entry("friendship", "우정"),
+            Map.entry("survival", "생존"),
+            Map.entry("revenge", "복수")
+    );
 
     private final JdbcTemplate jdbcTemplate;
+    private final RecommendationRefreshStateService recommendationRefreshStateService;
+    private final RecommendationMaintenanceService recommendationMaintenanceService;
+    private final RecommendationBlockService recommendationBlockService;
 
-    public MovieController(JdbcTemplate jdbcTemplate) {
+    public MovieController(JdbcTemplate jdbcTemplate,
+                           RecommendationRefreshStateService recommendationRefreshStateService,
+                           RecommendationMaintenanceService recommendationMaintenanceService,
+                           RecommendationBlockService recommendationBlockService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.recommendationRefreshStateService = recommendationRefreshStateService;
+        this.recommendationMaintenanceService = recommendationMaintenanceService;
+        this.recommendationBlockService = recommendationBlockService;
     }
 
     @GetMapping("/")
@@ -105,6 +161,8 @@ public class MovieController {
     public String home(@RequestParam(defaultValue = "1") int page,
                        @RequestParam(required = false) String query,
                        @RequestParam(required = false) String genre,
+                       @RequestParam(required = false) String tagType,
+                       @RequestParam(required = false) String tagName,
                        @RequestParam(required = false, defaultValue = "false") boolean showAdvanced,
                        Model model, HttpSession session) {
         if (!isLoggedIn(session)) {
@@ -113,71 +171,138 @@ public class MovieController {
 
         String normalizedQuery = query == null ? "" : query.trim();
         String normalizedGenre = genre == null ? "" : genre.trim();
+        String normalizedTagType = tagType == null ? "" : tagType.trim().toUpperCase();
+        String normalizedTagName = tagName == null ? "" : tagName.trim();
+        if (normalizedTagType.isEmpty() || normalizedTagName.isEmpty()) {
+            normalizedTagType = "";
+            normalizedTagName = "";
+        }
         boolean hasQuery = !normalizedQuery.isEmpty();
         boolean hasGenre = !normalizedGenre.isEmpty();
+        boolean hasTag = !normalizedTagType.isEmpty();
+        boolean hasActiveSearch = hasQuery || hasGenre || hasTag;
 
-        String countSql = """
-                SELECT COUNT(DISTINCT m.id)
-                FROM movie m
-                LEFT JOIN movie_genre mg ON mg.movie_id = m.id
-                LEFT JOIN genre g ON g.id = mg.genre_id
-                WHERE (? = '' OR UPPER(m.movie_name) LIKE UPPER(?)
-                       OR UPPER(COALESCE(m.movie_name_en, '')) LIKE UPPER(?)
-                       OR UPPER(m.movie_cd) LIKE UPPER(?))
-                  AND (? = '' OR g.name = ?)
-                """;
-        String queryPattern = "%" + normalizedQuery + "%";
-        int totalMovies = jdbcTemplate.queryForObject(countSql, Integer.class,
-                normalizedQuery, queryPattern, queryPattern, queryPattern,
-                normalizedGenre, normalizedGenre);
-        int totalPages = Math.max(1, (int) Math.ceil((double) totalMovies / PAGE_SIZE));
-        int currentPage = Math.min(Math.max(page, 1), totalPages);
-        int offset = (currentPage - 1) * PAGE_SIZE;
-
-        List<MoviePosterView> movies = jdbcTemplate.query("""
-                SELECT DISTINCT m.ranking, m.movie_cd, m.movie_name, m.movie_name_en, m.poster_image_url
-                FROM movie m
-                LEFT JOIN movie_genre mg ON mg.movie_id = m.id
-                LEFT JOIN genre g ON g.id = mg.genre_id
-                WHERE (? = '' OR UPPER(m.movie_name) LIKE UPPER(?)
-                       OR UPPER(COALESCE(m.movie_name_en, '')) LIKE UPPER(?)
-                       OR UPPER(m.movie_cd) LIKE UPPER(?))
-                  AND (? = '' OR g.name = ?)
-                ORDER BY m.ranking ASC
-                LIMIT ? OFFSET ?
-                """, (rs, rowNum) -> new MoviePosterView(
-                rs.getInt("ranking"),
-                rs.getString("movie_cd"),
-                rs.getString("movie_name"),
-                rs.getString("movie_name_en"),
-                rs.getString("poster_image_url")
-        ), normalizedQuery, queryPattern, queryPattern, queryPattern,
-                normalizedGenre, normalizedGenre, PAGE_SIZE, offset);
-
-        model.addAttribute("movies", movies);
         addCurrentUserAttributes(model, session);
-        model.addAttribute("currentPage", currentPage);
-        model.addAttribute("totalPages", totalPages);
-        model.addAttribute("hasPrevious", currentPage > 1);
-        model.addAttribute("hasNext", currentPage < totalPages);
-        model.addAttribute("previousPage", currentPage - 1);
-        model.addAttribute("nextPage", currentPage + 1);
-        model.addAttribute("pages", java.util.stream.IntStream.rangeClosed(1, totalPages).boxed().toList());
         model.addAttribute("query", normalizedQuery);
         model.addAttribute("selectedGenre", normalizedGenre);
-        model.addAttribute("showAdvanced", showAdvanced || hasGenre);
+        model.addAttribute("selectedTagType", normalizedTagType);
+        model.addAttribute("selectedTagName", normalizedTagName);
+        model.addAttribute("selectedTagLabel", labelForTag(normalizedTagName));
+        model.addAttribute("showAdvanced", showAdvanced || hasGenre || hasTag);
         model.addAttribute("genres", fetchChartGenres());
+        model.addAttribute("tagGroups", fetchChartTagGroups());
+        model.addAttribute("hasActiveSearch", hasActiveSearch);
+
+        if (hasActiveSearch) {
+            String countSql = """
+                    SELECT COUNT(DISTINCT m.id)
+                    FROM movie m
+                    LEFT JOIN movie_genre mg ON mg.movie_id = m.id
+                    LEFT JOIN genre g ON g.id = mg.genre_id
+                    WHERE (? = '' OR UPPER(COALESCE(m.title, m.movie_name, '')) LIKE UPPER(?)
+                           OR UPPER(COALESCE(m.movie_name, '')) LIKE UPPER(?)
+                           OR UPPER(COALESCE(m.movie_name_en, m.original_title, m.movie_name_original, '')) LIKE UPPER(?)
+                           OR UPPER(COALESCE(m.movie_name_original, m.original_title, '')) LIKE UPPER(?)
+                           OR UPPER(m.movie_cd) LIKE UPPER(?))
+                      AND (? = '' OR g.name = ?)
+                      AND (? = '' OR EXISTS (
+                            SELECT 1
+                            FROM movie_tag mt
+                            JOIN tag t ON t.id = mt.tag_id
+                            WHERE mt.movie_id = m.id
+                              AND t.tag_type = ?
+                              AND t.tag_name = ?
+                      ))
+                    """;
+            String queryPattern = "%" + normalizedQuery + "%";
+            int totalMovies = jdbcTemplate.queryForObject(countSql, Integer.class,
+                    normalizedQuery, queryPattern, queryPattern, queryPattern, queryPattern, queryPattern,
+                    normalizedGenre, normalizedGenre,
+                    normalizedTagName, normalizedTagType, normalizedTagName);
+            int totalPages = Math.max(1, (int) Math.ceil((double) totalMovies / PAGE_SIZE));
+            int currentPage = Math.min(Math.max(page, 1), totalPages);
+            int offset = (currentPage - 1) * PAGE_SIZE;
+
+            List<MoviePosterView> movies = jdbcTemplate.query("""
+                    SELECT DISTINCT
+                        m.ranking,
+                        m.movie_cd,
+                        COALESCE(m.title, m.movie_name) AS movie_name,
+                        COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                        m.poster_image_url
+                    FROM movie m
+                    LEFT JOIN movie_genre mg ON mg.movie_id = m.id
+                    LEFT JOIN genre g ON g.id = mg.genre_id
+                    WHERE (? = '' OR UPPER(COALESCE(m.title, m.movie_name, '')) LIKE UPPER(?)
+                           OR UPPER(COALESCE(m.movie_name, '')) LIKE UPPER(?)
+                           OR UPPER(COALESCE(m.movie_name_en, m.original_title, m.movie_name_original, '')) LIKE UPPER(?)
+                           OR UPPER(COALESCE(m.movie_name_original, m.original_title, '')) LIKE UPPER(?)
+                           OR UPPER(m.movie_cd) LIKE UPPER(?))
+                      AND (? = '' OR g.name = ?)
+                      AND (? = '' OR EXISTS (
+                            SELECT 1
+                            FROM movie_tag mt
+                            JOIN tag t ON t.id = mt.tag_id
+                            WHERE mt.movie_id = m.id
+                              AND t.tag_type = ?
+                              AND t.tag_name = ?
+                      ))
+                    ORDER BY
+                        CASE WHEN m.ranking IS NULL THEN 1 ELSE 0 END,
+                        m.ranking ASC,
+                        COALESCE(m.title, m.movie_name) ASC
+                    LIMIT ? OFFSET ?
+                    """, (rs, rowNum) -> new MoviePosterView(
+                    rs.getInt("ranking"),
+                    rs.getString("movie_cd"),
+                    rs.getString("movie_name"),
+                    rs.getString("movie_name_en"),
+                    rs.getString("poster_image_url")
+            ), normalizedQuery, queryPattern, queryPattern, queryPattern, queryPattern, queryPattern,
+                    normalizedGenre, normalizedGenre,
+                    normalizedTagName, normalizedTagType, normalizedTagName,
+                    PAGE_SIZE, offset);
+
+            model.addAttribute("movies", movies);
+            model.addAttribute("searchResultCount", totalMovies);
+            model.addAttribute("currentPage", currentPage);
+            model.addAttribute("totalPages", totalPages);
+            model.addAttribute("hasPrevious", currentPage > 1);
+            model.addAttribute("hasNext", currentPage < totalPages);
+            model.addAttribute("previousPage", currentPage - 1);
+            model.addAttribute("nextPage", currentPage + 1);
+            model.addAttribute("pages", java.util.stream.IntStream.rangeClosed(1, totalPages).boxed().toList());
+            model.addAttribute("recommendationBlocks", List.of());
+            model.addAttribute("fallbackMovies", List.of());
+        } else {
+            Long userId = getCurrentUserId(session);
+            recommendationMaintenanceService.ensureRecommendations(userId, 200);
+            List<RecommendationBlockService.RecommendationBlock> recommendationBlocks =
+                    recommendationBlockService.buildBlocks(userId, 120, HOME_BLOCK_ITEM_LIMIT).blocks();
+
+            model.addAttribute("movies", List.of());
+            model.addAttribute("searchResultCount", 0);
+            model.addAttribute("currentPage", 1);
+            model.addAttribute("totalPages", 1);
+            model.addAttribute("hasPrevious", false);
+            model.addAttribute("hasNext", false);
+            model.addAttribute("previousPage", 1);
+            model.addAttribute("nextPage", 1);
+            model.addAttribute("pages", List.of(1));
+            model.addAttribute("recommendationBlocks", recommendationBlocks);
+            model.addAttribute("fallbackMovies", recommendationBlocks.isEmpty() ? fetchPopularMovies(12) : List.of());
+        }
         return "index";
     }
 
     @GetMapping("/mypage")
-    public String myPage(@RequestParam(required = false, defaultValue = "false") boolean showLifeSearch,
-                         @RequestParam(required = false) String lifeQuery,
+    public String myPage(@RequestParam(required = false, defaultValue = "false") boolean showLifePicker,
                          Model model, HttpSession session) {
         if (!isLoggedIn(session)) {
             return "redirect:/login";
         }
 
+        initializeActivityTables();
         Long userId = getCurrentUserId(session);
         UserProfileView userProfile = jdbcTemplate.query("""
                 SELECT login_id, nickname, gender, age
@@ -196,14 +321,27 @@ public class MovieController {
             return "redirect:/login";
         }
 
+        int lifeMovieCount = countLifeMovies(userId);
         addCurrentUserAttributes(model, session);
         model.addAttribute("userProfile", userProfile);
-        model.addAttribute("storedMovies", fetchStoredMovies(userId, 5));
-        model.addAttribute("storedMovieCount", countStoredMovies(userId));
-        model.addAttribute("lifeMovies", fetchLifeMovies(userId, 5));
-        model.addAttribute("showLifeSearch", showLifeSearch);
-        model.addAttribute("lifeQuery", lifeQuery == null ? "" : lifeQuery);
-        model.addAttribute("lifeSearchResults", fetchLifeMovieSearchResults(userId, lifeQuery, showLifeSearch));
+        model.addAttribute("lifeMovies", fetchLifeMovies(userId, LIFE_MOVIE_LIMIT));
+        model.addAttribute("lifeMovieCount", lifeMovieCount);
+        model.addAttribute("likedMovies", fetchLikedMovies(userId, 12));
+        model.addAttribute("likedMovieCount", countLikedMovies(userId));
+        model.addAttribute("collectionMovies", fetchCollectionMovies(userId, 12));
+        model.addAttribute("collectionMovieCount", countCollectionMovies(userId));
+        model.addAttribute("laterMovies", fetchStoredMovies(userId, 12));
+        model.addAttribute("laterMovieCount", countStoredMovies(userId));
+        model.addAttribute("dislikedMovies", fetchDislikedMovies(userId, 12));
+        model.addAttribute("dislikedMovieCount", countDislikedMovies(userId));
+        model.addAttribute("watchingMovies", fetchWatchedMovies(userId, "WATCHING", 12));
+        model.addAttribute("watchingMovieCount", countWatchedMovies(userId, "WATCHING"));
+        model.addAttribute("watchedMovies", fetchWatchedMovies(userId, "WATCHED", 12));
+        model.addAttribute("watchedMovieCount", countWatchedMovies(userId, "WATCHED"));
+        model.addAttribute("showLifePicker", showLifePicker);
+        model.addAttribute("lifeLimitReached", lifeMovieCount >= LIFE_MOVIE_LIMIT);
+        model.addAttribute("lifeSelectionSlots", Math.max(0, LIFE_MOVIE_LIMIT - lifeMovieCount));
+        model.addAttribute("lifePickerCandidates", fetchLifeMovieSearchResults(userId));
         return "my-page";
     }
 
@@ -213,9 +351,10 @@ public class MovieController {
             return "redirect:/login";
         }
 
+        initializeActivityTables();
         Long userId = getCurrentUserId(session);
         addCurrentUserAttributes(model, session);
-        model.addAttribute("storedMovies", fetchStoredMovies(userId, null));
+        model.addAttribute("laterMovies", fetchStoredMovies(userId, null));
         return "stored-page";
     }
 
@@ -225,35 +364,23 @@ public class MovieController {
             return "redirect:/login";
         }
 
-        String loginId = (String) session.getAttribute(LOGIN_SESSION_KEY);
+        initializeActivityTables();
+        Long userId = getCurrentUserId(session);
+        Long movieId = findMovieId(movieCode);
+        MovieActionState actionState = fetchMovieActionState(userId, movieId);
         MovieDetailView movie = jdbcTemplate.query("""
                 SELECT
                     m.ranking,
                     m.movie_cd,
-                    m.movie_name,
-                    m.movie_name_en,
-                    m.movie_name_original,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    COALESCE(m.movie_name_original, m.original_title) AS movie_name_original,
                     m.poster_image_url,
                     (
                         SELECT COUNT(*)
                         FROM user_movie_like uml
                         WHERE uml.movie_id = m.id AND uml.liked = TRUE
                     ) AS like_count,
-                    EXISTS(
-                        SELECT 1
-                        FROM user_movie_like uml
-                        JOIN "USER" u ON u.id = uml.user_id
-                        WHERE uml.movie_id = m.id
-                          AND uml.liked = TRUE
-                          AND u.login_id = ?
-                    ) AS liked_by_current_user,
-                    EXISTS(
-                        SELECT 1
-                        FROM user_movie_store ums
-                        JOIN "USER" u ON u.id = ums.user_id
-                        WHERE ums.movie_id = m.id
-                          AND u.login_id = ?
-                    ) AS stored_by_current_user,
                     m.box_office_open_date,
                     m.movie_info_open_date,
                     m.production_year,
@@ -282,8 +409,12 @@ public class MovieController {
                     rs.getString("movie_name_original"),
                     rs.getString("poster_image_url"),
                     rs.getInt("like_count"),
-                    rs.getBoolean("liked_by_current_user"),
-                    rs.getBoolean("stored_by_current_user"),
+                    actionState.liked(),
+                    actionState.disliked(),
+                    actionState.stored(),
+                    actionState.collected(),
+                    actionState.watchStatus(),
+                    actionState.watchedRating(),
                     rs.getObject("box_office_open_date", LocalDate.class),
                     rs.getObject("movie_info_open_date", LocalDate.class),
                     rs.getObject("production_year", Integer.class),
@@ -296,7 +427,7 @@ public class MovieController {
                     rs.getObject("box_office_scrn_cnt", Integer.class),
                     rs.getObject("box_office_show_cnt", Integer.class)
             );
-        }, loginId, loginId, movieCode);
+        }, movieCode);
 
         if (movie == null) {
             throw new ResponseStatusException(NOT_FOUND);
@@ -312,6 +443,27 @@ public class MovieController {
                 WHERE m.movie_cd = ?
                 ORDER BY mg.display_order
                 """, movieCode));
+        model.addAttribute("recommendationTags", jdbcTemplate.query("""
+                SELECT t.tag_type, t.tag_name
+                FROM movie_tag mt
+                JOIN tag t ON t.id = mt.tag_id
+                JOIN movie m ON m.id = mt.movie_id
+                WHERE m.movie_cd = ?
+                ORDER BY
+                    CASE t.tag_type
+                        WHEN 'MOOD' THEN 1
+                        WHEN 'CONTEXT' THEN 2
+                        WHEN 'CAUTION' THEN 3
+                        WHEN 'THEME' THEN 4
+                        ELSE 5
+                    END,
+                    t.tag_name
+                """, (rs, rowNum) -> new MovieTagView(
+                rs.getString("tag_type"),
+                labelForTagType(rs.getString("tag_type")),
+                rs.getString("tag_name"),
+                labelForTag(rs.getString("tag_name"))
+        ), movieCode));
         model.addAttribute("directors", fetchOrderedNames("""
                 SELECT p.name
                 FROM movie_director md
@@ -339,6 +491,31 @@ public class MovieController {
                 rs.getString("name"),
                 rs.getString("company_role")
         ), movieCode));
+        model.addAttribute("providers", jdbcTemplate.query("""
+                SELECT
+                    p.provider_name,
+                    CASE mp.provider_type
+                        WHEN 'FLATRATE' THEN '구독'
+                        WHEN 'RENT' THEN '대여'
+                        WHEN 'BUY' THEN '구매'
+                        ELSE mp.provider_type
+                    END AS provider_type
+                FROM movie_provider mp
+                JOIN provider p ON p.id = mp.provider_id
+                JOIN movie m ON m.id = mp.movie_id
+                WHERE m.movie_cd = ?
+                ORDER BY
+                    CASE mp.provider_type
+                        WHEN 'FLATRATE' THEN 1
+                        WHEN 'RENT' THEN 2
+                        WHEN 'BUY' THEN 3
+                        ELSE 4
+                    END,
+                    mp.display_order
+                """, (rs, rowNum) -> new ProviderView(
+                rs.getString("provider_name"),
+                rs.getString("provider_type")
+        ), movieCode));
         model.addAttribute("audits", jdbcTemplate.query("""
                 SELECT a.audit_no, wg.name AS watch_grade_name
                 FROM movie_audit ma
@@ -356,46 +533,21 @@ public class MovieController {
 
     @PostMapping("/movies/{movieCode}/like")
     @Transactional
-    public String increaseLike(@PathVariable String movieCode, HttpSession session) {
+    public String toggleLike(@PathVariable String movieCode, HttpSession session) {
         if (!isLoggedIn(session)) {
             return "redirect:/login";
         }
+        applyLikeState(getCurrentUserId(session), findMovieId(movieCode), true);
+        return "redirect:/movies/" + movieCode;
+    }
 
-        String loginId = (String) session.getAttribute(LOGIN_SESSION_KEY);
-        Long userId = jdbcTemplate.query("""
-                SELECT id
-                FROM "USER"
-                WHERE login_id = ?
-                """, rs -> rs.next() ? rs.getLong("id") : null, loginId);
-
-        Long movieId = jdbcTemplate.query("""
-                SELECT id
-                FROM movie
-                WHERE movie_cd = ?
-                """, rs -> rs.next() ? rs.getLong("id") : null, movieCode);
-
-        if (userId == null || movieId == null) {
-            throw new ResponseStatusException(NOT_FOUND);
+    @PostMapping("/movies/{movieCode}/dislike")
+    @Transactional
+    public String toggleDislike(@PathVariable String movieCode, HttpSession session) {
+        if (!isLoggedIn(session)) {
+            return "redirect:/login";
         }
-
-        Boolean alreadyLiked = jdbcTemplate.query("""
-                SELECT liked
-                FROM user_movie_like
-                WHERE user_id = ? AND movie_id = ?
-                """, rs -> rs.next() ? rs.getBoolean("liked") : null, userId, movieId);
-
-        if (Boolean.TRUE.equals(alreadyLiked)) {
-            jdbcTemplate.update("""
-                    DELETE FROM user_movie_like
-                    WHERE user_id = ? AND movie_id = ?
-                    """, userId, movieId);
-        } else {
-            jdbcTemplate.update("""
-                    INSERT INTO user_movie_like (user_id, movie_id, liked)
-                    VALUES (?, ?, TRUE)
-                    """, userId, movieId);
-        }
-
+        applyLikeState(getCurrentUserId(session), findMovieId(movieCode), false);
         return "redirect:/movies/" + movieCode;
     }
 
@@ -405,29 +557,102 @@ public class MovieController {
         if (!isLoggedIn(session)) {
             return "redirect:/login";
         }
-
-        Long userId = getCurrentUserId(session);
-        Long movieId = findMovieId(movieCode);
-
-        Integer storedCount = jdbcTemplate.query("""
-                SELECT COUNT(*)
-                FROM user_movie_store
-                WHERE user_id = ? AND movie_id = ?
-                """, rs -> rs.next() ? rs.getInt(1) : 0, userId, movieId);
-
-        if (storedCount != null && storedCount > 0) {
-            jdbcTemplate.update("""
-                    DELETE FROM user_movie_store
-                    WHERE user_id = ? AND movie_id = ?
-                    """, userId, movieId);
-        } else {
-            jdbcTemplate.update("""
-                    INSERT INTO user_movie_store (user_id, movie_id)
-                    VALUES (?, ?)
-                    """, userId, movieId);
-        }
-
+        toggleSimpleCollection(getCurrentUserId(session), findMovieId(movieCode), "user_movie_store");
         return "redirect:/movies/" + movieCode;
+    }
+
+    @PostMapping("/movies/{movieCode}/collection")
+    @Transactional
+    public String toggleCollection(@PathVariable String movieCode, HttpSession session) {
+        if (!isLoggedIn(session)) {
+            return "redirect:/login";
+        }
+        toggleCollectionMembership(getCurrentUserId(session), findMovieId(movieCode));
+        return "redirect:/movies/" + movieCode;
+    }
+
+    @PostMapping("/movies/{movieCode}/watched")
+    @Transactional
+    public String toggleWatched(@PathVariable String movieCode, HttpSession session) {
+        if (!isLoggedIn(session)) {
+            return "redirect:/login";
+        }
+        cycleWatchState(getCurrentUserId(session), findMovieId(movieCode));
+        return "redirect:/movies/" + movieCode;
+    }
+
+    @PostMapping("/movies/{movieCode}/watched/rating")
+    @Transactional
+    public String saveWatchedRating(@PathVariable String movieCode,
+                                    @RequestParam int rating,
+                                    HttpSession session) {
+        if (!isLoggedIn(session)) {
+            return "redirect:/login";
+        }
+        saveWatchRating(getCurrentUserId(session), findMovieId(movieCode), rating);
+        return "redirect:/movies/" + movieCode;
+    }
+
+    @PostMapping("/api/movies/{movieCode}/like")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> toggleLikeApi(@PathVariable String movieCode, HttpSession session) {
+        Long userId = requireCurrentUserId(session);
+        Long movieId = findMovieId(movieCode);
+        applyLikeState(userId, movieId, true);
+        return buildMovieActionPayload(userId, movieId);
+    }
+
+    @PostMapping("/api/movies/{movieCode}/dislike")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> toggleDislikeApi(@PathVariable String movieCode, HttpSession session) {
+        Long userId = requireCurrentUserId(session);
+        Long movieId = findMovieId(movieCode);
+        applyLikeState(userId, movieId, false);
+        return buildMovieActionPayload(userId, movieId);
+    }
+
+    @PostMapping("/api/movies/{movieCode}/later")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> toggleLaterApi(@PathVariable String movieCode, HttpSession session) {
+        Long userId = requireCurrentUserId(session);
+        Long movieId = findMovieId(movieCode);
+        toggleSimpleCollection(userId, movieId, "user_movie_store");
+        return buildMovieActionPayload(userId, movieId);
+    }
+
+    @PostMapping("/api/movies/{movieCode}/collection")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> toggleCollectionApi(@PathVariable String movieCode, HttpSession session) {
+        Long userId = requireCurrentUserId(session);
+        Long movieId = findMovieId(movieCode);
+        toggleCollectionMembership(userId, movieId);
+        return buildMovieActionPayload(userId, movieId);
+    }
+
+    @PostMapping("/api/movies/{movieCode}/watch-state")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> cycleWatchStateApi(@PathVariable String movieCode, HttpSession session) {
+        Long userId = requireCurrentUserId(session);
+        Long movieId = findMovieId(movieCode);
+        cycleWatchState(userId, movieId);
+        return buildMovieActionPayload(userId, movieId);
+    }
+
+    @PostMapping("/api/movies/{movieCode}/watched/rating")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> saveWatchedRatingApi(@PathVariable String movieCode,
+                                                    @RequestParam int rating,
+                                                    HttpSession session) {
+        Long userId = requireCurrentUserId(session);
+        Long movieId = findMovieId(movieCode);
+        saveWatchRating(userId, movieId, rating);
+        return buildMovieActionPayload(userId, movieId);
     }
 
     @PostMapping("/mypage/life")
@@ -437,23 +662,23 @@ public class MovieController {
             return "redirect:/login";
         }
 
-        Long userId = getCurrentUserId(session);
-        Long movieId = findMovieId(movieCode);
+        addMovieToLifeCollection(getCurrentUserId(session), findMovieId(movieCode));
+        return "redirect:/mypage";
+    }
 
-        Integer existingCount = jdbcTemplate.query("""
-                SELECT COUNT(*)
-                FROM user_movie_life
-                WHERE user_id = ? AND movie_id = ?
-                """, rs -> rs.next() ? rs.getInt(1) : 0, userId, movieId);
-
-        if (existingCount == null || existingCount == 0) {
-            jdbcTemplate.update("""
-                    INSERT INTO user_movie_life (user_id, movie_id)
-                    VALUES (?, ?)
-                    """, userId, movieId);
+    @PostMapping("/mypage/life/remove")
+    @Transactional
+    public String removeLifeMovie(@RequestParam String movieCode, HttpSession session) {
+        if (!isLoggedIn(session)) {
+            return "redirect:/login";
         }
 
-        return "redirect:/mypage?showLifeSearch=true";
+        jdbcTemplate.update("""
+                DELETE FROM user_movie_life
+                WHERE user_id = ? AND movie_id = ?
+                """, getCurrentUserId(session), findMovieId(movieCode));
+        recommendationRefreshStateService.markDirty(getCurrentUserId(session));
+        return "redirect:/mypage";
     }
 
     private boolean isLoggedIn(HttpSession session) {
@@ -490,33 +715,425 @@ public class MovieController {
         model.addAttribute("loginUserNickname", session.getAttribute(LOGIN_NICKNAME_SESSION_KEY));
     }
 
-    private List<MoviePosterView> fetchStoredMovies(Long userId, Integer limit) {
-        String sql = """
-                SELECT m.ranking, m.movie_cd, m.movie_name, m.movie_name_en, m.poster_image_url
-                FROM user_movie_store ums
-                JOIN movie m ON m.id = ums.movie_id
-                WHERE ums.user_id = ?
-                ORDER BY ums.created_at DESC, m.ranking ASC
-                """;
+    private Long requireCurrentUserId(HttpSession session) {
+        if (!isLoggedIn(session)) {
+            throw new ResponseStatusException(UNAUTHORIZED);
+        }
+        return getCurrentUserId(session);
+    }
 
-        if (limit != null) {
-            sql += " LIMIT ?";
-            return jdbcTemplate.query(sql, (rs, rowNum) -> new MoviePosterView(
-                    rs.getInt("ranking"),
-                    rs.getString("movie_cd"),
-                    rs.getString("movie_name"),
-                    rs.getString("movie_name_en"),
-                    rs.getString("poster_image_url")
-            ), userId, limit);
+    private void initializeActivityTables() {
+        initializeWatchedTable();
+        initializeCollectionTable();
+    }
+
+    private void initializeWatchedTable() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS user_movie_watched (
+                    user_id BIGINT NOT NULL,
+                    movie_id BIGINT NOT NULL,
+                    status VARCHAR(20) NOT NULL DEFAULT 'WATCHED',
+                    rating INT,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, movie_id),
+                    CONSTRAINT fk_user_movie_watched_user FOREIGN KEY (user_id) REFERENCES "USER"(id),
+                    CONSTRAINT fk_user_movie_watched_movie FOREIGN KEY (movie_id) REFERENCES movie(id)
+                )
+                """);
+        jdbcTemplate.execute("""
+                ALTER TABLE user_movie_watched
+                ADD COLUMN IF NOT EXISTS rating INT
+                """);
+        jdbcTemplate.execute("""
+                ALTER TABLE user_movie_watched
+                ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'WATCHED'
+                """);
+        jdbcTemplate.update("""
+                UPDATE user_movie_watched
+                SET status = 'WATCHED'
+                WHERE status IS NULL
+                """);
+    }
+
+    private void initializeCollectionTable() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS user_movie_collection (
+                    user_id BIGINT NOT NULL,
+                    movie_id BIGINT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, movie_id),
+                    CONSTRAINT fk_user_movie_collection_user FOREIGN KEY (user_id) REFERENCES "USER"(id),
+                    CONSTRAINT fk_user_movie_collection_movie FOREIGN KEY (movie_id) REFERENCES movie(id)
+                )
+                """);
+    }
+
+    private void applyLikeState(Long userId, Long movieId, boolean liked) {
+        Boolean existing = jdbcTemplate.query("""
+                SELECT liked
+                FROM user_movie_like
+                WHERE user_id = ? AND movie_id = ?
+                """, rs -> rs.next() ? rs.getBoolean("liked") : null, userId, movieId);
+
+        if (existing != null && existing == liked) {
+            jdbcTemplate.update("""
+                    DELETE FROM user_movie_like
+                    WHERE user_id = ? AND movie_id = ?
+                    """, userId, movieId);
+        } else if (existing != null) {
+            jdbcTemplate.update("""
+                    UPDATE user_movie_like
+                    SET liked = ?, created_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ? AND movie_id = ?
+                    """, liked, userId, movieId);
+        } else {
+            jdbcTemplate.update("""
+                    INSERT INTO user_movie_like (user_id, movie_id, liked)
+                    VALUES (?, ?, ?)
+                    """, userId, movieId, liked);
+        }
+        recommendationRefreshStateService.markDirty(userId);
+    }
+
+    private void toggleSimpleCollection(Long userId, Long movieId, String tableName) {
+        Integer count = jdbcTemplate.query("""
+                SELECT COUNT(*)
+                FROM %s
+                WHERE user_id = ? AND movie_id = ?
+                """.formatted(tableName), rs -> rs.next() ? rs.getInt(1) : 0, userId, movieId);
+
+        if (count != null && count > 0) {
+            jdbcTemplate.update("""
+                    DELETE FROM %s
+                    WHERE user_id = ? AND movie_id = ?
+                    """.formatted(tableName), userId, movieId);
+        } else {
+            jdbcTemplate.update("""
+                    INSERT INTO %s (user_id, movie_id)
+                    VALUES (?, ?)
+                    """.formatted(tableName), userId, movieId);
+        }
+        recommendationRefreshStateService.markDirty(userId);
+    }
+
+    private void toggleCollectionMembership(Long userId, Long movieId) {
+        initializeCollectionTable();
+        Integer count = jdbcTemplate.query("""
+                SELECT COUNT(*)
+                FROM user_movie_collection
+                WHERE user_id = ? AND movie_id = ?
+                """, rs -> rs.next() ? rs.getInt(1) : 0, userId, movieId);
+
+        if (count != null && count > 0) {
+            jdbcTemplate.update("""
+                    DELETE FROM user_movie_collection
+                    WHERE user_id = ? AND movie_id = ?
+                    """, userId, movieId);
+            jdbcTemplate.update("""
+                    DELETE FROM user_movie_life
+                    WHERE user_id = ? AND movie_id = ?
+                    """, userId, movieId);
+        } else {
+            jdbcTemplate.update("""
+                    INSERT INTO user_movie_collection (user_id, movie_id)
+                    VALUES (?, ?)
+                    """, userId, movieId);
+        }
+        recommendationRefreshStateService.markDirty(userId);
+    }
+
+    private String cycleWatchState(Long userId, Long movieId) {
+        initializeWatchedTable();
+        String currentStatus = jdbcTemplate.query("""
+                SELECT status
+                FROM user_movie_watched
+                WHERE user_id = ? AND movie_id = ?
+                """, rs -> rs.next() ? normalizeWatchStatus(rs.getString("status")) : null, userId, movieId);
+
+        if (currentStatus == null) {
+            jdbcTemplate.update("""
+                    INSERT INTO user_movie_watched (user_id, movie_id, status, rating)
+                    VALUES (?, ?, 'WATCHING', NULL)
+                    """, userId, movieId);
+            recommendationRefreshStateService.markDirty(userId);
+            return "WATCHING";
         }
 
-        return jdbcTemplate.query(sql, (rs, rowNum) -> new MoviePosterView(
+        if ("WATCHING".equals(currentStatus)) {
+            jdbcTemplate.update("""
+                    UPDATE user_movie_watched
+                    SET status = 'WATCHED', rating = NULL, created_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ? AND movie_id = ?
+                    """, userId, movieId);
+            recommendationRefreshStateService.markDirty(userId);
+            return "WATCHED";
+        }
+
+        jdbcTemplate.update("""
+                DELETE FROM user_movie_watched
+                WHERE user_id = ? AND movie_id = ?
+                """, userId, movieId);
+        recommendationRefreshStateService.markDirty(userId);
+        return null;
+    }
+
+    private void saveWatchRating(Long userId, Long movieId, int rating) {
+        if (rating < 1 || rating > 5) {
+            throw new ResponseStatusException(BAD_REQUEST);
+        }
+
+        int updated = jdbcTemplate.update("""
+                UPDATE user_movie_watched
+                SET rating = ?
+                WHERE user_id = ?
+                  AND movie_id = ?
+                  AND COALESCE(status, 'WATCHED') = 'WATCHED'
+                """, rating, userId, movieId);
+        if (updated == 0) {
+            throw new ResponseStatusException(BAD_REQUEST, "별점은 봤어요 상태에서만 저장할 수 있습니다.");
+        }
+        recommendationRefreshStateService.markDirty(userId);
+    }
+
+    private void addMovieToLifeCollection(Long userId, Long movieId) {
+        initializeCollectionTable();
+        Integer inCollection = jdbcTemplate.query("""
+                SELECT COUNT(*)
+                FROM user_movie_collection
+                WHERE user_id = ? AND movie_id = ?
+                """, rs -> rs.next() ? rs.getInt(1) : 0, userId, movieId);
+        if (inCollection == null || inCollection == 0) {
+            throw new ResponseStatusException(BAD_REQUEST, "컬렉션에 담긴 영화만 인생영화로 추가할 수 있습니다.");
+        }
+
+        if (countLifeMovies(userId) >= LIFE_MOVIE_LIMIT) {
+            throw new ResponseStatusException(BAD_REQUEST, "인생영화는 최대 10편까지 추가할 수 있습니다.");
+        }
+
+        Integer existingCount = jdbcTemplate.query("""
+                SELECT COUNT(*)
+                FROM user_movie_life
+                WHERE user_id = ? AND movie_id = ?
+                """, rs -> rs.next() ? rs.getInt(1) : 0, userId, movieId);
+        if (existingCount == null || existingCount == 0) {
+            jdbcTemplate.update("""
+                    INSERT INTO user_movie_life (user_id, movie_id)
+                    VALUES (?, ?)
+                    """, userId, movieId);
+            recommendationRefreshStateService.markDirty(userId);
+        }
+    }
+
+    private MovieActionState fetchMovieActionState(Long userId, Long movieId) {
+        initializeActivityTables();
+
+        Boolean likedValue = jdbcTemplate.query("""
+                SELECT liked
+                FROM user_movie_like
+                WHERE user_id = ? AND movie_id = ?
+                """, rs -> rs.next() ? rs.getBoolean("liked") : null, userId, movieId);
+        Boolean stored = jdbcTemplate.query("""
+                SELECT COUNT(*) > 0
+                FROM user_movie_store
+                WHERE user_id = ? AND movie_id = ?
+                """, rs -> rs.next() && rs.getBoolean(1), userId, movieId);
+        Boolean collected = jdbcTemplate.query("""
+                SELECT COUNT(*) > 0
+                FROM user_movie_collection
+                WHERE user_id = ? AND movie_id = ?
+                """, rs -> rs.next() && rs.getBoolean(1), userId, movieId);
+        WatchState watchState = jdbcTemplate.query("""
+                SELECT status, rating
+                FROM user_movie_watched
+                WHERE user_id = ? AND movie_id = ?
+                """, rs -> rs.next()
+                ? new WatchState(normalizeWatchStatus(rs.getString("status")), rs.getObject("rating", Integer.class))
+                : new WatchState(null, null), userId, movieId);
+
+        return new MovieActionState(
+                Boolean.TRUE.equals(likedValue),
+                Boolean.FALSE.equals(likedValue),
+                Boolean.TRUE.equals(stored),
+                Boolean.TRUE.equals(collected),
+                watchState.status(),
+                watchState.rating()
+        );
+    }
+
+    private Map<String, Object> buildMovieActionPayload(Long userId, Long movieId) {
+        MovieActionState state = fetchMovieActionState(userId, movieId);
+        Integer likeCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM user_movie_like
+                WHERE movie_id = ?
+                  AND liked = TRUE
+                """, Integer.class, movieId);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("liked", state.liked());
+        payload.put("disliked", state.disliked());
+        payload.put("later", state.stored());
+        payload.put("collected", state.collected());
+        payload.put("watchStatus", state.watchStatus());
+        payload.put("watching", "WATCHING".equals(state.watchStatus()));
+        payload.put("watched", "WATCHED".equals(state.watchStatus()));
+        payload.put("canRate", "WATCHED".equals(state.watchStatus()));
+        payload.put("rating", state.watchedRating());
+        payload.put("likeCount", likeCount == null ? 0 : likeCount);
+        return payload;
+    }
+
+    private String normalizeWatchStatus(String status) {
+        if ("WATCHING".equalsIgnoreCase(status)) {
+            return "WATCHING";
+        }
+        if ("WATCHED".equalsIgnoreCase(status)) {
+            return "WATCHED";
+        }
+        return null;
+    }
+
+    private List<MoviePosterView> fetchPopularMovies(int limit) {
+        return jdbcTemplate.query("""
+                SELECT
+                    m.ranking,
+                    m.movie_cd,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    m.poster_image_url
+                FROM movie m
+                ORDER BY
+                    CASE WHEN m.ranking IS NULL THEN 1 ELSE 0 END,
+                    m.ranking ASC,
+                    COALESCE(m.title, m.movie_name) ASC
+                LIMIT ?
+                """, (rs, rowNum) -> new MoviePosterView(
                 rs.getInt("ranking"),
                 rs.getString("movie_cd"),
                 rs.getString("movie_name"),
                 rs.getString("movie_name_en"),
                 rs.getString("poster_image_url")
-        ), userId);
+        ), limit);
+    }
+
+    private List<ActivityMovieCardView> fetchLikedMovies(Long userId, Integer limit) {
+        return fetchActivityMovies("""
+                SELECT
+                    m.ranking,
+                    m.movie_cd,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    m.poster_image_url,
+                    NULL AS watch_status,
+                    NULL AS rating
+                FROM user_movie_like uml
+                JOIN movie m ON m.id = uml.movie_id
+                WHERE uml.user_id = ?
+                  AND uml.liked = TRUE
+                ORDER BY uml.created_at DESC, m.ranking ASC
+                """, limit, userId);
+    }
+
+    private List<ActivityMovieCardView> fetchDislikedMovies(Long userId, Integer limit) {
+        return fetchActivityMovies("""
+                SELECT
+                    m.ranking,
+                    m.movie_cd,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    m.poster_image_url,
+                    NULL AS watch_status,
+                    NULL AS rating
+                FROM user_movie_like uml
+                JOIN movie m ON m.id = uml.movie_id
+                WHERE uml.user_id = ?
+                  AND uml.liked = FALSE
+                ORDER BY uml.created_at DESC, m.ranking ASC
+                """, limit, userId);
+    }
+
+    private List<ActivityMovieCardView> fetchCollectionMovies(Long userId, Integer limit) {
+        initializeCollectionTable();
+        return fetchActivityMovies("""
+                SELECT
+                    m.ranking,
+                    m.movie_cd,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    m.poster_image_url,
+                    NULL AS watch_status,
+                    NULL AS rating
+                FROM user_movie_collection umc
+                JOIN movie m ON m.id = umc.movie_id
+                WHERE umc.user_id = ?
+                ORDER BY umc.created_at DESC, m.ranking ASC
+                """, limit, userId);
+    }
+
+    private List<ActivityMovieCardView> fetchStoredMovies(Long userId, Integer limit) {
+        return fetchActivityMovies("""
+                SELECT
+                    m.ranking,
+                    m.movie_cd,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    m.poster_image_url,
+                    NULL AS watch_status,
+                    NULL AS rating
+                FROM user_movie_store ums
+                JOIN movie m ON m.id = ums.movie_id
+                WHERE ums.user_id = ?
+                ORDER BY ums.created_at DESC, m.ranking ASC
+                """, limit, userId);
+    }
+
+    private List<ActivityMovieCardView> fetchWatchedMovies(Long userId, String status, Integer limit) {
+        initializeWatchedTable();
+        return fetchActivityMovies("""
+                SELECT
+                    m.ranking,
+                    m.movie_cd,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    m.poster_image_url,
+                    COALESCE(umw.status, 'WATCHED') AS watch_status,
+                    umw.rating
+                FROM user_movie_watched umw
+                JOIN movie m ON m.id = umw.movie_id
+                WHERE umw.user_id = ?
+                  AND COALESCE(umw.status, 'WATCHED') = ?
+                ORDER BY umw.created_at DESC, m.ranking ASC
+                """, limit, userId, status);
+    }
+
+    private int countLikedMovies(Long userId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM user_movie_like
+                WHERE user_id = ?
+                  AND liked = TRUE
+                """, Integer.class, userId);
+        return count == null ? 0 : count;
+    }
+
+    private int countDislikedMovies(Long userId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM user_movie_like
+                WHERE user_id = ?
+                  AND liked = FALSE
+                """, Integer.class, userId);
+        return count == null ? 0 : count;
+    }
+
+    private int countCollectionMovies(Long userId) {
+        initializeCollectionTable();
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM user_movie_collection
+                WHERE user_id = ?
+                """, Integer.class, userId);
+        return count == null ? 0 : count;
     }
 
     private int countStoredMovies(Long userId) {
@@ -528,64 +1145,86 @@ public class MovieController {
         return count == null ? 0 : count;
     }
 
-    private List<MoviePosterView> fetchLifeMovies(Long userId, Integer limit) {
-        String sql = """
-                SELECT m.ranking, m.movie_cd, m.movie_name, m.movie_name_en, m.poster_image_url
+    private int countWatchedMovies(Long userId, String status) {
+        initializeWatchedTable();
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM user_movie_watched
+                WHERE user_id = ?
+                  AND COALESCE(status, 'WATCHED') = ?
+                """, Integer.class, userId, status);
+        return count == null ? 0 : count;
+    }
+
+    private int countLifeMovies(Long userId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM user_movie_life
+                WHERE user_id = ?
+                """, Integer.class, userId);
+        return count == null ? 0 : count;
+    }
+
+    private List<ActivityMovieCardView> fetchLifeMovies(Long userId, Integer limit) {
+        return fetchActivityMovies("""
+                SELECT
+                    m.ranking,
+                    m.movie_cd,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    m.poster_image_url,
+                    NULL AS watch_status,
+                    NULL AS rating
                 FROM user_movie_life uml
                 JOIN movie m ON m.id = uml.movie_id
                 WHERE uml.user_id = ?
                 ORDER BY uml.created_at DESC, m.ranking ASC
-                """;
-
-        if (limit != null) {
-            sql += " LIMIT ?";
-            return jdbcTemplate.query(sql, (rs, rowNum) -> new MoviePosterView(
-                    rs.getInt("ranking"),
-                    rs.getString("movie_cd"),
-                    rs.getString("movie_name"),
-                    rs.getString("movie_name_en"),
-                    rs.getString("poster_image_url")
-            ), userId, limit);
-        }
-
-        return jdbcTemplate.query(sql, (rs, rowNum) -> new MoviePosterView(
-                rs.getInt("ranking"),
-                rs.getString("movie_cd"),
-                rs.getString("movie_name"),
-                rs.getString("movie_name_en"),
-                rs.getString("poster_image_url")
-        ), userId);
+                """, limit, userId);
     }
 
-    private List<LifeMovieSearchResultView> fetchLifeMovieSearchResults(Long userId, String lifeQuery, boolean showLifeSearch) {
-        if (!showLifeSearch || lifeQuery == null || lifeQuery.isBlank()) {
-            return List.of();
-        }
-
-        String keyword = "%" + lifeQuery.trim() + "%";
+    private List<LifeMovieSearchResultView> fetchLifeMovieSearchResults(Long userId) {
+        initializeCollectionTable();
         return jdbcTemplate.query("""
                 SELECT
                     m.movie_cd,
-                    m.movie_name,
-                    m.movie_name_en,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
                     m.poster_image_url,
                     EXISTS(
                         SELECT 1
                         FROM user_movie_life uml
                         WHERE uml.user_id = ? AND uml.movie_id = m.id
                     ) AS already_added
-                FROM movie m
-                WHERE UPPER(m.movie_name) LIKE UPPER(?)
-                   OR UPPER(COALESCE(m.movie_name_en, '')) LIKE UPPER(?)
-                ORDER BY m.ranking ASC, m.movie_name ASC
-                LIMIT 12
+                FROM user_movie_collection umc
+                JOIN movie m ON m.id = umc.movie_id
+                WHERE umc.user_id = ?
+                ORDER BY umc.created_at DESC, m.ranking ASC
+                LIMIT 24
                 """, (rs, rowNum) -> new LifeMovieSearchResultView(
                 rs.getString("movie_cd"),
                 rs.getString("movie_name"),
                 rs.getString("movie_name_en"),
                 rs.getString("poster_image_url"),
                 rs.getBoolean("already_added")
-        ), userId, keyword, keyword);
+        ), userId, userId);
+    }
+
+    private List<ActivityMovieCardView> fetchActivityMovies(String sql, Integer limit, Object... params) {
+        java.util.ArrayList<Object> arguments = new java.util.ArrayList<>(Arrays.asList(params));
+        String finalSql = sql;
+        if (limit != null) {
+            finalSql += " LIMIT ?";
+            arguments.add(limit);
+        }
+        return jdbcTemplate.query(finalSql, (rs, rowNum) -> new ActivityMovieCardView(
+                rs.getInt("ranking"),
+                rs.getString("movie_cd"),
+                rs.getString("movie_name"),
+                rs.getString("movie_name_en"),
+                rs.getString("poster_image_url"),
+                normalizeWatchStatus(rs.getString("watch_status")),
+                rs.getObject("rating", Integer.class)
+        ), arguments.toArray());
     }
 
     private List<String> fetchOrderedNames(String sql, String movieCode) {
@@ -600,6 +1239,34 @@ public class MovieController {
                 """, (rs, rowNum) -> rs.getString("name"));
     }
 
+    private List<TagFilterGroupView> fetchChartTagGroups() {
+        return Arrays.stream(RecommendationTagType.values())
+                .map(type -> new TagFilterGroupView(
+                        type.name(),
+                        labelForTagType(type.name()),
+                        Arrays.stream(RecommendationTag.values())
+                                .filter(tag -> tag.type() == type)
+                                .map(tag -> new TagChipView(
+                                        type.name(),
+                                        tag.code(),
+                                        labelForTag(tag.code())
+                                ))
+                                .toList()
+                ))
+                .toList();
+    }
+
+    private String labelForTagType(String tagType) {
+        return TAG_TYPE_LABELS.getOrDefault(tagType, tagType);
+    }
+
+    private String labelForTag(String tagName) {
+        if (tagName == null || tagName.isBlank()) {
+            return "";
+        }
+        return TAG_LABELS.getOrDefault(tagName, tagName);
+    }
+
     public record MoviePosterView(int ranking, String movieCode, String movieName, String movieNameEn, String posterImageUrl) {
     }
 
@@ -612,7 +1279,11 @@ public class MovieController {
             String posterImageUrl,
             int likeCount,
             boolean likedByCurrentUser,
+            boolean dislikedByCurrentUser,
             boolean storedByCurrentUser,
+            boolean collectedByCurrentUser,
+            String watchStatus,
+            Integer watchedRating,
             LocalDate boxOfficeOpenDate,
             LocalDate movieInfoOpenDate,
             Integer productionYear,
@@ -625,12 +1296,49 @@ public class MovieController {
             Integer boxOfficeScrnCnt,
             Integer boxOfficeShowCnt
     ) {
+        public boolean watchingByCurrentUser() {
+            return "WATCHING".equals(watchStatus);
+        }
+
+        public boolean watchedByCurrentUser() {
+            return "WATCHED".equals(watchStatus);
+        }
+    }
+
+    public record ActivityMovieCardView(
+            int ranking,
+            String movieCode,
+            String movieName,
+            String movieNameEn,
+            String posterImageUrl,
+            String watchStatus,
+            Integer watchedRating
+    ) {
+        public boolean watching() {
+            return "WATCHING".equals(watchStatus);
+        }
+
+        public boolean watched() {
+            return "WATCHED".equals(watchStatus);
+        }
     }
 
     public record CompanyView(String name, String role) {
     }
 
+    public record ProviderView(String name, String type) {
+    }
+
     public record AuditView(String auditNo, String watchGradeName) {
+    }
+
+    public record MovieTagView(String tagType, String tagTypeLabel, String tagName, String tagLabel) {
+    }
+
+    public record TagChipView(String tagType, String tagName, String displayName) {
+    }
+
+    public record TagFilterGroupView(String key, String label, List<TagChipView> tags) {
     }
 
     public record UserProfileView(String loginId, String nickname, String gender, int age) {
@@ -643,6 +1351,19 @@ public class MovieController {
             String posterImageUrl,
             boolean alreadyAdded
     ) {
+    }
+
+    private record MovieActionState(
+            boolean liked,
+            boolean disliked,
+            boolean stored,
+            boolean collected,
+            String watchStatus,
+            Integer watchedRating
+    ) {
+    }
+
+    private record WatchState(String status, Integer rating) {
     }
 
     private record LoginUser(String loginId, String nickname) {
