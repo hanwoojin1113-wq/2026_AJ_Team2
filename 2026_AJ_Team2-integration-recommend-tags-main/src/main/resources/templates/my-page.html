@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineMatch | My Page</title>
+    <style>
+        :root {
+            --bg: #06101a;
+            --bg-soft: #0a1627;
+            --surface: rgba(15, 23, 42, 0.92);
+            --surface-strong: rgba(9, 17, 30, 0.96);
+            --surface-light: rgba(255, 255, 255, 0.06);
+            --border: rgba(148, 163, 184, 0.18);
+            --text: #f8fafc;
+            --sub: #9fb0c7;
+            --sub-strong: #d7e3f4;
+            --accent: #7dd3fc;
+            --accent-strong: #2563eb;
+            --purple: #8b5cf6;
+            --warning: #f59e0b;
+            --shadow: 0 24px 60px rgba(2, 6, 23, 0.32);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Pretendard, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top right, rgba(37, 99, 235, 0.18), transparent 24%),
+                linear-gradient(180deg, #06101a 0%, #08101d 52%, #0b1422 100%);
+        }
+
+        body.modal-open { overflow: hidden; }
+
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 1200;
+            isolation: isolate;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 24px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+            background: rgba(6, 11, 20, 0.88);
+            backdrop-filter: blur(18px);
+        }
+
+        .nav a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 800;
+        }
+
+        .nav-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .pill {
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .logout {
+            background: #fff;
+            color: #0f172a !important;
+        }
+
+        .page {
+            position: relative;
+            z-index: 1;
+            max-width: 1380px;
+            margin: 0 auto;
+            padding: 28px 20px 56px;
+        }
+
+        .hero {
+            position: relative;
+            overflow: hidden;
+            padding: 30px;
+            border-radius: 28px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.92), rgba(56, 189, 248, 0.72), rgba(9, 20, 37, 0.96));
+            box-shadow: 0 24px 60px rgba(2, 6, 23, 0.38);
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            right: -48px;
+            bottom: -48px;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .hero p {
+            position: relative;
+            z-index: 1;
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            opacity: 0.84;
+        }
+
+        .hero h1 {
+            position: relative;
+            z-index: 1;
+            font-size: clamp(2rem, 4vw, 3rem);
+            margin-top: 10px;
+        }
+
+        .hero span {
+            position: relative;
+            z-index: 1;
+            display: block;
+            margin-top: 10px;
+            max-width: 640px;
+            color: rgba(255, 255, 255, 0.84);
+            line-height: 1.7;
+        }
+
+        .summary {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .summary-card {
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .summary-label {
+            font-size: 0.76rem;
+            color: rgba(255, 255, 255, 0.78);
+        }
+
+        .summary-value {
+            margin-top: 8px;
+            font-size: 1.1rem;
+            font-weight: 900;
+        }
+
+        .section {
+            margin-top: 26px;
+            padding: 22px;
+            border-radius: 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .head h2 {
+            color: var(--text);
+            font-size: 1.12rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .head p,
+        .meta,
+        .empty,
+        .picker-copy {
+            color: var(--sub);
+            font-size: 0.88rem;
+            line-height: 1.6;
+        }
+
+        .head-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .ghost {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 40px;
+            padding: 0 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 800;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            position: relative;
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .card > a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .poster-wrap {
+            position: relative;
+            aspect-ratio: 2 / 3;
+            overflow: hidden;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+        }
+
+        .poster {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+        }
+
+        .fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 18px;
+            font-weight: 800;
+        }
+
+        .card-body {
+            margin-top: 10px;
+        }
+
+        .card-title {
+            font-size: 0.92rem;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+
+        .card-sub {
+            margin-top: 4px;
+            color: var(--sub);
+            font-size: 0.78rem;
+            line-height: 1.5;
+            min-height: 2.3em;
+        }
+
+        .badge {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 800;
+            background: rgba(15, 23, 42, 0.84);
+        }
+
+        .badge.rating {
+            background: rgba(245, 158, 11, 0.96);
+            color: #1f2937;
+        }
+
+        .badge.watching {
+            background: rgba(56, 189, 248, 0.96);
+            color: #082f49;
+        }
+
+        .remove-form {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            z-index: 3;
+        }
+
+        .remove-btn {
+            width: 34px;
+            height: 34px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.82);
+            color: #fff;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .slot {
+            display: flex;
+            align-items: stretch;
+            justify-content: stretch;
+            aspect-ratio: 2 / 3;
+            border-radius: 18px;
+            border: 1px dashed rgba(125, 211, 252, 0.38);
+            background: rgba(255, 255, 255, 0.03);
+            text-decoration: none;
+            color: #fff;
+            transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+        }
+
+        .slot:hover {
+            transform: translateY(-2px);
+            border-color: rgba(125, 211, 252, 0.62);
+            background: rgba(125, 211, 252, 0.08);
+        }
+
+        .slot-inner {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .plus {
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(125, 211, 252, 0.14);
+            border: 1px solid rgba(125, 211, 252, 0.32);
+            font-size: 2rem;
+            line-height: 1;
+            color: #e0f2fe;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 1600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(2, 6, 23, 0.72);
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.18s ease;
+        }
+
+        .modal-backdrop.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            width: min(1080px, 100%);
+            max-height: min(86vh, 920px);
+            overflow: auto;
+            padding: 24px;
+            border-radius: 28px;
+            background: linear-gradient(180deg, rgba(10, 17, 30, 0.98), rgba(13, 22, 39, 0.96));
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            box-shadow: 0 32px 70px rgba(2, 6, 23, 0.5);
+        }
+
+        .modal-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .modal-head h3 {
+            font-size: 1.2rem;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+        }
+
+        .modal-head p {
+            margin-top: 8px;
+            color: var(--sub);
+            line-height: 1.6;
+            font-size: 0.92rem;
+        }
+
+        .modal-close {
+            width: 42px;
+            height: 42px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            cursor: pointer;
+            font-size: 1.4rem;
+        }
+
+        .picker-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .picker-card {
+            padding: 12px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .picker-card img,
+        .picker-card .fallback {
+            width: 100%;
+            aspect-ratio: 2 / 3;
+            border-radius: 14px;
+        }
+
+        .picker-title {
+            margin-top: 10px;
+            font-size: 0.88rem;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+
+        .picker-sub {
+            margin-top: 4px;
+            color: var(--sub);
+            font-size: 0.76rem;
+            min-height: 2.2em;
+        }
+
+        .picker-btn {
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.92), rgba(56, 189, 248, 0.8));
+            color: #fff;
+            cursor: pointer;
+            font-weight: 800;
+            margin-top: 10px;
+        }
+
+        .picker-btn[disabled] {
+            opacity: 0.42;
+            cursor: default;
+        }
+
+        @media (max-width: 1100px) {
+            .summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        }
+
+        @media (max-width: 760px) {
+            .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .modal-card { padding: 18px; }
+        }
+    </style>
+</head>
+<body>
+<nav class="nav">
+    <a th:href="@{/charts}">CineMatch</a>
+    <div class="nav-right">
+        <a class="pill" th:href="@{/mypage}" th:text="${loginUserNickname}">nickname</a>
+        <a class="pill logout" th:href="@{/logout}">Logout</a>
+    </div>
+</nav>
+
+<main class="page">
+    <section class="hero">
+        <p>My Collection</p>
+        <h1 th:text="${userProfile.nickname}">nickname</h1>
+        <span th:text="|ID ${userProfile.loginId} - Manage your movie history and collection in one place.|">ID user - Manage your movie history and collection in one place.</span>
+        <div class="summary">
+            <article class="summary-card"><div class="summary-label">&#51064;&#49373;&#50689;&#54868;</div><div class="summary-value" th:text="${lifeMovieCount}">0</div></article>
+            <article class="summary-card"><div class="summary-label">&#51339;&#50500;&#50836;</div><div class="summary-value" th:text="${likedMovieCount}">0</div></article>
+            <article class="summary-card"><div class="summary-label">&#52972;&#47113;&#49496;</div><div class="summary-value" th:text="${collectionMovieCount}">0</div></article>
+            <article class="summary-card"><div class="summary-label">&#45208;&#51473;&#50640; &#48380;&#47000;&#50836;</div><div class="summary-value" th:text="${laterMovieCount}">0</div></article>
+            <article class="summary-card"><div class="summary-label">&#48324;&#47196;&#50640;&#50836;</div><div class="summary-value" th:text="${dislikedMovieCount}">0</div></article>
+            <article class="summary-card"><div class="summary-label">&#48372;&#45716;&#51473;</div><div class="summary-value" th:text="${watchingMovieCount}">0</div></article>
+            <article class="summary-card"><div class="summary-label">&#48420;&#50612;&#50836;</div><div class="summary-value" th:text="${watchedMovieCount}">0</div></article>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="head">
+            <div>
+                <h2>&#51064;&#49373;&#50689;&#54868;</h2>
+                <p>Choose only from movies already saved in your collection. You can keep up to 10 titles.</p>
+            </div>
+            <div class="head-actions">
+                <span class="meta" th:text="|${lifeMovieCount} / 10 items|">0 / 10 items</span>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card" th:each="movie : ${lifeMovies}">
+                <a th:href="@{|/movies/${movie.movieCode}|}">
+                    <div class="poster-wrap">
+                        <img class="poster" th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                        <div class="fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">영화 제목</span></div>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-title" th:text="${movie.movieName}">영화 제목</div>
+                        <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">movie</div>
+                    </div>
+                </a>
+                <form class="remove-form" th:action="@{/mypage/life/remove}" method="post">
+                    <input type="hidden" name="movieCode" th:value="${movie.movieCode}">
+                    <button class="remove-btn" type="submit" aria-label="Remove from life movies">&times;</button>
+                </form>
+            </div>
+
+            <a class="slot"
+               th:if="${!lifeLimitReached}"
+               th:href="@{/mypage(showLifePicker=true)}"
+               data-life-open
+               aria-label="Add life movie">
+                <span class="slot-inner"><span class="plus">+</span></span>
+            </a>
+        </div>
+
+        <div class="empty" th:if="${#lists.isEmpty(lifeMovies)}">No life movies yet. Pick one from your collection.</div>
+    </section>
+
+    <section class="section">
+        <div class="head">
+            <div><h2>&#51339;&#50500;&#50836;</h2><p>Movies you clearly liked.</p></div>
+            <div class="meta" th:text="|${likedMovieCount} items|">0 items</div>
+        </div>
+        <div class="grid" th:if="${!#lists.isEmpty(likedMovies)}">
+            <a class="card" th:each="movie : ${likedMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-wrap">
+                    <img class="poster" th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">영화 제목</span></div>
+                </div>
+                <div class="card-body">
+                    <div class="card-title" th:text="${movie.movieName}">영화 제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">movie</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(likedMovies)}">No liked movies yet.</div>
+    </section>
+
+    <section class="section">
+        <div class="head">
+            <div><h2>&#52972;&#47113;&#49496;</h2><p>Your personal shelf and life-movie candidates.</p></div>
+            <div class="meta" th:text="|${collectionMovieCount} items|">0 items</div>
+        </div>
+        <div class="grid" th:if="${!#lists.isEmpty(collectionMovies)}">
+            <a class="card" th:each="movie : ${collectionMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-wrap">
+                    <img class="poster" th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">영화 제목</span></div>
+                </div>
+                <div class="card-body">
+                    <div class="card-title" th:text="${movie.movieName}">영화 제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">movie</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(collectionMovies)}">No collection movies yet.</div>
+    </section>
+
+    <section class="section">
+        <div class="head">
+            <div><h2>&#45208;&#51473;&#50640; &#48380;&#47000;&#50836;</h2><p>Movies you saved for later.</p></div>
+            <a class="ghost" th:href="@{/stored}">View All</a>
+        </div>
+        <div class="grid" th:if="${!#lists.isEmpty(laterMovies)}">
+            <a class="card" th:each="movie : ${laterMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-wrap">
+                    <img class="poster" th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">영화 제목</span></div>
+                </div>
+                <div class="card-body">
+                    <div class="card-title" th:text="${movie.movieName}">영화 제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">movie</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(laterMovies)}">No saved-for-later movies yet.</div>
+    </section>
+
+    <section class="section">
+        <div class="head">
+            <div><h2>&#48324;&#47196;&#50640;&#50836;</h2><p>Movies that did not fit your taste.</p></div>
+            <div class="meta" th:text="|${dislikedMovieCount} items|">0 items</div>
+        </div>
+        <div class="grid" th:if="${!#lists.isEmpty(dislikedMovies)}">
+            <a class="card" th:each="movie : ${dislikedMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-wrap">
+                    <img class="poster" th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">영화 제목</span></div>
+                </div>
+                <div class="card-body">
+                    <div class="card-title" th:text="${movie.movieName}">영화 제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">movie</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(dislikedMovies)}">No disliked movies yet.</div>
+    </section>
+
+    <section class="section">
+        <div class="head">
+            <div><h2>&#48372;&#45716;&#51473;</h2><p>Movies you are currently watching.</p></div>
+            <div class="meta" th:text="|${watchingMovieCount} items|">0 items</div>
+        </div>
+        <div class="grid" th:if="${!#lists.isEmpty(watchingMovies)}">
+            <a class="card" th:each="movie : ${watchingMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-wrap">
+                    <span class="badge watching">&#48372;&#45716;&#51473;</span>
+                    <img class="poster" th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">영화 제목</span></div>
+                </div>
+                <div class="card-body">
+                    <div class="card-title" th:text="${movie.movieName}">영화 제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">movie</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(watchingMovies)}">No movies in watching status.</div>
+    </section>
+
+    <section class="section">
+        <div class="head">
+            <div><h2>&#48420;&#50612;&#50836;</h2><p>Finished movies and saved ratings.</p></div>
+            <div class="meta" th:text="|${watchedMovieCount} items|">0 items</div>
+        </div>
+        <div class="grid" th:if="${!#lists.isEmpty(watchedMovies)}">
+            <a class="card" th:each="movie : ${watchedMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-wrap">
+                    <span class="badge rating" th:if="${movie.watchedRating != null}" th:text="${movie.watchedRating + '★'}">4★</span>
+                    <img class="poster" th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">영화 제목</span></div>
+                </div>
+                <div class="card-body">
+                    <div class="card-title" th:text="${movie.movieName}">영화 제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">movie</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(watchedMovies)}">No watched movies yet.</div>
+    </section>
+</main>
+
+<div class="modal-backdrop" id="life-modal" th:classappend="${showLifePicker} ? ' open' : ''">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="life-modal-title">
+        <div class="modal-head">
+            <div>
+                <h3 id="life-modal-title">Choose a life movie from collection</h3>
+                <p>Only movies in your collection can be selected here. Already added titles stay disabled, and the list is capped at 10 life movies.</p>
+            </div>
+            <button class="modal-close" type="button" id="life-modal-close" aria-label="Close">×</button>
+        </div>
+
+        <p class="empty" th:if="${lifeLimitReached}">You already have 10 life movies. Remove one before adding another.</p>
+        <p class="empty" th:if="${#lists.isEmpty(lifePickerCandidates)}">Your collection is still empty. Add a movie to collection from the detail page first.</p>
+
+        <div class="picker-grid" th:if="${!#lists.isEmpty(lifePickerCandidates)}">
+            <div class="picker-card" th:each="candidate : ${lifePickerCandidates}">
+                <img th:if="${!#strings.isEmpty(candidate.posterImageUrl)}" th:src="${candidate.posterImageUrl}" th:alt="${candidate.movieName}">
+                <div class="fallback" th:if="${#strings.isEmpty(candidate.posterImageUrl)}"><span th:text="${candidate.movieName}">영화 제목</span></div>
+                <div class="picker-title" th:text="${candidate.movieName}">영화 제목</div>
+                <div class="picker-sub" th:text="${#strings.isEmpty(candidate.movieNameEn) ? candidate.movieCode : candidate.movieNameEn}">movie</div>
+                <form th:action="@{/mypage/life}" method="post">
+                    <input type="hidden" name="movieCode" th:value="${candidate.movieCode}">
+                    <button class="picker-btn"
+                            type="submit"
+                            th:disabled="${candidate.alreadyAdded or lifeLimitReached}"
+                            th:text="${candidate.alreadyAdded ? 'Already Added' : 'Add to Life Movies'}">Add to Life Movies</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const modal = document.getElementById('life-modal');
+        const closeButton = document.getElementById('life-modal-close');
+        const openButtons = document.querySelectorAll('[data-life-open]');
+
+        if (!modal) {
+            return;
+        }
+
+        const setModalState = (open) => {
+            modal.classList.toggle('open', open);
+            document.body.classList.toggle('modal-open', open);
+        };
+
+        openButtons.forEach((button) => {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                setModalState(true);
+            });
+        });
+
+        closeButton?.addEventListener('click', () => setModalState(false));
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                setModalState(false);
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && modal.classList.contains('open')) {
+                setModalState(false);
+            }
+        });
+
+        if (modal.classList.contains('open')) {
+            document.body.classList.add('modal-open');
+        }
+    });
+</script>
+</body>
+</html>
