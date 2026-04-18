@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 — CineMatch</title>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <style>
+        :root {
+            --bg: #F8F9FA;
+            --surface: #FFFFFF;
+            --blue: #3182F6;
+            --blue-hover: #1B64DA;
+            --blue-light: #EBF3FE;
+            --text: #191F28;
+            --text-2: #4E5968;
+            --text-3: #8B95A1;
+            --border: #E5E8EB;
+            --error: #F04452;
+            --error-bg: #FFF0F2;
+            --radius: 12px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .wrap {
+            width: 100%;
+            max-width: 400px;
+        }
+        /* 로고 */
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 40px;
+        }
+        .logo-mark {
+            width: 36px; height: 36px;
+            background: var(--blue);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .logo-mark svg { width: 18px; height: 18px; fill: white; }
+        .logo-name {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.03em;
+        }
+        /* 타이틀 */
+        .title-area {
+            margin-bottom: 32px;
+        }
+        .title-area h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.04em;
+            line-height: 1.2;
+            margin-bottom: 8px;
+        }
+        .title-area p {
+            font-size: 14px;
+            color: var(--text-3);
+            line-height: 1.6;
+        }
+        /* 에러 */
+        .error-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 16px;
+            background: var(--error-bg);
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: var(--error);
+            font-weight: 600;
+        }
+        .error-box svg { width: 16px; height: 16px; flex-shrink: 0; }
+        /* 폼 */
+        .form-group {
+            margin-bottom: 12px;
+        }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-2);
+            margin-bottom: 6px;
+        }
+        .form-input {
+            width: 100%;
+            height: 52px;
+            padding: 0 16px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            font-family: inherit;
+            font-size: 15px;
+            color: var(--text);
+            outline: none;
+            transition: border-color .15s;
+        }
+        .form-input:focus {
+            border-color: var(--blue);
+        }
+        .form-input::placeholder { color: var(--text-3); }
+        /* 버튼 */
+        .btn-primary {
+            width: 100%;
+            height: 52px;
+            background: var(--blue);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background .15s, transform .1s;
+            letter-spacing: -0.01em;
+        }
+        .btn-primary:hover { background: var(--blue-hover); }
+        .btn-primary:active { transform: scale(0.98); }
+        /* 구분선 */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+        .divider span {
+            font-size: 12px;
+            color: var(--text-3);
+            font-weight: 600;
+        }
+        .btn-secondary {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 52px;
+            background: var(--surface);
+            color: var(--text-2);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: border-color .15s, color .15s;
+        }
+        .btn-secondary:hover { border-color: var(--blue); color: var(--blue); }
+        /* 테스트 계정 힌트 */
+        .hint {
+            margin-top: 28px;
+            padding: 14px 16px;
+            background: var(--blue-light);
+            border-radius: var(--radius);
+            font-size: 13px;
+            color: var(--blue);
+            line-height: 1.6;
+        }
+        .hint strong { font-weight: 800; }
+        /* 하단 미묘한 텍스트 */
+        .foot {
+            margin-top: 32px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-3);
+            line-height: 1.7;
+        }
+        .foot a { color: var(--text-3); text-decoration: underline; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="logo">
+        <div class="logo-mark">
+            <svg viewBox="0 0 16 16"><path d="M2 2h3v3H2zm0 4.5h3v3H2zm0 4.5h3v3H2zM6.5 2h3v3h-3zm0 4.5h3v3h-3zm0 4.5h3v3h-3zM11 2h3v3h-3zm0 4.5h3v3H11zm0 4.5h3v3H11z"/></svg>
+        </div>
+        <span class="logo-name">CineMatch</span>
+    </div>
+
+    <div class="title-area">
+        <h1>안녕하세요,<br>반갑습니다</h1>
+        <p>로그인하고 나만의 영화 추천을 받아보세요</p>
+    </div>
+
+    <div class="error-box" th:if="${loginError}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+        </svg>
+        <span th:text="${loginError}">로그인 오류</span>
+    </div>
+
+    <form th:action="@{/login}" method="post">
+        <div class="form-group">
+            <label class="form-label" for="id">아이디</label>
+            <input class="form-input" id="id" name="id" type="text"
+                   placeholder="아이디 입력" required autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="pw">비밀번호</label>
+            <input class="form-input" id="pw" name="pw" type="password"
+                   placeholder="비밀번호 입력" required autocomplete="current-password">
+        </div>
+        <button class="btn-primary" type="submit">로그인</button>
+    </form>
+
+    <div class="divider"><span>또는</span></div>
+
+    <a class="btn-secondary" th:href="@{/signup}">회원가입</a>
+
+    <div class="hint">
+        <strong>테스트 계정</strong> &nbsp;movieadmin / 0000
+    </div>
+
+    <p class="foot">
+        로그인하면 <a href="#">이용약관</a>과 <a href="#">개인정보처리방침</a>에 동의하게 됩니다
+    </p>
+</div>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>랭킹 차트 | CineMatch</title>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <style>
+        :root {
+            --bg: #F8F9FA;
+            --surface: #FFFFFF;
+            --blue: #3182F6;
+            --blue-hover: #1B64DA;
+            --blue-light: #EBF3FE;
+            --text: #191F28;
+            --text-2: #4E5968;
+            --text-3: #8B95A1;
+            --border: #E5E8EB;
+            --radius: 16px;
+            --radius-sm: 12px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* Navbar */
+        .nav {
+            position: sticky; top: 0; z-index: 200;
+            height: 56px; background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(12px); border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; padding: 0 24px; gap: 0;
+        }
+        .nav-logo { display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);font-size:15px;font-weight:800;letter-spacing:-0.03em;margin-right:32px; }
+        .nav-logo-mark { width:28px;height:28px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center; }
+        .nav-logo-mark svg { width:14px;height:14px;fill:white; }
+        .nav-tabs { display:flex;align-items:center;gap:4px;flex:1; }
+        .nav-tab { height:34px;padding:0 14px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;color:var(--text-3);display:flex;align-items:center;transition:background .12s,color .12s; }
+        .nav-tab:hover { background:var(--bg);color:var(--text-2); }
+        .nav-tab.active { background:var(--blue-light);color:var(--blue);font-weight:700; }
+        .nav-right { display:flex;align-items:center;gap:8px; }
+        .nav-user { display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--bg);border:1px solid var(--border);text-decoration:none;font-size:13px;font-weight:700;color:var(--text-2);transition:border-color .12s; }
+        .nav-user:hover { border-color:var(--blue);color:var(--blue); }
+        .nav-user svg { width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2; }
+        .nav-logout { height:34px;padding:0 16px;background:var(--text);color:white;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;display:flex;align-items:center;transition:opacity .12s; }
+        .nav-logout:hover { opacity:.85; }
+
+        /* Page */
+        .page { max-width: 1200px; margin: 0 auto; padding: 28px 24px 80px; }
+
+        /* 페이지 헤더 */
+        .page-header { margin-bottom: 24px; }
+        .page-header h1 { font-size: 26px; font-weight: 900; letter-spacing: -0.04em; color: var(--text); margin-bottom: 6px; }
+        .page-header p { font-size: 14px; color: var(--text-3); line-height: 1.6; }
+
+        /* 탭 필터 */
+        .tab-row {
+            display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px;
+        }
+        .tab-pill {
+            display: inline-flex; align-items: center; gap: 5px;
+            height: 36px; padding: 0 14px; border-radius: 999px;
+            font-size: 13px; font-weight: 700;
+            text-decoration: none; color: var(--text-2);
+            background: var(--surface); border: 1.5px solid var(--border);
+            transition: all .12s;
+        }
+        .tab-pill:hover { border-color: var(--blue); color: var(--blue); }
+        .tab-pill.active { background: var(--blue); color: white; border-color: var(--blue); }
+        .tab-pill-count {
+            min-width: 18px; height: 18px; padding: 0 5px;
+            border-radius: 999px; font-size: 10px; font-weight: 800;
+            background: rgba(0,0,0,0.08); color: inherit;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .tab-pill.active .tab-pill-count { background: rgba(255,255,255,0.25); }
+
+        /* 그리드 헤더 */
+        .grid-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px;
+        }
+        .grid-header span { font-size: 13px; color: var(--text-3); }
+        .grid-header strong { font-size: 14px; font-weight: 800; color: var(--text); }
+
+        /* 차트 카드 그리드 */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 12px;
+        }
+        .chart-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            text-decoration: none; color: inherit;
+            display: flex; flex-direction: column; gap: 0;
+            position: relative; overflow: hidden;
+            transition: border-color .15s, box-shadow .15s, transform .15s;
+        }
+        .chart-card:hover {
+            border-color: var(--blue);
+            box-shadow: 0 6px 24px rgba(49,130,246,0.1);
+            transform: translateY(-2px);
+        }
+        /* 카테고리별 왼쪽 accent 줄 */
+        .chart-card::before {
+            content: '';
+            position: absolute; left: 0; top: 16px; bottom: 16px;
+            width: 3px; border-radius: 0 2px 2px 0;
+            background: var(--cat-color, var(--border));
+            opacity: 0; transition: opacity .15s;
+        }
+        .chart-card:hover::before { opacity: 1; }
+        .chart-card[data-category="BOXOFFICE"] { --cat-color: #F59E0B; }
+        .chart-card[data-category="AUDIENCE"]  { --cat-color: #3182F6; }
+        .chart-card[data-category="EFFICIENCY"]{ --cat-color: #10B981; }
+        .chart-card[data-category="TIME"]      { --cat-color: #8B5CF6; }
+        .chart-card[data-category="GENRE"]     { --cat-color: #F97316; }
+        .chart-card[data-category="PEOPLE"]    { --cat-color: #EC4899; }
+
+        .card-row1 { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px; }
+        .card-icon-wrap {
+            width: 40px; height: 40px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--bg);
+        }
+        .card-icon-wrap svg { width:20px;height:20px;stroke:var(--text-2);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round; }
+        .cat-badge {
+            padding: 4px 10px; border-radius: 999px;
+            font-size: 11px; font-weight: 700;
+            background: var(--bg); color: var(--text-3);
+        }
+        .card-title {
+            font-size: 15px; font-weight: 800; color: var(--text);
+            letter-spacing: -0.02em; margin-bottom: 6px;
+        }
+        .card-desc {
+            font-size: 13px; color: var(--text-3); line-height: 1.6; flex: 1;
+        }
+        .card-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-top: 14px; padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+        .card-link {
+            font-size: 13px; font-weight: 700; color: var(--blue);
+            display: flex; align-items: center; gap: 3px;
+        }
+        .card-link svg { width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round; }
+        .badge-new { padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;background:var(--blue-light);color:var(--blue); }
+        .badge-hot { padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;background:#FFF1F2;color:#E11D48; }
+
+        @media (max-width: 640px) {
+            .nav { padding: 0 16px; }
+            .nav-tabs { display: none; }
+            .page { padding: 20px 16px 60px; }
+            .chart-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<nav class="nav">
+    <a class="nav-logo" th:href="@{/charts}">
+        <div class="nav-logo-mark">
+            <svg viewBox="0 0 16 16"><path d="M2 2h3v3H2zm0 4.5h3v3H2zm0 4.5h3v3H2zM6.5 2h3v3h-3zm0 4.5h3v3h-3zm0 4.5h3v3h-3zM11 2h3v3h-3zm0 4.5h3v3H11zm0 4.5h3v3H11z"/></svg>
+        </div>
+        CineMatch
+    </a>
+    <div class="nav-tabs">
+        <a class="nav-tab" th:href="@{/charts}">홈</a>
+        <a class="nav-tab active" th:href="@{/ranking}">랭킹</a>
+        <a class="nav-tab" th:href="@{/mypage}">마이페이지</a>
+    </div>
+    <div class="nav-right">
+        <a class="nav-user" th:href="@{/mypage}">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span th:text="${loginUserNickname}">nickname</span>
+        </a>
+        <a class="nav-logout" th:href="@{/logout}">로그아웃</a>
+    </div>
+</nav>
+
+<main class="page">
+    <div class="page-header">
+        <h1>랭킹 차트</h1>
+        <p>매출·관객·효율·시대·장르·인물 — 총 <span th:text="${totalCount}">12</span>가지 알고리즘으로 분석한 한국 박스오피스</p>
+    </div>
+
+    <!-- 탭 필터 -->
+    <div class="tab-row">
+        <a class="tab-pill" th:classappend="${selectedCategory == null} ? ' active' : ''"
+           th:href="@{/ranking}">
+            전체 <span class="tab-pill-count" th:text="${totalCount}">12</span>
+        </a>
+        <a class="tab-pill"
+           th:each="cat : ${categories}"
+           th:classappend="${cat == selectedCategory} ? ' active' : ''"
+           th:href="@{/ranking(category=${cat.name()})}"
+           th:text="${cat.label()}">카테고리</a>
+    </div>
+
+    <!-- 그리드 -->
+    <div class="grid-header">
+        <strong th:text="${selectedCategory != null} ? ${selectedCategory.label() + ' 차트'} : '전체 차트'">전체 차트</strong>
+        <span th:text="|${entries.size()}개|">12개</span>
+    </div>
+
+    <div class="chart-grid">
+        <a class="chart-card"
+           th:each="entry : ${entries}"
+           th:href="@{|/ranking/${entry.code()}|}"
+           th:attr="data-category=${entry.category().name()}">
+            <div class="card-row1">
+                <span class="card-icon-wrap">
+                    <svg th:if="${entry.icon() == 'chart-bar'}" viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="4" width="4" height="17"/></svg>
+                    <svg th:if="${entry.icon() == 'users'}" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <svg th:if="${entry.icon() == 'trending-up'}" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    <svg th:if="${entry.icon() == 'eye'}" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg th:if="${entry.icon() == 'seat'}" viewBox="0 0 24 24"><path d="M4 6V4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2M20 10v10H4V10M2 10h20M7 21v-5m10 5v-5"/></svg>
+                    <svg th:if="${entry.icon() == 'film'}" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                    <svg th:if="${entry.icon() == 'zap'}" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <svg th:if="${entry.icon() == 'clock'}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <svg th:if="${entry.icon() == 'star'}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg th:if="${entry.icon() == 'calendar'}" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <svg th:if="${entry.icon() == 'tag'}" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                    <svg th:if="${entry.icon() == 'video'}" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                </span>
+                <span class="cat-badge" th:text="${entry.category().label()}">카테고리</span>
+            </div>
+            <div class="card-title" th:text="${entry.title()}">차트 제목</div>
+            <div class="card-desc" th:text="${entry.description()}">설명</div>
+            <div class="card-footer">
+                <span class="card-link">
+                    순위 보기
+                    <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </span>
+                <span th:if="${entry.isNew()}" class="badge-new">NEW</span>
+                <span th:if="${entry.isHot()}" class="badge-hot">HOT</span>
+            </div>
+        </a>
+    </div>
+</main>
+</body>
+</html>

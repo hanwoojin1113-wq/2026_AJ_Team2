@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마이페이지 | CineMatch</title>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <style>
+        :root {
+            --bg: #F8F9FA;
+            --surface: #FFFFFF;
+            --blue: #3182F6;
+            --blue-hover: #1B64DA;
+            --blue-light: #EBF3FE;
+            --text: #191F28;
+            --text-2: #4E5968;
+            --text-3: #8B95A1;
+            --border: #E5E8EB;
+            --radius: 16px;
+            --radius-sm: 12px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        body.modal-open { overflow: hidden; }
+
+        /* ── Navbar ── */
+        .nav {
+            position: sticky; top: 0; z-index: 200;
+            height: 56px; background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(12px); border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; padding: 0 24px;
+        }
+        .nav-logo { display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);font-size:15px;font-weight:800;letter-spacing:-0.03em;margin-right:32px; }
+        .nav-logo-mark { width:28px;height:28px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center; }
+        .nav-logo-mark svg { width:14px;height:14px;fill:white; }
+        .nav-tabs { display:flex;align-items:center;gap:4px;flex:1; }
+        .nav-tab { height:34px;padding:0 14px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;color:var(--text-3);display:flex;align-items:center;transition:background .12s,color .12s; }
+        .nav-tab:hover { background:var(--bg);color:var(--text-2); }
+        .nav-tab.active { background:var(--blue-light);color:var(--blue);font-weight:700; }
+        .nav-right { display:flex;align-items:center;gap:8px; }
+        .nav-logout { height:34px;padding:0 16px;background:var(--text);color:white;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;display:flex;align-items:center; }
+        .nav-logout:hover { opacity:.85; }
+
+        /* ── 레이아웃 ── */
+        .page { max-width: 1100px; margin: 0 auto; padding: 28px 24px 80px; }
+
+        /* ── 프로필 헤더 ── */
+        .profile-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px 28px;
+            margin-bottom: 16px;
+            display: flex; align-items: center; gap: 20px;
+        }
+        .avatar {
+            width: 56px; height: 56px; border-radius: 50%;
+            background: var(--blue-light);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: 900; color: var(--blue);
+            flex-shrink: 0;
+        }
+        .profile-info { flex: 1; }
+        .profile-name { font-size: 20px; font-weight: 900; color: var(--text); letter-spacing: -0.03em; margin-bottom: 3px; }
+        .profile-id { font-size: 13px; color: var(--text-3); }
+
+        /* ── 통계 행 ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 14px 12px;
+            text-align: center;
+            transition: border-color .12s;
+        }
+        .stat-card:hover { border-color: var(--blue); }
+        .stat-num { font-size: 22px; font-weight: 900; color: var(--text); letter-spacing: -0.03em; line-height: 1; margin-bottom: 5px; }
+        .stat-lbl { font-size: 11px; font-weight: 700; color: var(--text-3); }
+
+        /* ── 섹션 ── */
+        .section { margin-bottom: 20px; }
+        .section-head {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .section-head-left h2 { font-size: 16px; font-weight: 900; color: var(--text); letter-spacing: -0.02em; }
+        .section-head-left p { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+        .section-meta { font-size: 12px; color: var(--text-3); font-weight: 600; }
+        .ghost-btn {
+            display: inline-flex; align-items: center;
+            height: 32px; padding: 0 14px; border-radius: 999px;
+            background: var(--bg); border: 1px solid var(--border);
+            font-size: 13px; font-weight: 700; color: var(--text-2);
+            text-decoration: none; transition: border-color .12s, color .12s;
+        }
+        .ghost-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+        /* ── 영화 그리드 ── */
+        .movie-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+        }
+        .movie-card { text-decoration: none; color: inherit; position: relative; }
+        .movie-card > a { text-decoration: none; color: inherit; }
+        .poster-wrap {
+            aspect-ratio: 2/3; border-radius: var(--radius-sm);
+            overflow: hidden; background: var(--border);
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        .poster-wrap img { width:100%;height:100%;object-fit:cover;display:block; }
+        .poster-fallback {
+            width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+            text-align:center;padding:10px;
+            background:linear-gradient(135deg,var(--blue-light),#dbeafe);
+            color:var(--blue);font-size:11px;font-weight:700;
+        }
+        .card-info { padding: 7px 2px 0; }
+        .card-title { font-size:12px;font-weight:800;color:var(--text);line-height:1.4;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+        .card-sub { font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+
+        /* 뱃지 */
+        .poster-badge {
+            position:absolute;left:6px;top:6px;
+            padding:3px 7px;border-radius:6px;
+            font-size:10px;font-weight:800;
+        }
+        .badge-watching { background:rgba(6,182,212,0.9);color:white; }
+        .badge-rating { background:rgba(245,158,11,0.92);color:white; }
+
+        /* 삭제 버튼 */
+        .remove-form { position:absolute;right:6px;top:6px;z-index:3; }
+        .remove-btn {
+            width:28px;height:28px;border:none;border-radius:50%;
+            background:rgba(255,255,255,0.88);color:var(--text-2);
+            cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;
+            transition:background .12s;
+        }
+        .remove-btn:hover { background:white; }
+
+        /* 인생영화 슬롯 */
+        .life-slot {
+            aspect-ratio:2/3;border-radius:var(--radius-sm);
+            border:2px dashed var(--border);background:var(--bg);
+            display:flex;align-items:center;justify-content:center;
+            text-decoration:none;transition:border-color .15s,background .15s;
+        }
+        .life-slot:hover { border-color:var(--blue);background:var(--blue-light); }
+        .plus-circle {
+            width:44px;height:44px;border-radius:50%;
+            background:var(--border);
+            display:flex;align-items:center;justify-content:center;
+            font-size:22px;color:var(--text-3);
+            transition:background .15s,color .15s;
+        }
+        .life-slot:hover .plus-circle { background:var(--blue);color:white; }
+
+        /* 빈 상태 */
+        .empty-state {
+            padding: 32px; text-align: center;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 13px; color: var(--text-3); line-height: 1.7;
+        }
+
+        /* ── 모달 ── */
+        .modal-backdrop {
+            position: fixed; inset: 0; z-index: 1000;
+            background: rgba(0,0,0,0.4);
+            display: flex; align-items: flex-end; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity .2s;
+        }
+        .modal-backdrop.open { opacity: 1; pointer-events: auto; }
+        .modal-sheet {
+            width: min(860px,100%); max-height: 85vh; overflow-y: auto;
+            background: var(--surface); border-radius: 20px 20px 0 0;
+            padding: 8px 24px 40px;
+        }
+        .modal-handle { width:40px;height:4px;border-radius:2px;background:var(--border);margin:12px auto 20px; }
+        .modal-head {
+            display:flex;align-items:flex-start;justify-content:space-between;
+            gap:16px;margin-bottom:16px;
+        }
+        .modal-head h3 { font-size:17px;font-weight:900;color:var(--text);letter-spacing:-0.02em; }
+        .modal-head p { font-size:13px;color:var(--text-3);margin-top:5px;line-height:1.6; }
+        .modal-close {
+            width:32px;height:32px;border:none;border-radius:50%;
+            background:var(--bg);color:var(--text-2);font-size:18px;
+            cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+        }
+        .picker-grid {
+            display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-top:12px;
+        }
+        .picker-card {
+            background:var(--bg);border:1px solid var(--border);
+            border-radius:var(--radius-sm);padding:12px;
+            transition:border-color .12s;
+        }
+        .picker-card:hover { border-color:var(--blue); }
+        .picker-card img,.picker-card .poster-fallback {
+            width:100%;aspect-ratio:2/3;border-radius:8px;display:block;object-fit:cover;
+        }
+        .picker-title { font-size:12px;font-weight:800;color:var(--text);margin-top:8px;line-height:1.4; }
+        .picker-sub { font-size:11px;color:var(--text-3);margin-top:2px;margin-bottom:8px; }
+        .picker-btn {
+            width:100%;height:36px;border:none;border-radius:8px;
+            background:var(--blue);color:white;
+            font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;
+            transition:background .12s,opacity .12s;
+        }
+        .picker-btn:hover { background:var(--blue-hover); }
+        .picker-btn[disabled] { opacity:.38;cursor:default;background:var(--border);color:var(--text-3); }
+
+        @media (max-width:1024px) { .stats-row { grid-template-columns:repeat(4,1fr); } }
+        @media (max-width:640px) {
+            .nav { padding:0 16px; }
+            .nav-tabs { display:none; }
+            .page { padding:20px 16px 60px; }
+            .stats-row { grid-template-columns:repeat(2,1fr); }
+            .movie-grid { grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:10px; }
+        }
+    </style>
+</head>
+<body>
+<nav class="nav">
+    <a class="nav-logo" th:href="@{/charts}">
+        <div class="nav-logo-mark">
+            <svg viewBox="0 0 16 16"><path d="M2 2h3v3H2zm0 4.5h3v3H2zm0 4.5h3v3H2zM6.5 2h3v3h-3zm0 4.5h3v3h-3zm0 4.5h3v3h-3zM11 2h3v3h-3zm0 4.5h3v3H11zm0 4.5h3v3H11z"/></svg>
+        </div>
+        CineMatch
+    </a>
+    <div class="nav-tabs">
+        <a class="nav-tab" th:href="@{/charts}">홈</a>
+        <a class="nav-tab" th:href="@{/ranking}">랭킹</a>
+        <a class="nav-tab active" th:href="@{/mypage}">마이페이지</a>
+    </div>
+    <div class="nav-right">
+        <a class="nav-logout" th:href="@{/logout}">로그아웃</a>
+    </div>
+</nav>
+
+<main class="page">
+    <!-- 프로필 -->
+    <div class="profile-card">
+        <div class="avatar" th:text="${#strings.substring(userProfile.nickname,0,1)}">N</div>
+        <div class="profile-info">
+            <div class="profile-name" th:text="${userProfile.nickname}">닉네임</div>
+            <div class="profile-id" th:text="|ID ${userProfile.loginId}|">ID user</div>
+        </div>
+    </div>
+
+    <!-- 통계 -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-num" th:text="${lifeMovieCount}">0</div>
+            <div class="stat-lbl">인생영화</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num" th:text="${likedMovieCount}">0</div>
+            <div class="stat-lbl">좋아요</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num" th:text="${collectionMovieCount}">0</div>
+            <div class="stat-lbl">컬렉션</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num" th:text="${laterMovieCount}">0</div>
+            <div class="stat-lbl">나중에 볼래요</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num" th:text="${dislikedMovieCount}">0</div>
+            <div class="stat-lbl">별로에요</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num" th:text="${watchingMovieCount}">0</div>
+            <div class="stat-lbl">보는중</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num" th:text="${watchedMovieCount}">0</div>
+            <div class="stat-lbl">봤어요</div>
+        </div>
+    </div>
+
+    <!-- 인생영화 -->
+    <div class="section">
+        <div class="section-head">
+            <div class="section-head-left">
+                <h2>인생영화</h2>
+                <p>컬렉션에서 최대 10편 선택 가능</p>
+            </div>
+            <span class="section-meta" th:text="|${lifeMovieCount} / 10|">0 / 10</span>
+        </div>
+        <div class="movie-grid">
+            <div class="movie-card" th:each="movie : ${lifeMovies}">
+                <a th:href="@{|/movies/${movie.movieCode}|}">
+                    <div class="poster-wrap">
+                        <img th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                             th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                        <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                            <span th:text="${movie.movieName}">제목</span>
+                        </div>
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title" th:text="${movie.movieName}">제목</div>
+                        <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn)?movie.movieCode:movie.movieNameEn}">sub</div>
+                    </div>
+                </a>
+                <form class="remove-form" th:action="@{/mypage/life/remove}" method="post">
+                    <input type="hidden" name="movieCode" th:value="${movie.movieCode}">
+                    <button class="remove-btn" type="submit">×</button>
+                </form>
+            </div>
+            <a class="movie-card" th:if="${!lifeLimitReached}"
+               th:href="@{/mypage(showLifePicker=true)}" data-life-open>
+                <div class="life-slot">
+                    <div class="plus-circle">+</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(lifeMovies)}">
+            아직 인생영화가 없어요.<br>컬렉션에 담은 영화 중에서 골라보세요.
+        </div>
+    </div>
+
+    <!-- 좋아요 -->
+    <div class="section">
+        <div class="section-head">
+            <div class="section-head-left"><h2>좋아요</h2></div>
+            <span class="section-meta" th:text="|${likedMovieCount}편|">0편</span>
+        </div>
+        <div class="movie-grid" th:if="${!#lists.isEmpty(likedMovies)}">
+            <a class="movie-card" th:each="movie : ${likedMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-wrap">
+                    <img th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">제목</span></div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title" th:text="${movie.movieName}">제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn)?movie.movieCode:movie.movieNameEn}">sub</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(likedMovies)}">좋아요한 영화가 없어요.</div>
+    </div>
+
+    <!-- 컬렉션 -->
+    <div class="section">
+        <div class="section-head">
+            <div class="section-head-left"><h2>컬렉션</h2></div>
+            <span class="section-meta" th:text="|${collectionMovieCount}편|">0편</span>
+        </div>
+        <div class="movie-grid" th:if="${!#lists.isEmpty(collectionMovies)}">
+            <a class="movie-card" th:each="movie : ${collectionMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-wrap">
+                    <img th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">제목</span></div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title" th:text="${movie.movieName}">제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn)?movie.movieCode:movie.movieNameEn}">sub</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(collectionMovies)}">컬렉션이 비어있어요.</div>
+    </div>
+
+    <!-- 나중에 볼래요 -->
+    <div class="section">
+        <div class="section-head">
+            <div class="section-head-left"><h2>나중에 볼래요</h2></div>
+            <a class="ghost-btn" th:href="@{/stored}">전체보기</a>
+        </div>
+        <div class="movie-grid" th:if="${!#lists.isEmpty(laterMovies)}">
+            <a class="movie-card" th:each="movie : ${laterMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-wrap">
+                    <img th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">제목</span></div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title" th:text="${movie.movieName}">제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn)?movie.movieCode:movie.movieNameEn}">sub</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(laterMovies)}">저장해둔 영화가 없어요.</div>
+    </div>
+
+    <!-- 별로에요 -->
+    <div class="section">
+        <div class="section-head">
+            <div class="section-head-left"><h2>별로에요</h2></div>
+            <span class="section-meta" th:text="|${dislikedMovieCount}편|">0편</span>
+        </div>
+        <div class="movie-grid" th:if="${!#lists.isEmpty(dislikedMovies)}">
+            <a class="movie-card" th:each="movie : ${dislikedMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-wrap">
+                    <img th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">제목</span></div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title" th:text="${movie.movieName}">제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn)?movie.movieCode:movie.movieNameEn}">sub</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(dislikedMovies)}">별로에요 한 영화가 없어요.</div>
+    </div>
+
+    <!-- 보는중 -->
+    <div class="section">
+        <div class="section-head">
+            <div class="section-head-left"><h2>보는중</h2></div>
+            <span class="section-meta" th:text="|${watchingMovieCount}편|">0편</span>
+        </div>
+        <div class="movie-grid" th:if="${!#lists.isEmpty(watchingMovies)}">
+            <a class="movie-card" th:each="movie : ${watchingMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-wrap">
+                    <span class="poster-badge badge-watching">보는중</span>
+                    <img th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">제목</span></div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title" th:text="${movie.movieName}">제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn)?movie.movieCode:movie.movieNameEn}">sub</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(watchingMovies)}">현재 보고 있는 영화가 없어요.</div>
+    </div>
+
+    <!-- 봤어요 -->
+    <div class="section">
+        <div class="section-head">
+            <div class="section-head-left"><h2>봤어요</h2></div>
+            <span class="section-meta" th:text="|${watchedMovieCount}편|">0편</span>
+        </div>
+        <div class="movie-grid" th:if="${!#lists.isEmpty(watchedMovies)}">
+            <a class="movie-card" th:each="movie : ${watchedMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-wrap">
+                    <span class="poster-badge badge-rating"
+                          th:if="${movie.watchedRating != null}"
+                          th:text="${movie.watchedRating + '★'}">4★</span>
+                    <img th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">제목</span></div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title" th:text="${movie.movieName}">제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn)?movie.movieCode:movie.movieNameEn}">sub</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(watchedMovies)}">아직 봤어요 한 영화가 없어요.</div>
+    </div>
+</main>
+
+<!-- 인생영화 모달 (바텀시트) -->
+<div class="modal-backdrop" id="life-modal"
+     th:classappend="${showLifePicker} ? ' open' : ''">
+    <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-handle"></div>
+        <div class="modal-head">
+            <div>
+                <h3 id="modal-title">인생영화 추가</h3>
+                <p>컬렉션에 있는 영화 중에서만 선택할 수 있어요. 최대 10편까지 가능해요.</p>
+            </div>
+            <button class="modal-close" id="modal-close-btn" aria-label="닫기">×</button>
+        </div>
+
+        <p class="empty-state" th:if="${lifeLimitReached}">인생영화가 이미 10편이에요. 하나를 삭제한 뒤 추가할 수 있어요.</p>
+        <p class="empty-state" th:if="${#lists.isEmpty(lifePickerCandidates) and !lifeLimitReached}">컬렉션이 비어있어요. 영화 상세 페이지에서 컬렉션에 추가해보세요.</p>
+
+        <div class="picker-grid" th:if="${!#lists.isEmpty(lifePickerCandidates)}">
+            <div class="picker-card" th:each="c : ${lifePickerCandidates}">
+                <img th:if="${!#strings.isEmpty(c.posterImageUrl)}"
+                     th:src="${c.posterImageUrl}" th:alt="${c.movieName}">
+                <div class="poster-fallback" th:if="${#strings.isEmpty(c.posterImageUrl)}">
+                    <span th:text="${c.movieName}">제목</span>
+                </div>
+                <div class="picker-title" th:text="${c.movieName}">제목</div>
+                <div class="picker-sub" th:text="${#strings.isEmpty(c.movieNameEn)?c.movieCode:c.movieNameEn}">sub</div>
+                <form th:action="@{/mypage/life}" method="post">
+                    <input type="hidden" name="movieCode" th:value="${c.movieCode}">
+                    <button class="picker-btn" type="submit"
+                            th:disabled="${c.alreadyAdded or lifeLimitReached}"
+                            th:text="${c.alreadyAdded ? '추가됨' : '인생영화로 추가'}">추가</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const modal = document.getElementById('life-modal');
+    const closeBtn = document.getElementById('modal-close-btn');
+
+    function openModal() {
+        modal.classList.add('open');
+        document.body.classList.add('modal-open');
+    }
+    function closeModal() {
+        modal.classList.remove('open');
+        document.body.classList.remove('modal-open');
+    }
+
+    document.querySelectorAll('[data-life-open]').forEach(el => {
+        el.addEventListener('click', e => { e.preventDefault(); openModal(); });
+    });
+    closeBtn?.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.classList.contains('open')) closeModal(); });
+
+    if (modal.classList.contains('open')) document.body.classList.add('modal-open');
+</script>
+</body>
+</html>

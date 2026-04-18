@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineMatch</title>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <style>
+        :root {
+            --bg: #F8F9FA;
+            --surface: #FFFFFF;
+            --blue: #3182F6;
+            --blue-hover: #1B64DA;
+            --blue-light: #EBF3FE;
+            --text: #191F28;
+            --text-2: #4E5968;
+            --text-3: #8B95A1;
+            --border: #E5E8EB;
+            --radius: 16px;
+            --radius-sm: 12px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── Navbar ── */
+        .nav {
+            position: sticky; top: 0; z-index: 200;
+            height: 56px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center;
+            padding: 0 24px;
+            gap: 0;
+        }
+        .nav-logo {
+            display: flex; align-items: center; gap: 8px;
+            text-decoration: none; color: var(--text);
+            font-size: 15px; font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-right: 32px;
+        }
+        .nav-logo-mark {
+            width: 28px; height: 28px;
+            background: var(--blue);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .nav-logo-mark svg { width: 14px; height: 14px; fill: white; }
+        .nav-tabs {
+            display: flex; align-items: center; gap: 4px; flex: 1;
+        }
+        .nav-tab {
+            height: 34px;
+            padding: 0 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px; font-weight: 600;
+            color: var(--text-3);
+            display: flex; align-items: center;
+            transition: background .12s, color .12s;
+        }
+        .nav-tab:hover { background: var(--bg); color: var(--text-2); }
+        .nav-tab.active { background: var(--blue-light); color: var(--blue); font-weight: 700; }
+        .nav-right {
+            display: flex; align-items: center; gap: 8px;
+        }
+        .nav-user {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 12px; border-radius: 999px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            text-decoration: none;
+            font-size: 13px; font-weight: 700; color: var(--text-2);
+            transition: border-color .12s;
+        }
+        .nav-user:hover { border-color: var(--blue); color: var(--blue); }
+        .nav-user svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.2; }
+        .nav-logout {
+            height: 34px; padding: 0 16px;
+            background: var(--text); color: white;
+            border-radius: 999px;
+            font-size: 13px; font-weight: 700;
+            text-decoration: none;
+            display: flex; align-items: center;
+            transition: opacity .12s;
+        }
+        .nav-logout:hover { opacity: .85; }
+
+        /* ── Page ── */
+        .page { max-width: 1200px; margin: 0 auto; padding: 28px 24px 80px; }
+
+        /* ── 검색 패널 ── */
+        .search-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 20px 24px;
+            margin-bottom: 20px;
+        }
+        .search-row {
+            display: flex; gap: 10px; align-items: center;
+        }
+        .search-input-wrap {
+            flex: 1; position: relative;
+        }
+        .search-input-wrap svg {
+            position: absolute; left: 14px; top: 50%;
+            transform: translateY(-50%);
+            width: 16px; height: 16px;
+            stroke: var(--text-3); fill: none; stroke-width: 2;
+        }
+        .search-input {
+            width: 100%; height: 44px;
+            padding: 0 14px 0 40px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg);
+            font-family: inherit; font-size: 14px; color: var(--text);
+            outline: none;
+            transition: border-color .12s;
+        }
+        .search-input:focus { border-color: var(--blue); background: white; }
+        .search-input::placeholder { color: var(--text-3); }
+        .search-btn {
+            height: 44px; padding: 0 20px;
+            background: var(--blue); color: white;
+            border: none; border-radius: var(--radius-sm);
+            font-family: inherit; font-size: 14px; font-weight: 700;
+            cursor: pointer; white-space: nowrap;
+            transition: background .12s;
+        }
+        .search-btn:hover { background: var(--blue-hover); }
+        .filter-btn {
+            height: 44px; padding: 0 16px;
+            background: var(--surface); color: var(--text-2);
+            border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+            font-family: inherit; font-size: 14px; font-weight: 600;
+            cursor: pointer; white-space: nowrap;
+            transition: border-color .12s, color .12s;
+        }
+        .filter-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+        /* ── 장르 필터 팝업 ── */
+        .filter-popup {
+            display: none;
+            position: fixed; inset: 0; z-index: 300;
+            background: rgba(0,0,0,0.4);
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .filter-popup.open { display: flex; }
+        .filter-panel {
+            width: min(680px, 100%);
+            max-height: 80vh;
+            overflow-y: auto;
+            background: white;
+            border-radius: 20px 20px 0 0;
+            padding: 24px 24px 40px;
+        }
+        .filter-handle {
+            width: 40px; height: 4px; border-radius: 2px;
+            background: var(--border); margin: 0 auto 20px;
+        }
+        .filter-head {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px;
+        }
+        .filter-head h3 { font-size: 17px; font-weight: 800; color: var(--text); }
+        .filter-close {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--bg); border: none;
+            font-size: 18px; cursor: pointer; color: var(--text-2);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .filter-section { margin-bottom: 20px; }
+        .filter-section-title {
+            font-size: 12px; font-weight: 800; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: .06em;
+            margin-bottom: 10px;
+        }
+        .chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip {
+            padding: 7px 14px; border-radius: 999px;
+            font-size: 13px; font-weight: 600;
+            text-decoration: none; color: var(--text-2);
+            background: var(--bg); border: 1.5px solid var(--border);
+            transition: all .12s;
+        }
+        .chip:hover { border-color: var(--blue); color: var(--blue); }
+        .chip.active { background: var(--blue-light); border-color: var(--blue); color: var(--blue); font-weight: 700; }
+
+        /* ── 섹션 헤더 ── */
+        .sec-head {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .sec-head h2 {
+            font-size: 17px; font-weight: 800; color: var(--text);
+            letter-spacing: -0.02em;
+        }
+        .sec-head p { font-size: 13px; color: var(--text-3); }
+
+        /* ── 추천 캐러셀 ── */
+        .carousel-section { margin-bottom: 28px; }
+        .carousel-wrap { position: relative; }
+        .carousel-track {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: 148px;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 4px 2px 8px;
+            scrollbar-width: none;
+            scroll-behavior: smooth;
+            scroll-snap-type: x proximity;
+            cursor: grab;
+            user-select: none;
+        }
+        .carousel-track::-webkit-scrollbar { display: none; }
+        .carousel-track.dragging { cursor: grabbing; scroll-snap-type: none; }
+        /* 영화 카드 */
+        .movie-card {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            scroll-snap-align: start;
+        }
+        .poster-box {
+            aspect-ratio: 2/3;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            background: var(--border);
+            border: 1px solid var(--border);
+            position: relative;
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+        .movie-card:hover .poster-box {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+        }
+        .poster-img {
+            width: 100%; height: 100%;
+            object-fit: cover; display: block;
+        }
+        .poster-fallback {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 12px;
+            background: linear-gradient(135deg, var(--blue-light), #dbeafe);
+            color: var(--blue);
+            font-size: 12px; font-weight: 700;
+        }
+        .poster-overlay {
+            position: absolute; inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.5), transparent 50%);
+            opacity: 0; transition: opacity .18s;
+            display: flex; align-items: flex-end; padding: 10px;
+        }
+        .movie-card:hover .poster-overlay { opacity: 1; }
+        .overlay-badge {
+            font-size: 11px; font-weight: 800; color: white;
+            background: rgba(0,0,0,0.5); padding: 3px 8px;
+            border-radius: 999px;
+        }
+        .card-info { padding: 8px 2px 0; }
+        .card-title {
+            font-size: 13px; font-weight: 700; color: var(--text);
+            line-height: 1.4; margin-bottom: 3px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .card-sub {
+            font-size: 11px; color: var(--text-3);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* ── 검색 결과 그리드 ── */
+        .search-summary {
+            font-size: 14px; color: var(--text-2); margin-bottom: 16px;
+        }
+        .search-summary strong { color: var(--text); font-weight: 800; }
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 14px;
+        }
+        .empty-panel {
+            padding: 48px 24px; text-align: center;
+            background: var(--surface); border-radius: var(--radius);
+            border: 1px solid var(--border);
+            color: var(--text-3); font-size: 14px; line-height: 1.8;
+        }
+        /* 페이지네이션 */
+        .pagination {
+            display: flex; justify-content: center;
+            flex-wrap: wrap; gap: 6px; margin-top: 24px;
+        }
+        .page-btn {
+            min-width: 36px; height: 36px; padding: 0 10px;
+            border-radius: 999px;
+            text-decoration: none;
+            font-size: 13px; font-weight: 700;
+            color: var(--text-2);
+            background: var(--surface); border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            transition: all .12s;
+        }
+        .page-btn:hover { border-color: var(--blue); color: var(--blue); }
+        .page-btn.active { background: var(--blue); color: white; border-color: var(--blue); }
+
+        /* ── 빠른 접근 카드 (랭킹 etc) ── */
+        .quick-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px;
+            margin-bottom: 28px;
+        }
+        .quick-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            text-decoration: none; color: inherit;
+            display: flex; flex-direction: column; gap: 8px;
+            transition: border-color .12s, box-shadow .12s;
+        }
+        .quick-card:hover {
+            border-color: var(--blue);
+            box-shadow: 0 4px 16px rgba(49,130,246,0.1);
+        }
+        .quick-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+        .quick-title { font-size: 14px; font-weight: 800; color: var(--text); }
+        .quick-desc { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+
+        /* ── 반응형 ── */
+        @media (max-width: 640px) {
+            .nav { padding: 0 16px; }
+            .nav-tabs { display: none; }
+            .page { padding: 20px 16px 60px; }
+            .search-row { flex-wrap: wrap; }
+            .search-btn { flex: 1; }
+            .search-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="nav">
+    <a class="nav-logo" th:href="@{/charts}">
+        <div class="nav-logo-mark">
+            <svg viewBox="0 0 16 16"><path d="M2 2h3v3H2zm0 4.5h3v3H2zm0 4.5h3v3H2zM6.5 2h3v3h-3zm0 4.5h3v3h-3zm0 4.5h3v3h-3zM11 2h3v3h-3zm0 4.5h3v3H11zm0 4.5h3v3H11z"/></svg>
+        </div>
+        CineMatch
+    </a>
+    <div class="nav-tabs">
+        <a class="nav-tab active" th:href="@{/charts}">홈</a>
+        <a class="nav-tab" th:href="@{/ranking}">랭킹</a>
+        <a class="nav-tab" th:href="@{/mypage}">마이페이지</a>
+    </div>
+    <div class="nav-right">
+        <a class="nav-user" th:href="@{/mypage}">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span th:text="${loginUserNickname}">nickname</span>
+        </a>
+        <a class="nav-logout" th:href="@{/logout}">로그아웃</a>
+    </div>
+</nav>
+
+<main class="page">
+    <!-- 검색 -->
+    <div class="search-card">
+        <form class="search-row" th:action="@{/charts}" method="get">
+            <div class="search-input-wrap">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input class="search-input" type="text" name="query"
+                       th:value="${query}" placeholder="영화 제목, 영어 제목, 영화 코드 검색">
+            </div>
+            <input type="hidden" name="genre"   th:if="${!#strings.isEmpty(selectedGenre)}"   th:value="${selectedGenre}">
+            <input type="hidden" name="tagType"  th:if="${!#strings.isEmpty(selectedTagType)}"  th:value="${selectedTagType}">
+            <input type="hidden" name="tagName"  th:if="${!#strings.isEmpty(selectedTagName)}"  th:value="${selectedTagName}">
+            <button class="search-btn" type="submit">검색</button>
+            <button class="filter-btn" type="button" onclick="openFilter()">필터</button>
+        </form>
+    </div>
+
+    <!-- 장르/태그 필터 팝업 (바텀시트) -->
+    <div class="filter-popup" id="filterPopup"
+         th:classappend="${showAdvanced} ? ' open' : ''"
+         onclick="closeFilterOutside(event)">
+        <div class="filter-panel" onclick="event.stopPropagation()">
+            <div class="filter-handle"></div>
+            <div class="filter-head">
+                <h3>필터</h3>
+                <button class="filter-close" onclick="closeFilter()">×</button>
+            </div>
+            <div class="filter-section">
+                <div class="filter-section-title">장르</div>
+                <div class="chip-list">
+                    <a class="chip"
+                       th:classappend="${#strings.isEmpty(selectedGenre)} ? ' active' : ''"
+                       th:href="@{/charts(query=${query},tagType=${selectedTagType},tagName=${selectedTagName})}">전체</a>
+                    <a class="chip"
+                       th:each="genreName : ${genres}"
+                       th:classappend="${genreName == selectedGenre} ? ' active' : ''"
+                       th:href="@{/charts(query=${query},genre=${genreName},tagType=${selectedTagType},tagName=${selectedTagName})}"
+                       th:text="${genreName}">장르</a>
+                </div>
+            </div>
+            <div class="filter-section" th:each="tagGroup : ${tagGroups}">
+                <div class="filter-section-title" th:text="${tagGroup.label}">분위기</div>
+                <div class="chip-list">
+                    <a class="chip"
+                       th:href="@{/charts(query=${query},genre=${selectedGenre})}"
+                       th:classappend="${tagGroup.key == selectedTagType and #strings.isEmpty(selectedTagName)} ? ' active' : ''">전체</a>
+                    <a class="chip"
+                       th:each="tag : ${tagGroup.tags}"
+                       th:classappend="${tag.tagType == selectedTagType and tag.tagName == selectedTagName} ? ' active' : ''"
+                       th:href="@{/charts(query=${query},genre=${selectedGenre},tagType=${tag.tagType},tagName=${tag.tagName})}"
+                       th:text="${tag.displayName}">태그</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 검색 결과 모드 -->
+    <section th:if="${hasActiveSearch}">
+        <p class="search-summary">
+            <strong th:text="${searchResultCount}">0</strong>개의 검색 결과
+        </p>
+        <div class="search-grid" th:if="${!#lists.isEmpty(movies)}">
+            <a class="movie-card" th:each="movie : ${movies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-box">
+                    <img class="poster-img"
+                         th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                         th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                    <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                        <span th:text="${movie.movieName}">영화</span>
+                    </div>
+                    <div class="poster-overlay"><span class="overlay-badge">상세보기</span></div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title" th:text="${movie.movieName}">제목</div>
+                    <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">subtitle</div>
+                </div>
+            </a>
+        </div>
+        <div class="empty-panel" th:if="${#lists.isEmpty(movies)}">
+            검색 결과가 없습니다.<br>제목을 바꿔 검색하거나 필터를 조정해보세요.
+        </div>
+        <nav class="pagination" th:if="${totalPages > 1}">
+            <a class="page-btn" th:if="${hasPrevious}"
+               th:href="@{/charts(page=${previousPage},query=${query},genre=${selectedGenre},tagType=${selectedTagType},tagName=${selectedTagName})}">←</a>
+            <a class="page-btn"
+               th:each="pageNumber : ${pages}"
+               th:classappend="${pageNumber == currentPage} ? ' active' : ''"
+               th:href="@{/charts(page=${pageNumber},query=${query},genre=${selectedGenre},tagType=${selectedTagType},tagName=${selectedTagName})}"
+               th:text="${pageNumber}">1</a>
+            <a class="page-btn" th:if="${hasNext}"
+               th:href="@{/charts(page=${nextPage},query=${query},genre=${selectedGenre},tagType=${selectedTagType},tagName=${selectedTagName})}">→</a>
+        </nav>
+    </section>
+
+    <!-- 홈 추천 모드 -->
+    <section th:if="${!hasActiveSearch}">
+        <!-- 빠른 접근 -->
+        <div class="quick-cards">
+            <a class="quick-card" th:href="@{/ranking}">
+                <div class="quick-icon" style="background:#EBF3FE;">📊</div>
+                <div class="quick-title">랭킹 차트</div>
+                <div class="quick-desc">12가지 알고리즘으로 분석한 박스오피스</div>
+            </a>
+            <a class="quick-card" th:href="@{/ranking/million-club}">
+                <div class="quick-icon" style="background:#F0FDF4;">🏆</div>
+                <div class="quick-title">천만 클럽</div>
+                <div class="quick-desc">누적 관객 1000만 돌파 영화</div>
+            </a>
+            <a class="quick-card" th:href="@{/ranking/classic}">
+                <div class="quick-icon" style="background:#FFF7ED;">⭐</div>
+                <div class="quick-title">클래식 재발견</div>
+                <div class="quick-desc">10년이 지나도 회자되는 명작</div>
+            </a>
+            <a class="quick-card" th:href="@{/stored}">
+                <div class="quick-icon" style="background:#FDF4FF;">🔖</div>
+                <div class="quick-title">나중에 볼래요</div>
+                <div class="quick-desc">저장해둔 영화 목록</div>
+            </a>
+        </div>
+
+        <!-- 개인화 추천 블록 -->
+        <div th:if="${!#lists.isEmpty(recommendationBlocks)}">
+            <div class="carousel-section" th:each="block : ${recommendationBlocks}">
+                <div class="sec-head">
+                    <div>
+                        <h2 th:text="${block.title}">추천</h2>
+                        <p th:text="${block.description}">설명</p>
+                    </div>
+                </div>
+                <div class="carousel-wrap">
+                    <div class="carousel-track" data-carousel>
+                        <a class="movie-card" th:each="movie : ${block.items}"
+                           th:href="@{|/movies/${movie.movieCode}|}">
+                            <div class="poster-box">
+                                <img class="poster-img"
+                                     th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                                     th:src="${movie.posterImageUrl}" th:alt="${movie.title}">
+                                <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                                    <span th:text="${movie.title}">영화</span>
+                                </div>
+                                <div class="poster-overlay"><span class="overlay-badge">상세보기</span></div>
+                            </div>
+                            <div class="card-info">
+                                <div class="card-title" th:text="${movie.title}">제목</div>
+                                <div class="card-sub"
+                                     th:text="${#strings.isEmpty(movie.reasonSummary) ? movie.subtitle : movie.reasonSummary}">이유</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 폴백: 인기 영화 -->
+        <div class="carousel-section" th:if="${#lists.isEmpty(recommendationBlocks) and !#lists.isEmpty(fallbackMovies)}">
+            <div class="sec-head">
+                <div>
+                    <h2>지금 많이 보는 영화</h2>
+                    <p>아직 개인화 추천이 준비되지 않았어요</p>
+                </div>
+            </div>
+            <div class="carousel-wrap">
+                <div class="carousel-track" data-carousel>
+                    <a class="movie-card" th:each="movie : ${fallbackMovies}"
+                       th:href="@{|/movies/${movie.movieCode}|}">
+                        <div class="poster-box">
+                            <img class="poster-img"
+                                 th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                                 th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+                            <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                                <span th:text="${movie.movieName}">영화</span>
+                            </div>
+                            <div class="poster-overlay"><span class="overlay-badge">상세보기</span></div>
+                        </div>
+                        <div class="card-info">
+                            <div class="card-title" th:text="${movie.movieName}">제목</div>
+                            <div class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">subtitle</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+    /* 필터 팝업 */
+    function openFilter() { document.getElementById('filterPopup').classList.add('open'); }
+    function closeFilter() { document.getElementById('filterPopup').classList.remove('open'); }
+    function closeFilterOutside(e) { if (e.target.id === 'filterPopup') closeFilter(); }
+
+    /* 드래그 캐러셀 */
+    document.querySelectorAll('[data-carousel]').forEach(track => {
+        let state = null;
+        let skipClick = false;
+
+        track.addEventListener('pointerdown', e => {
+            if (e.button !== 0) return;
+            state = { id: e.pointerId, startX: e.clientX, scrollLeft: track.scrollLeft, moved: false };
+            track.setPointerCapture?.(e.pointerId);
+        });
+        track.addEventListener('pointermove', e => {
+            if (!state || state.id !== e.pointerId) return;
+            const dx = e.clientX - state.startX;
+            if (!state.moved && Math.abs(dx) > 5) state.moved = true;
+            if (state.moved) { e.preventDefault(); track.scrollLeft = state.scrollLeft - dx * 1.1; }
+        });
+        track.addEventListener('pointerup', e => {
+            if (!state || state.id !== e.pointerId) return;
+            if (state.moved) { skipClick = true; setTimeout(() => skipClick = false, 120); }
+            state = null;
+            track.classList.remove('dragging');
+        });
+        track.addEventListener('click', e => {
+            if (skipClick) { e.preventDefault(); e.stopPropagation(); }
+        }, true);
+    });
+</script>
+</body>
+</html>

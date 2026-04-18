@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${movie.movieName} + ' | CineMatch'">영화 상세 | CineMatch</title>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <style>
+        :root {
+            --bg:#F8F9FA;--surface:#FFFFFF;--blue:#3182F6;--blue-hover:#1B64DA;--blue-light:#EBF3FE;
+            --text:#191F28;--text-2:#4E5968;--text-3:#8B95A1;--border:#E5E8EB;
+            --radius:16px;--radius-sm:12px;
+            --like:#E11D48;--later:#F59E0B;--collection:#8B5CF6;--watch:#3182F6;
+        }
+        * { box-sizing:border-box;margin:0;padding:0; }
+        body { font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--text);min-height:100vh; }
+
+        /* Navbar */
+        .nav { position:sticky;top:0;z-index:200;height:56px;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:0; }
+        .nav-left { display:flex;align-items:center;gap:16px;flex:1; }
+        .back-btn { display:flex;align-items:center;gap:5px;text-decoration:none;color:var(--text-3);font-size:14px;font-weight:700;transition:color .12s; }
+        .back-btn:hover { color:var(--text); }
+        .back-btn svg { width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round; }
+        .nav-logo { display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);font-size:15px;font-weight:800;letter-spacing:-0.03em; }
+        .nav-logo-mark { width:28px;height:28px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center; }
+        .nav-logo-mark svg { width:14px;height:14px;fill:white; }
+        .nav-right { display:flex;align-items:center;gap:8px; }
+        .nav-user { display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--bg);border:1px solid var(--border);text-decoration:none;font-size:13px;font-weight:700;color:var(--text-2); }
+        .nav-user svg { width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2; }
+        .nav-logout { height:34px;padding:0 16px;background:var(--text);color:white;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;display:flex;align-items:center; }
+
+        .page { max-width:960px;margin:0 auto;padding:24px 24px 80px; }
+
+        /* 히어로 */
+        .hero {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 28px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+        .poster-wrap {
+            aspect-ratio: 2/3; border-radius: var(--radius-sm); overflow: hidden;
+            background: var(--border); border: 1px solid var(--border);
+        }
+        .poster-wrap img { width:100%;height:100%;object-fit:cover;display:block; }
+        .poster-fallback {
+            width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+            text-align:center;padding:16px;
+            background:linear-gradient(135deg,var(--blue-light),#dbeafe);
+            color:var(--blue);font-size:13px;font-weight:700;
+        }
+        .hero-right { display:flex;flex-direction:column;gap:0; }
+        .badges { display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px; }
+        .badge-chip {
+            padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;
+            background:var(--bg);color:var(--text-2);border:1px solid var(--border);
+        }
+        .movie-title {
+            font-size: clamp(20px,3vw,28px); font-weight:900;
+            letter-spacing:-0.04em;color:var(--text);line-height:1.15;margin-bottom:6px;
+        }
+        .movie-subtitle { font-size:15px;color:var(--text-3);margin-bottom:4px; }
+        .movie-year { font-size:13px;color:var(--text-3);margin-bottom:20px; }
+
+        /* 통계 카드 행 */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--bg); border-radius: var(--radius-sm);
+            padding: 12px 14px;
+        }
+        .stat-label { font-size:11px;font-weight:700;color:var(--text-3);margin-bottom:4px; }
+        .stat-value { font-size:15px;font-weight:900;color:var(--text);letter-spacing:-0.02em; }
+
+        /* 액션 버튼 */
+        .action-section {
+            background: var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+            padding: 20px; margin-bottom: 16px;
+        }
+        .action-label { font-size:13px;font-weight:700;color:var(--text-2);margin-bottom:12px; }
+        .action-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px; }
+        .action-grid-3 { display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
+        .act-btn {
+            display:flex;align-items:center;gap:10px;
+            padding:14px 16px;border-radius:var(--radius-sm);
+            border:1.5px solid var(--border);background:var(--surface);
+            cursor:pointer;font-family:inherit;color:var(--text);
+            transition:border-color .15s,background .15s,transform .1s;
+            text-align:left;
+        }
+        .act-btn:hover { border-color:var(--blue);background:var(--blue-light); }
+        .act-btn:active { transform:scale(0.98); }
+        .act-icon {
+            width:36px;height:36px;border-radius:10px;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            background:var(--bg);transition:background .15s;
+        }
+        .act-icon svg { width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round; }
+        .act-text { display:flex;flex-direction:column;gap:2px; }
+        .act-name { font-size:13px;font-weight:800;color:var(--text); }
+        .act-hint { font-size:11px;color:var(--text-3);line-height:1.4; }
+        /* 활성 상태 */
+        .act-btn.active-dislike { border-color:#94A3B8;background:#F8FAFC; }
+        .act-btn.active-like { border-color:var(--like);background:#FFF1F2; }
+        .act-btn.active-like .act-icon { background:#FECDD3; }
+        .act-btn.active-like .act-icon svg { stroke:var(--like);fill:var(--like); }
+        .act-btn.active-later { border-color:var(--later);background:#FFFBEB; }
+        .act-btn.active-later .act-icon { background:#FDE68A; }
+        .act-btn.active-later .act-icon svg { stroke:var(--later); }
+        .act-btn.active-collection { border-color:var(--collection);background:#F5F3FF; }
+        .act-btn.active-collection .act-icon { background:#EDE9FE; }
+        .act-btn.active-collection .act-icon svg { stroke:var(--collection); }
+        .act-btn.watch-watching { border-color:#06B6D4;background:#ECFEFF; }
+        .act-btn.watch-watching .act-icon { background:#CFFAFE; }
+        .act-btn.watch-watching .act-icon svg { stroke:#0891B2; }
+        .act-btn.watch-watched { border-color:var(--blue);background:var(--blue-light); }
+        .act-btn.watch-watched .act-icon { background:#BFDBFE; }
+        .act-btn.watch-watched .act-icon svg { stroke:var(--blue); }
+
+        /* 별점 */
+        .rating-area {
+            background:var(--bg);border-radius:var(--radius-sm);
+            padding:14px 16px;margin-top:12px;
+            display:none;
+        }
+        .rating-area.show { display:block; }
+        .rating-row { display:flex;justify-content:space-between;align-items:center;margin-bottom:10px; }
+        .rating-title { font-size:13px;font-weight:800;color:var(--text); }
+        .rating-chip { padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;background:var(--border);color:var(--text-2); }
+        .stars { display:flex;gap:4px; }
+        .star { background:none;border:none;font-size:24px;cursor:pointer;color:var(--border);transition:color .1s,transform .1s;line-height:1; }
+        .star:hover,.star.on { color:#F59E0B; }
+        .star:active { transform:scale(1.2); }
+
+        /* 섹션 카드 */
+        .info-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px; }
+        .info-card {
+            background:var(--surface);border:1px solid var(--border);
+            border-radius:var(--radius-sm);padding:18px 20px;
+        }
+        .info-card h3 { font-size:13px;font-weight:800;color:var(--text-2);margin-bottom:10px; }
+        .chip-list { display:flex;flex-wrap:wrap;gap:6px; }
+        .tag-chip {
+            padding:5px 12px;border-radius:999px;font-size:12px;font-weight:700;
+            background:var(--bg);color:var(--text-2);border:1px solid var(--border);
+        }
+        .empty-info { font-size:13px;color:var(--text-3); }
+        .meta-list { display:flex;flex-direction:column;gap:6px; }
+        .meta-row {
+            display:flex;justify-content:space-between;align-items:center;
+            font-size:13px;padding:8px 12px;border-radius:8px;background:var(--bg);
+        }
+        .meta-row .k { color:var(--text-3);font-weight:600; }
+        .meta-row .v { color:var(--text);font-weight:700; }
+
+        @media (max-width:640px) {
+            .nav { padding:0 16px; }
+            .page { padding:20px 16px 60px; }
+            .hero { grid-template-columns:1fr; }
+            .poster-wrap { max-width:160px;margin:0 auto; }
+            .stats-row { grid-template-columns:repeat(2,1fr); }
+            .action-grid-3 { grid-template-columns:1fr; }
+            .info-grid { grid-template-columns:1fr; }
+        }
+    </style>
+</head>
+<body>
+<nav class="nav">
+    <div class="nav-left">
+        <a class="back-btn" th:href="@{/charts}">
+            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+            홈
+        </a>
+        <a class="nav-logo" th:href="@{/charts}">
+            <div class="nav-logo-mark">
+                <svg viewBox="0 0 16 16"><path d="M2 2h3v3H2zm0 4.5h3v3H2zm0 4.5h3v3H2zM6.5 2h3v3h-3zm0 4.5h3v3h-3zm0 4.5h3v3h-3zM11 2h3v3h-3zm0 4.5h3v3H11zm0 4.5h3v3H11z"/></svg>
+            </div>
+            CineMatch
+        </a>
+    </div>
+    <div class="nav-right">
+        <a class="nav-user" th:href="@{/mypage}">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span th:text="${loginUserNickname}">nickname</span>
+        </a>
+        <a class="nav-logout" th:href="@{/logout}">로그아웃</a>
+    </div>
+</nav>
+
+<main class="page">
+    <!-- 히어로 -->
+    <div class="hero">
+        <div class="poster-wrap">
+            <img th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                 th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
+            <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                <span th:text="${movie.movieName}">영화</span>
+            </div>
+        </div>
+        <div class="hero-right">
+            <div class="badges">
+                <span class="badge-chip" th:if="${movie.typeName != null}" th:text="${movie.typeName}">장편</span>
+                <span class="badge-chip" th:if="${movie.nationName != null}" th:text="${movie.nationName}">한국</span>
+                <span class="badge-chip" th:if="${movie.productionStatusName != null}" th:text="${movie.productionStatusName}">개봉</span>
+            </div>
+            <h1 class="movie-title" th:text="${movie.movieName}">영화 제목</h1>
+            <p class="movie-subtitle" th:if="${!#strings.isEmpty(movie.movieNameEn)}" th:text="${movie.movieNameEn}">English Title</p>
+            <p class="movie-year" th:text="${movie.productionYear != null ? movie.productionYear + '년' : ''}">2024년</p>
+
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-label">개봉일</div>
+                    <div class="stat-value" th:text="${movie.boxOfficeOpenDate != null ? movie.boxOfficeOpenDate : '—'}">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">상영시간</div>
+                    <div class="stat-value" th:text="${movie.showTime != null ? movie.showTime + '분' : '—'}">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">영화 코드</div>
+                    <div class="stat-value" th:text="${movie.movieCode}">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">스크린 수</div>
+                    <div class="stat-value" th:text="${movie.boxOfficeScrnCnt != null ? #numbers.formatInteger(movie.boxOfficeScrnCnt,0,'COMMA') : '—'}">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">상영 횟수</div>
+                    <div class="stat-value" th:text="${movie.boxOfficeShowCnt != null ? #numbers.formatInteger(movie.boxOfficeShowCnt,0,'COMMA') : '—'}">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">좋아요</div>
+                    <div class="stat-value" th:text="${movie.likeCount}">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 액션 -->
+    <div class="action-section">
+        <div class="action-label">이 영화를 어떻게 남길까요?</div>
+        <div class="action-grid">
+            <button type="button" id="dislike-btn" class="act-btn">
+                <span class="act-icon" id="dislike-icon"></span>
+                <span class="act-text">
+                    <span class="act-name">별로에요</span>
+                    <span class="act-hint">좋아요와 동시에 활성화 안 됨</span>
+                </span>
+            </button>
+            <button type="button" id="like-btn" class="act-btn">
+                <span class="act-icon" id="like-icon"></span>
+                <span class="act-text">
+                    <span class="act-name">좋아요</span>
+                    <span class="act-hint">강한 호감 신호</span>
+                </span>
+            </button>
+        </div>
+        <div class="action-grid-3">
+            <button type="button" id="later-btn" class="act-btn">
+                <span class="act-icon" id="later-icon"></span>
+                <span class="act-text">
+                    <span class="act-name">나중에 볼래요</span>
+                    <span class="act-hint">다음 감상 후보</span>
+                </span>
+            </button>
+            <button type="button" id="watch-btn" class="act-btn">
+                <span class="act-icon" id="watch-icon"></span>
+                <span class="act-text">
+                    <span class="act-name" id="watch-label">보는중 / 봤어요</span>
+                    <span class="act-hint" id="watch-hint">한 번 → 보는중, 두 번 → 봤어요</span>
+                </span>
+            </button>
+            <button type="button" id="collection-btn" class="act-btn">
+                <span class="act-icon" id="collection-icon"></span>
+                <span class="act-text">
+                    <span class="act-name">컬렉션</span>
+                    <span class="act-hint">개인 컬렉션 보관</span>
+                </span>
+            </button>
+        </div>
+        <!-- 별점 -->
+        <div class="rating-area" id="rating-area">
+            <div class="rating-row">
+                <span class="rating-title">별점 남기기</span>
+                <span class="rating-chip" id="rating-chip">미평가</span>
+            </div>
+            <div class="stars" id="stars">
+                <button type="button" class="star" data-r="1">★</button>
+                <button type="button" class="star" data-r="2">★</button>
+                <button type="button" class="star" data-r="3">★</button>
+                <button type="button" class="star" data-r="4">★</button>
+                <button type="button" class="star" data-r="5">★</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 정보 섹션 -->
+    <div class="info-grid">
+        <div class="info-card">
+            <h3>장르</h3>
+            <div class="chip-list" th:if="${!#lists.isEmpty(genres)}">
+                <span class="tag-chip" th:each="g : ${genres}" th:text="${g}">장르</span>
+            </div>
+            <p class="empty-info" th:if="${#lists.isEmpty(genres)}">정보 없음</p>
+        </div>
+        <div class="info-card">
+            <h3>추천 태그</h3>
+            <div class="chip-list" th:if="${!#lists.isEmpty(recommendationTags)}">
+                <span class="tag-chip" th:each="t : ${recommendationTags}"
+                      th:text="${t.tagTypeLabel + ' · ' + t.tagLabel}">태그</span>
+            </div>
+            <p class="empty-info" th:if="${#lists.isEmpty(recommendationTags)}">태그 없음</p>
+        </div>
+        <div class="info-card">
+            <h3>감독 / 배우</h3>
+            <div class="chip-list">
+                <span class="tag-chip" th:each="d : ${directors}" th:text="${d}">감독</span>
+                <span class="tag-chip" th:each="a : ${actors}" th:text="${a}">배우</span>
+            </div>
+            <p class="empty-info" th:if="${#lists.isEmpty(directors) and #lists.isEmpty(actors)}">정보 없음</p>
+        </div>
+        <div class="info-card">
+            <h3>시청 가능 서비스</h3>
+            <div class="meta-list" th:if="${!#lists.isEmpty(providers)}">
+                <div class="meta-row" th:each="p : ${providers}">
+                    <span class="k" th:text="${p.name}">서비스</span>
+                    <span class="v" th:text="${p.type}">구독</span>
+                </div>
+            </div>
+            <p class="empty-info" th:if="${#lists.isEmpty(providers)}">OTT 정보 없음</p>
+        </div>
+        <div class="info-card">
+            <h3>심의 / 등급</h3>
+            <div class="meta-list" th:if="${!#lists.isEmpty(audits)}">
+                <div class="meta-row" th:each="a : ${audits}">
+                    <span class="k" th:text="${a.auditNo != null ? a.auditNo : '번호 없음'}">번호</span>
+                    <span class="v" th:text="${a.watchGradeName != null ? a.watchGradeName : '등급 없음'}">15세</span>
+                </div>
+            </div>
+            <p class="empty-info" th:if="${#lists.isEmpty(audits)}">정보 없음</p>
+        </div>
+        <div class="info-card">
+            <h3>제작사</h3>
+            <div class="meta-list" th:if="${!#lists.isEmpty(companies)}">
+                <div class="meta-row" th:each="c : ${companies}">
+                    <span class="k" th:text="${c.name}">회사</span>
+                    <span class="v" th:text="${c.role != null ? c.role : '참여사'}">배급</span>
+                </div>
+            </div>
+            <p class="empty-info" th:if="${#lists.isEmpty(companies)}">정보 없음</p>
+        </div>
+    </div>
+</main>
+
+<script th:inline="javascript">
+    const movieCode = [[${movie.movieCode}]];
+    let S = {
+        liked:       [[${movie.likedByCurrentUser}]],
+        disliked:    [[${movie.dislikedByCurrentUser}]],
+        later:       [[${movie.storedByCurrentUser}]],
+        collected:   [[${movie.collectedByCurrentUser}]],
+        watchStatus: [[${movie.watchStatus}]],
+        rating:      [[${movie.watchedRating}]]
+    };
+</script>
+<script>
+    const icons = {
+        dislike:`<svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg>`,
+        like:   `<svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg>`,
+        later:  `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg>`,
+        collect:`<svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg>`,
+        eye:    `<svg viewBox="0 0 24 24"><path d="M1.5 12s4-6 10.5-6 10.5 6 10.5 6-4 6-10.5 6S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="2.8"/></svg>`,
+        check:  `<svg viewBox="0 0 24 24"><path d="M20 7 10 17l-5-5"/></svg>`
+    };
+
+    document.getElementById('dislike-icon').innerHTML = icons.dislike;
+    document.getElementById('like-icon').innerHTML = icons.like;
+    document.getElementById('later-icon').innerHTML = icons.later;
+    document.getElementById('collection-icon').innerHTML = icons.collect;
+
+    async function api(path, body='') {
+        const r = await fetch(path, {
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8','X-Requested-With':'XMLHttpRequest'},
+            body
+        });
+        if (r.status===401) { location.href='/login'; throw 0; }
+        if (!r.ok) { alert(await r.text()||'오류'); throw 0; }
+        return r.json();
+    }
+
+    function paintStars(v) {
+        document.querySelectorAll('.star').forEach(s => s.classList.toggle('on', +s.dataset.r <= v));
+    }
+
+    function render(next) {
+        S = {...S, ...next};
+        const db = document.getElementById('dislike-btn');
+        const lb = document.getElementById('like-btn');
+        const la = document.getElementById('later-btn');
+        const wb = document.getElementById('watch-btn');
+        const cb = document.getElementById('collection-btn');
+        const wl = document.getElementById('watch-label');
+        const wh = document.getElementById('watch-hint');
+        const wi = document.getElementById('watch-icon');
+        const ra = document.getElementById('rating-area');
+        const rc = document.getElementById('rating-chip');
+
+        db.className = 'act-btn' + (S.disliked ? ' active-dislike' : '');
+        lb.className = 'act-btn' + (S.liked    ? ' active-like'    : '');
+        la.className = 'act-btn' + (S.later    ? ' active-later'   : '');
+        cb.className = 'act-btn' + (S.collected? ' active-collection': '');
+
+        wb.className = 'act-btn';
+        if (S.watchStatus==='WATCHING') { wb.classList.add('watch-watching'); wi.innerHTML=icons.eye; wl.textContent='보는중'; wh.textContent='다시 누르면 봤어요로 전환'; }
+        else if (S.watchStatus==='WATCHED') { wb.classList.add('watch-watched'); wi.innerHTML=icons.check; wl.textContent='봤어요'; wh.textContent='다시 누르면 해제됩니다'; }
+        else { wi.innerHTML=icons.eye; wl.textContent='보는중 / 봤어요'; wh.textContent='한 번 → 보는중, 두 번 → 봤어요'; }
+
+        const watched = S.watchStatus==='WATCHED';
+        ra.className = 'rating-area' + (watched?' show':'');
+        rc.textContent = S.rating ? S.rating+'점' : '미평가';
+        paintStars(S.rating||0);
+    }
+
+    document.getElementById('dislike-btn').onclick    = async()=>render(await api(`/api/movies/${movieCode}/dislike`));
+    document.getElementById('like-btn').onclick       = async()=>render(await api(`/api/movies/${movieCode}/like`));
+    document.getElementById('later-btn').onclick      = async()=>render(await api(`/api/movies/${movieCode}/later`));
+    document.getElementById('watch-btn').onclick      = async()=>render(await api(`/api/movies/${movieCode}/watch-state`));
+    document.getElementById('collection-btn').onclick = async()=>render(await api(`/api/movies/${movieCode}/collection`));
+
+    document.querySelectorAll('.star').forEach(s=>{
+        const v=+s.dataset.r;
+        s.addEventListener('mouseenter',()=>paintStars(v));
+        s.addEventListener('click', async()=>{
+            if(S.watchStatus!=='WATCHED') return;
+            render(await api(`/api/movies/${movieCode}/watched/rating`,`rating=${v}`));
+        });
+    });
+    document.getElementById('stars').addEventListener('mouseleave',()=>paintStars(S.rating||0));
+    render(S);
+</script>
+</body>
+</html>
