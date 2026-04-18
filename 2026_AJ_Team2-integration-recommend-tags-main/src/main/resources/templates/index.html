@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineMatch | Home</title>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <style>
+        :root {
+            --blue: #0048FF;
+            --blue-dark: #003AD1;
+            --blue-soft: #EEF2FF;
+            --bg: #070B14;
+            --surface: #101828;
+            --surface-soft: #162033;
+            --card: #111827;
+            --text: #F8FAFC;
+            --text-sub: #CBD5E1;
+            --text-hint: #94A3B8;
+            --border: rgba(148,163,184,0.18);
+            --shadow: 0 24px 60px rgba(2, 6, 23, 0.42);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Pretendard', 'Segoe UI', sans-serif;
+            background:
+                radial-gradient(circle at top right, rgba(0,72,255,0.24), transparent 28%),
+                linear-gradient(180deg, #06101f 0%, #070b14 45%, #0a1222 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            height: 68px;
+            background: rgba(7,11,20,0.78);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(148,163,184,0.12);
+        }
+        .navbar-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 1.2rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+        }
+        .logo-mark {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0048FF, #38BDF8);
+            box-shadow: 0 12px 24px rgba(0,72,255,0.28);
+        }
+        .logo-mark svg { width: 18px; height: 18px; fill: white; }
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            text-decoration: none;
+            background: rgba(255,255,255,0.08);
+            color: white;
+            font-size: 0.88rem;
+            font-weight: 700;
+        }
+        .logout-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 92px;
+            height: 40px;
+            border-radius: 999px;
+            background: white;
+            color: #0F172A;
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 800;
+        }
+        .page {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 28px 24px 72px;
+        }
+        .hero {
+            padding: 38px 40px;
+            border-radius: 28px;
+            background:
+                linear-gradient(120deg, rgba(0,72,255,0.92) 0%, rgba(14,165,233,0.75) 52%, rgba(10,18,34,0.92) 100%);
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+            overflow: hidden;
+            position: relative;
+        }
+        .hero::after {
+            content: '';
+            position: absolute;
+            right: -30px;
+            bottom: -30px;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 14px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.16);
+            color: rgba(255,255,255,0.92);
+            font-size: 0.8rem;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+        .hero h1 {
+            font-size: clamp(2rem, 4vw, 3.2rem);
+            line-height: 1.05;
+            letter-spacing: -0.04em;
+            margin-bottom: 12px;
+        }
+        .hero p {
+            max-width: 620px;
+            color: rgba(255,255,255,0.78);
+            line-height: 1.7;
+            font-size: 0.98rem;
+        }
+        .search-panel {
+            margin-bottom: 26px;
+            padding: 22px 24px;
+            border-radius: 22px;
+            background: rgba(10,18,34,0.78);
+            border: 1px solid rgba(148,163,184,0.16);
+            box-shadow: var(--shadow);
+        }
+        .search-panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .search-panel-title {
+            font-size: 1rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+        }
+        .search-panel-sub {
+            color: var(--text-hint);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .search-form {
+            display: flex;
+            gap: 12px;
+        }
+        .search-input-wrap {
+            flex: 1;
+            position: relative;
+        }
+        .search-input-wrap svg {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-hint);
+        }
+        .search-input {
+            width: 100%;
+            height: 56px;
+            padding: 0 18px 0 46px;
+            border-radius: 16px;
+            border: 1px solid rgba(148,163,184,0.18);
+            background: rgba(255,255,255,0.08);
+            color: white;
+            font: inherit;
+            outline: none;
+        }
+        .search-input::placeholder { color: var(--text-hint); }
+        .search-input:focus {
+            border-color: rgba(96,165,250,0.8);
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.14);
+        }
+        .search-submit,
+        .search-detail {
+            height: 56px;
+            min-width: 130px;
+            border-radius: 16px;
+            font: inherit;
+            font-weight: 800;
+        }
+        .search-submit {
+            border: none;
+            background: white;
+            color: #0F172A;
+            cursor: pointer;
+        }
+        .search-detail {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.05);
+            color: white;
+            cursor: pointer;
+        }
+        .genre-popup {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(2,6,23,0.62);
+            backdrop-filter: blur(8px);
+        }
+        .genre-popup.open { display: flex; }
+        .genre-popup-card {
+            width: min(760px, 100%);
+            padding: 24px;
+            border-radius: 26px;
+            background: #0F172A;
+            border: 1px solid rgba(148,163,184,0.16);
+            box-shadow: var(--shadow);
+        }
+        .genre-popup-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+        .genre-popup-title {
+            font-size: 1.08rem;
+            font-weight: 900;
+        }
+        .genre-popup-sub {
+            margin-top: 4px;
+            font-size: 0.88rem;
+            color: var(--text-hint);
+        }
+        .genre-popup-close {
+            width: 42px;
+            height: 42px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            color: white;
+            font-size: 1.35rem;
+            cursor: pointer;
+        }
+        .filter-section + .filter-section { margin-top: 18px; }
+        .filter-section-title {
+            margin-bottom: 10px;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: white;
+        }
+        .genre-popup-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .genre-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            text-decoration: none;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(148,163,184,0.16);
+            color: var(--text-sub);
+            font-size: 0.86rem;
+            font-weight: 700;
+        }
+        .genre-chip.active {
+            background: var(--blue);
+            border-color: var(--blue);
+            color: white;
+        }
+        .home-section {
+            margin-top: 30px;
+        }
+        .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .section-head-main {
+            flex: 1;
+            min-width: 0;
+        }
+        .section-head h2 {
+            font-size: 1.24rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+        }
+        .section-head p {
+            color: var(--text-hint);
+            font-size: 0.88rem;
+            margin-top: 4px;
+        }
+        .row-carousel {
+            position: relative;
+            padding: 0 52px;
+        }
+        .row-carousel::before,
+        .row-carousel::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 72px;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .row-carousel::before {
+            left: 0;
+            background: linear-gradient(90deg, rgba(7,11,20,0.96) 0%, rgba(7,11,20,0) 100%);
+        }
+        .row-carousel::after {
+            right: 0;
+            background: linear-gradient(270deg, rgba(7,11,20,0.96) 0%, rgba(7,11,20,0) 100%);
+        }
+        .row-track {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: minmax(172px, 172px);
+            gap: 18px;
+            overflow-x: auto;
+            padding: 8px 0 14px;
+            scrollbar-width: none;
+            scroll-behavior: smooth;
+            scroll-snap-type: x proximity;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: pan-y;
+        }
+        .row-track::-webkit-scrollbar {
+            display: none;
+        }
+        .row-track.is-dragging {
+            cursor: grabbing;
+            scroll-snap-type: none;
+        }
+        .movie-card {
+            display: block;
+            position: relative;
+            text-decoration: none;
+            color: inherit;
+            scroll-snap-align: start;
+            transform-origin: center center;
+            transition: transform 0.24s ease, z-index 0.24s ease;
+        }
+        .movie-card:hover {
+            transform: translateY(-8px) scale(1.045);
+            z-index: 4;
+        }
+        .poster-shell {
+            position: relative;
+            aspect-ratio: 2/3;
+            border-radius: 18px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(148,163,184,0.14);
+            box-shadow: 0 14px 32px rgba(2, 6, 23, 0.28);
+            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, filter 0.22s ease;
+        }
+        .movie-card:hover .poster-shell {
+            transform: scale(1.02);
+            border-color: rgba(96,165,250,0.62);
+            box-shadow: 0 28px 54px rgba(2, 6, 23, 0.42);
+            filter: saturate(1.04);
+        }
+        .movie-card:hover .movie-title {
+            color: white;
+        }
+        .poster {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+        }
+        .poster-fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 18px;
+            background: linear-gradient(135deg, rgba(0,72,255,0.28), rgba(14,165,233,0.24));
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 800;
+        }
+        .poster-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: flex-end;
+            padding: 14px;
+            background: linear-gradient(to top, rgba(2,6,23,0.84), transparent 55%);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.18s ease;
+        }
+        .movie-card:hover .poster-overlay { opacity: 1; }
+        .poster-overlay span {
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: white;
+        }
+        .movie-title {
+            margin-top: 10px;
+            font-size: 0.92rem;
+            font-weight: 800;
+            line-height: 1.35;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .movie-sub {
+            margin-top: 4px;
+            font-size: 0.76rem;
+            color: var(--text-hint);
+            line-height: 1.45;
+            height: 2.2em;
+            overflow: hidden;
+            transition: color 0.18s ease;
+        }
+        .movie-card:hover .movie-sub {
+            color: var(--text-sub);
+        }
+        .row-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 2;
+            width: 42px;
+            height: 42px;
+            border: 1px solid rgba(148,163,184,0.24);
+            border-radius: 50%;
+            background: rgba(15,23,42,0.82);
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 10px 24px rgba(2,6,23,0.28);
+            transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+        }
+        .row-arrow:hover:not(:disabled) {
+            transform: translateY(-50%) scale(1.04);
+            background: rgba(30,41,59,0.96);
+            border-color: rgba(96,165,250,0.52);
+        }
+        .row-arrow:disabled {
+            opacity: 0.32;
+            cursor: default;
+            box-shadow: none;
+        }
+        .row-arrow.left {
+            left: 0;
+        }
+        .row-arrow.right {
+            right: 0;
+        }
+        .row-arrow svg {
+            width: 18px;
+            height: 18px;
+        }
+        .search-summary {
+            margin-bottom: 18px;
+            color: var(--text-sub);
+            font-size: 0.96rem;
+        }
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+        }
+        .search-card {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
+        .search-card .poster-shell {
+            aspect-ratio: 2/3;
+        }
+        .search-card .movie-sub {
+            height: auto;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .empty-panel {
+            padding: 42px;
+            border-radius: 22px;
+            text-align: center;
+            background: rgba(255,255,255,0.05);
+            border: 1px dashed rgba(148,163,184,0.22);
+            color: var(--text-hint);
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 26px;
+        }
+        .page-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            height: 40px;
+            padding: 0 14px;
+            border-radius: 999px;
+            text-decoration: none;
+            background: rgba(255,255,255,0.06);
+            color: white;
+            border: 1px solid rgba(148,163,184,0.16);
+            font-size: 0.86rem;
+            font-weight: 700;
+        }
+        .page-link.current {
+            background: white;
+            color: #0F172A;
+            border-color: white;
+        }
+        @media (max-width: 768px) {
+            .navbar { padding: 0 16px; }
+            .page { padding: 22px 16px 56px; }
+            .hero { padding: 28px 22px; }
+            .search-panel { padding: 18px; }
+            .search-panel-head { flex-direction: column; align-items: flex-start; }
+            .search-form { flex-direction: column; }
+            .search-submit, .search-detail { width: 100%; }
+            .row-carousel {
+                padding: 0;
+            }
+            .row-carousel::before,
+            .row-carousel::after,
+            .row-arrow {
+                display: none;
+            }
+            .row-track {
+                grid-auto-columns: minmax(144px, 144px);
+            }
+            .search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <a class="navbar-logo" th:href="@{/charts}">
+        <span class="logo-mark">
+            <svg viewBox="0 0 16 16"><path d="M2 2h3v3H2zm0 4.5h3v3H2zm0 4.5h3v3H2zM6.5 2h3v3h-3zm0 4.5h3v3h-3zm0 4.5h3v3h-3zM11 2h3v3h-3zm0 4.5h3v3H11zm0 4.5h3v3H11z"/></svg>
+        </span>
+        <span>CineMatch</span>
+    </a>
+    <div class="navbar-right">
+         <a class="user-badge" th:href="@{/ranking}">랭킹 차트</a>  
+        <a class="user-badge" th:href="@{/mypage}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+            </svg>
+            <span th:text="${loginUserNickname}">nickname</span>
+        </a>
+        <a class="logout-btn" th:href="@{/logout}">로그아웃</a>
+    </div>
+</nav>
+
+<main class="page">
+    <section class="hero">
+        <div class="hero-badge">PERSONALIZED HOME</div>
+        <h1 th:text="${hasActiveSearch} ? '영화 검색 결과' : '오늘 보고 싶은 영화를 바로 만나는 홈 화면'">오늘 보고 싶은 영화를 바로 만나는 홈 화면</h1>
+        <p th:text="${hasActiveSearch}
+                ? '검색이나 필터로 탐색 결과를 확인하고, 다시 홈으로 돌아오면 개인화 추천 블록 중심 화면을 볼 수 있습니다.'
+                : '메인 화면은 전체 영화 게시판이 아니라 추천 중심으로 구성했습니다. 개인화 추천, 장르 추천, 배우/감독 추천 블록을 가로형 섹션으로 둘러볼 수 있습니다.'">
+            메인 화면은 추천 중심 홈입니다.
+        </p>
+    </section>
+
+    <section class="search-panel">
+        <div class="search-panel-head">
+            <div>
+                <div class="search-panel-title">탐색이 필요할 때만 검색 결과를 보세요</div>
+                <div class="search-panel-sub">메인 화면은 추천 중심, 검색은 탐색 중심으로 역할을 분리했습니다.</div>
+            </div>
+        </div>
+        <form class="search-form" th:action="@{/charts}" method="get">
+            <div class="search-input-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="M20 20l-3.5-3.5"></path>
+                </svg>
+                <input class="search-input" type="text" name="query" th:value="${query}" placeholder="예: 명량, Parasite, 20129370">
+            </div>
+            <input type="hidden" name="genre" th:if="${!#strings.isEmpty(selectedGenre)}" th:value="${selectedGenre}">
+            <input type="hidden" name="tagType" th:if="${!#strings.isEmpty(selectedTagType)}" th:value="${selectedTagType}">
+            <input type="hidden" name="tagName" th:if="${!#strings.isEmpty(selectedTagName)}" th:value="${selectedTagName}">
+            <button class="search-submit" type="submit">검색하기</button>
+            <button class="search-detail" type="button" onclick="openGenrePopup()">상세 필터</button>
+        </form>
+    </section>
+
+    <div class="genre-popup" id="genrePopup" th:classappend="${showAdvanced} ? ' open' : ''" onclick="closeGenrePopup(event)">
+        <div class="genre-popup-card" onclick="event.stopPropagation()">
+            <div class="genre-popup-head">
+                <div>
+                    <div class="genre-popup-title">상세 필터</div>
+                    <div class="genre-popup-sub">장르와 추천 태그로 검색 결과를 더 좁힐 수 있습니다.</div>
+                </div>
+                <button class="genre-popup-close" type="button" onclick="closeGenrePopup()">×</button>
+            </div>
+            <div class="filter-section">
+                <div class="filter-section-title">장르</div>
+                <div class="genre-popup-list">
+                    <a class="genre-chip"
+                       th:classappend="${#strings.isEmpty(selectedGenre)} ? ' active' : ''"
+                       th:href="@{/charts(query=${query}, tagType=${selectedTagType}, tagName=${selectedTagName})}">전체</a>
+                    <a class="genre-chip"
+                       th:each="genreName : ${genres}"
+                       th:classappend="${genreName == selectedGenre} ? ' active' : ''"
+                       th:href="@{/charts(query=${query}, genre=${genreName}, tagType=${selectedTagType}, tagName=${selectedTagName})}"
+                       th:text="${genreName}">장르</a>
+                </div>
+            </div>
+            <div class="filter-section" th:each="tagGroup : ${tagGroups}">
+                <div class="filter-section-title" th:text="${tagGroup.label}">태그</div>
+                <div class="genre-popup-list">
+                    <a class="genre-chip"
+                       th:href="@{/charts(query=${query}, genre=${selectedGenre})}"
+                       th:classappend="${tagGroup.key == selectedTagType and #strings.isEmpty(selectedTagName)} ? ' active' : ''">전체</a>
+                    <a class="genre-chip"
+                       th:each="tag : ${tagGroup.tags}"
+                       th:classappend="${tag.tagType == selectedTagType and tag.tagName == selectedTagName} ? ' active' : ''"
+                       th:href="@{/charts(query=${query}, genre=${selectedGenre}, tagType=${tag.tagType}, tagName=${tag.tagName})}"
+                       th:text="${tag.displayName}">태그</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section th:if="${!hasActiveSearch}">
+        <div class="home-section" th:if="${!#lists.isEmpty(recommendationBlocks)}">
+            <div th:each="block : ${recommendationBlocks}" class="home-section">
+                <div class="section-head">
+                    <div class="section-head-main">
+                        <h2 th:text="${block.title}">추천 블록</h2>
+                        <p th:text="${block.description}">설명</p>
+                    </div>
+                </div>
+                <div class="row-carousel" data-row-carousel>
+                    <button class="row-arrow left" type="button" data-row-direction="prev" aria-label="이전 추천 보기">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                            <path d="M15 18l-6-6 6-6"/>
+                        </svg>
+                    </button>
+                    <div class="row-track">
+                    <a class="movie-card" th:each="movie : ${block.items}" th:href="@{|/movies/${movie.movieCode}|}">
+                        <div class="poster-shell">
+                            <img class="poster"
+                                 th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                                 th:src="${movie.posterImageUrl}"
+                                 th:alt="${movie.title}">
+                            <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                                <span th:text="${movie.title}">영화 제목</span>
+                            </div>
+                            <div class="poster-overlay"><span>상세 보기</span></div>
+                        </div>
+                        <div class="movie-title" th:text="${movie.title}">영화 제목</div>
+                        <div class="movie-sub"
+                             th:text="${#strings.isEmpty(movie.reasonSummary) ? movie.subtitle : movie.reasonSummary}">추천 이유</div>
+                    </a>
+                    </div>
+                    <button class="row-arrow right" type="button" data-row-direction="next" aria-label="다음 추천 보기">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                            <path d="M9 6l6 6-6 6"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="home-section" th:if="${#lists.isEmpty(recommendationBlocks)} and ${!#lists.isEmpty(fallbackMovies)}">
+            <div class="section-head">
+                <div class="section-head-main">
+                    <h2>지금 많이 보는 영화</h2>
+                    <p>아직 개인화 추천이 준비되지 않았을 때 보여주는 기본 홈 섹션입니다.</p>
+                </div>
+            </div>
+            <div class="row-carousel" data-row-carousel>
+                <button class="row-arrow left" type="button" data-row-direction="prev" aria-label="이전 영화 보기">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                </button>
+                <div class="row-track">
+                <a class="movie-card" th:each="movie : ${fallbackMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+                    <div class="poster-shell">
+                        <img class="poster"
+                             th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                             th:src="${movie.posterImageUrl}"
+                             th:alt="${movie.movieName}">
+                        <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                            <span th:text="${movie.movieName}">영화 제목</span>
+                        </div>
+                        <div class="poster-overlay"><span>상세 보기</span></div>
+                    </div>
+                    <div class="movie-title" th:text="${movie.movieName}">영화 제목</div>
+                    <div class="movie-sub"
+                         th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">movie</div>
+                </a>
+                </div>
+                <button class="row-arrow right" type="button" data-row-direction="next" aria-label="다음 영화 보기">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                        <path d="M9 6l6 6-6 6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section th:if="${hasActiveSearch}">
+        <p class="search-summary" th:text="|검색 결과 ${searchResultCount}건|">검색 결과 0건</p>
+
+        <div class="search-grid" th:if="${!#lists.isEmpty(movies)}">
+            <a class="search-card" th:each="movie : ${movies}" th:href="@{|/movies/${movie.movieCode}|}">
+                <div class="poster-shell">
+                    <img class="poster"
+                         th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                         th:src="${movie.posterImageUrl}"
+                         th:alt="${movie.movieName}">
+                    <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                        <span th:text="${movie.movieName}">영화 제목</span>
+                    </div>
+                    <div class="poster-overlay"><span>상세 보기</span></div>
+                </div>
+                <div class="movie-title" th:text="${movie.movieName}">영화 제목</div>
+                <div class="movie-sub"
+                     th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">movie</div>
+            </a>
+        </div>
+
+        <div class="empty-panel" th:if="${#lists.isEmpty(movies)}">
+            검색 결과가 없습니다. 제목을 바꿔 검색하거나 상세 필터를 조정해보세요.
+        </div>
+
+        <nav class="pagination" th:if="${totalPages > 1}">
+            <a class="page-link"
+               th:if="${hasPrevious}"
+               th:href="@{/charts(page=${previousPage}, query=${query}, genre=${selectedGenre}, tagType=${selectedTagType}, tagName=${selectedTagName})}">← 이전</a>
+            <a class="page-link"
+               th:each="pageNumber : ${pages}"
+               th:classappend="${pageNumber == currentPage} ? ' current' : ''"
+               th:href="@{/charts(page=${pageNumber}, query=${query}, genre=${selectedGenre}, tagType=${selectedTagType}, tagName=${selectedTagName})}"
+               th:text="${pageNumber}">1</a>
+            <a class="page-link"
+               th:if="${hasNext}"
+               th:href="@{/charts(page=${nextPage}, query=${query}, genre=${selectedGenre}, tagType=${selectedTagType}, tagName=${selectedTagName})}">다음 →</a>
+        </nav>
+    </section>
+</main>
+
+<script>
+    function initializeRecommendationRows() {
+        document.querySelectorAll('[data-row-carousel]').forEach((carousel) => {
+            const track = carousel.querySelector('.row-track');
+            const prevButton = carousel.querySelector('[data-row-direction="prev"]');
+            const nextButton = carousel.querySelector('[data-row-direction="next"]');
+
+            if (!track || !prevButton || !nextButton) {
+                return;
+            }
+
+            const getScrollAmount = () => {
+                const firstCard = track.querySelector('.movie-card');
+                if (!firstCard) {
+                    return Math.max(track.clientWidth * 0.85, 240);
+                }
+
+                const styles = window.getComputedStyle(track);
+                const gap = parseFloat(styles.columnGap || styles.gap || '18');
+                return Math.max(firstCard.getBoundingClientRect().width + gap, Math.floor(track.clientWidth * 0.82));
+            };
+
+            const syncButtons = () => {
+                const maxScrollLeft = Math.max(0, track.scrollWidth - track.clientWidth - 4);
+                prevButton.disabled = track.scrollLeft <= 4;
+                nextButton.disabled = track.scrollLeft >= maxScrollLeft;
+            };
+
+            prevButton.addEventListener('click', () => {
+                track.scrollBy({ left: -getScrollAmount(), behavior: 'smooth' });
+            });
+
+            nextButton.addEventListener('click', () => {
+                track.scrollBy({ left: getScrollAmount(), behavior: 'smooth' });
+            });
+
+            let pointerState = null;
+            let cancelNextClick = false;
+
+            const endDrag = (event) => {
+                if (!pointerState || (event && event.pointerId !== pointerState.pointerId)) {
+                    return;
+                }
+
+                const wasDragging = pointerState.dragging;
+                const anchorHref = pointerState.anchorHref;
+                const hasModifier = pointerState.hasModifier;
+                pointerState = null;
+                track.classList.remove('is-dragging');
+                if (!wasDragging) {
+                    if (anchorHref && !hasModifier && event?.type === 'pointerup') {
+                        window.location.assign(anchorHref);
+                    }
+                    return;
+                }
+
+                cancelNextClick = true;
+                window.setTimeout(() => {
+                    cancelNextClick = false;
+                }, 140);
+            };
+
+            track.addEventListener('pointerdown', (event) => {
+                if (event.pointerType === 'mouse' && event.button !== 0) {
+                    return;
+                }
+
+                pointerState = {
+                    pointerId: event.pointerId,
+                    startX: event.clientX,
+                    startScrollLeft: track.scrollLeft,
+                    dragging: false,
+                    anchorHref: event.target.closest('.movie-card')?.href ?? null,
+                    hasModifier: !!(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+                };
+                cancelNextClick = false;
+                track.setPointerCapture?.(event.pointerId);
+            });
+
+            track.addEventListener('pointermove', (event) => {
+                if (!pointerState || event.pointerId !== pointerState.pointerId) {
+                    return;
+                }
+
+                const deltaX = event.clientX - pointerState.startX;
+                if (!pointerState.dragging && Math.abs(deltaX) > 6) {
+                    pointerState.dragging = true;
+                    track.classList.add('is-dragging');
+                }
+
+                if (!pointerState.dragging) {
+                    return;
+                }
+
+                event.preventDefault();
+                track.scrollLeft = pointerState.startScrollLeft - (deltaX * 1.12);
+            });
+
+            track.addEventListener('pointerup', endDrag);
+            track.addEventListener('pointercancel', endDrag);
+            track.addEventListener('lostpointercapture', endDrag);
+
+            track.addEventListener('click', (event) => {
+                if (!cancelNextClick) {
+                    return;
+                }
+
+                if (!event.target.closest('a')) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                cancelNextClick = false;
+            }, true);
+
+            let ticking = false;
+            track.addEventListener('scroll', () => {
+                if (ticking) {
+                    return;
+                }
+                ticking = true;
+                window.requestAnimationFrame(() => {
+                    syncButtons();
+                    ticking = false;
+                });
+            }, { passive: true });
+
+            window.addEventListener('resize', syncButtons);
+            syncButtons();
+        });
+    }
+
+    function openGenrePopup() {
+        document.getElementById('genrePopup')?.classList.add('open');
+    }
+
+    function closeGenrePopup(event) {
+        if (event && event.target && event.target.id !== 'genrePopup') {
+            return;
+        }
+        document.getElementById('genrePopup')?.classList.remove('open');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeRecommendationRows();
+    });
+</script>
+</body>
+</html>

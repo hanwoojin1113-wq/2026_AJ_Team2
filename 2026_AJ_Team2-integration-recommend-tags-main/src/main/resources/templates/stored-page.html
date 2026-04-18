@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나중에 볼래요 | CineMatch</title>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <style>
+        :root {
+            --blue: #0048FF;
+            --blue-soft: #EEF2FF;
+            --bg: #F7F8FC;
+            --surface: #FFFFFF;
+            --text: #0F172A;
+            --text-hint: #94A3B8;
+            --border: rgba(15,23,42,0.08);
+            --shadow-sm: 0 2px 8px rgba(0,72,255,0.06);
+            --shadow-lg: 0 20px 48px rgba(0,72,255,0.14);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Pretendard', 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            height: 64px;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+        .back-btn, .logout-btn {
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        .back-btn { color: var(--blue); }
+        .navbar-right { display: flex; align-items: center; gap: 12px; }
+        .user-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: var(--blue-soft);
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--blue);
+            text-decoration: none;
+        }
+        .logout-btn {
+            color: white;
+            background: var(--text);
+            padding: 8px 18px;
+            border-radius: 999px;
+        }
+        .page {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+        .hero {
+            margin-bottom: 28px;
+            padding: 34px;
+            border-radius: 28px;
+            background: linear-gradient(135deg, #0048FF 0%, #2563EB 60%, #0EA5E9 100%);
+            color: white;
+        }
+        .hero p {
+            opacity: 0.78;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .hero h1 {
+            font-size: clamp(2rem, 4vw, 2.8rem);
+            line-height: 1.1;
+            letter-spacing: -0.04em;
+            margin-bottom: 8px;
+        }
+        .hero span { color: rgba(255,255,255,0.82); }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 20px;
+        }
+        .movie-card {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            border-radius: 18px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .movie-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-lg);
+            border-color: rgba(0,72,255,0.24);
+        }
+        .poster-wrap {
+            aspect-ratio: 2/3;
+            overflow: hidden;
+            background: linear-gradient(135deg, #EEF2FF, #DBEAFE);
+        }
+        .poster {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .poster-fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 16px;
+            color: var(--blue);
+            font-size: 0.84rem;
+            font-weight: 800;
+        }
+        .card-body {
+            padding: 13px 14px 15px;
+        }
+        .card-title {
+            font-size: 0.92rem;
+            font-weight: 800;
+            line-height: 1.4;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .card-sub {
+            font-size: 0.78rem;
+            color: var(--text-hint);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .empty {
+            padding: 52px;
+            text-align: center;
+            color: var(--text-hint);
+            border: 1px dashed rgba(0,72,255,0.2);
+            border-radius: 20px;
+            background: rgba(255,255,255,0.7);
+        }
+        @media (max-width: 640px) {
+            .navbar { padding: 0 16px; }
+            .page { padding: 24px 16px 56px; }
+            .hero { padding: 24px; }
+            .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <a class="back-btn" th:href="@{/mypage}">MyPage로 돌아가기</a>
+    <div class="navbar-right">
+        <a class="user-badge" th:href="@{/mypage}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+            </svg>
+            <span th:text="${loginUserNickname}">nickname</span>
+        </a>
+        <a class="logout-btn" th:href="@{/logout}">로그아웃</a>
+    </div>
+</nav>
+
+<main class="page">
+    <section class="hero">
+        <p>Later List</p>
+        <h1>나중에 볼래요</h1>
+        <span th:text="|${loginUserNickname}님이 저장해둔 영화 목록|">저장 목록</span>
+    </section>
+
+    <section class="grid" th:if="${!#lists.isEmpty(laterMovies)}">
+        <a class="movie-card" th:each="movie : ${laterMovies}" th:href="@{|/movies/${movie.movieCode}|}">
+            <div class="poster-wrap">
+                <img class="poster"
+                     th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                     th:src="${movie.posterImageUrl}"
+                     th:alt="${movie.movieName}">
+                <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                    <span th:text="${movie.movieName}">영화 제목</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="card-title" th:text="${movie.movieName}">영화 제목</p>
+                <p class="card-sub" th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">movie</p>
+            </div>
+        </a>
+    </section>
+
+    <div class="empty" th:if="${#lists.isEmpty(laterMovies)}">
+        아직 나중에 볼래요 한 영화가 없습니다.
+    </div>
+</main>
+</body>
+</html>
