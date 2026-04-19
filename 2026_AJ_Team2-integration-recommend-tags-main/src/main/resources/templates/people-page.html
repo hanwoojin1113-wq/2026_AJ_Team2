@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineMatch | People</title>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <style>
+        :root {
+            --bg: #060d18;
+            --surface: rgba(12, 19, 32, 0.94);
+            --surface-soft: rgba(255, 255, 255, 0.05);
+            --border: rgba(148, 163, 184, 0.16);
+            --text: #f8fafc;
+            --sub: #9fb0c7;
+            --blue: #3b82f6;
+            --blue-soft: rgba(59, 130, 246, 0.15);
+            --shadow: 0 28px 60px rgba(2, 6, 23, 0.42);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Pretendard, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.22), transparent 26%),
+                linear-gradient(180deg, #06101a 0%, #08111f 48%, #0b1627 100%);
+        }
+
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 18px 24px;
+            background: rgba(6, 11, 20, 0.88);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+            backdrop-filter: blur(18px);
+        }
+
+        .nav a {
+            text-decoration: none;
+            color: #fff;
+            font-weight: 800;
+        }
+
+        .nav-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .pill {
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .logout {
+            background: #fff;
+            color: #0f172a !important;
+        }
+
+        .page {
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 28px 20px 56px;
+        }
+
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px;
+            flex-wrap: wrap;
+            padding: 28px;
+            border-radius: 28px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.92), rgba(56, 189, 248, 0.76), rgba(10, 18, 34, 0.96));
+            box-shadow: var(--shadow);
+        }
+
+        .profile-summary {
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+        }
+
+        .avatar {
+            width: 92px;
+            height: 92px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.16);
+            box-shadow: 0 14px 34px rgba(2, 6, 23, 0.28);
+            flex: 0 0 auto;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .avatar-fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 900;
+            color: #eff6ff;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.96), rgba(56, 189, 248, 0.76));
+        }
+
+        .profile-copy p {
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+
+        .profile-copy h1 {
+            margin-top: 8px;
+            font-size: clamp(2rem, 4vw, 3rem);
+            letter-spacing: -0.04em;
+        }
+
+        .profile-copy span {
+            display: block;
+            margin-top: 10px;
+            color: rgba(255, 255, 255, 0.82);
+            line-height: 1.65;
+        }
+
+        .stats {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+        }
+
+        .stat-link {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 132px;
+            padding: 12px 14px;
+            border-radius: 18px;
+            text-decoration: none;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+
+        .stat-link.active {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .stat-count {
+            font-size: 1.08rem;
+            font-weight: 900;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.74);
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 44px;
+            padding: 0 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(12, 19, 32, 0.34);
+            color: #fff;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .action-btn.primary {
+            background: rgba(255, 255, 255, 0.92);
+            color: #0f172a;
+            border-color: rgba(255, 255, 255, 0.92);
+        }
+
+        .action-btn.self {
+            cursor: default;
+            background: rgba(12, 19, 32, 0.28);
+        }
+
+        .section {
+            margin-top: 24px;
+            padding: 22px;
+            border-radius: 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .section-head h2 {
+            font-size: 1.08rem;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+        }
+
+        .section-head p {
+            margin-top: 6px;
+            color: var(--sub);
+            line-height: 1.6;
+            font-size: 0.9rem;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 220px;
+            height: 48px;
+            padding: 0 16px;
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            font: inherit;
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: rgba(159, 176, 199, 0.64);
+        }
+
+        .search-submit {
+            height: 48px;
+            padding: 0 18px;
+            border: none;
+            border-radius: 14px;
+            background: #fff;
+            color: #0f172a;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 14px;
+        }
+
+        .user-card {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .user-main {
+            display: flex;
+            gap: 12px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .user-avatar {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.08);
+            flex: 0 0 auto;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .user-avatar-fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: #eff6ff;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.96), rgba(56, 189, 248, 0.76));
+        }
+
+        .user-copy {
+            min-width: 0;
+        }
+
+        .user-link {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .user-name {
+            font-weight: 900;
+            line-height: 1.35;
+        }
+
+        .user-id {
+            margin-top: 2px;
+            color: var(--sub);
+            font-size: 0.84rem;
+        }
+
+        .user-meta {
+            margin-top: 8px;
+            color: var(--sub);
+            font-size: 0.78rem;
+            line-height: 1.5;
+        }
+
+        .user-actions {
+            display: flex;
+            align-items: center;
+        }
+
+        .follow-btn {
+            min-width: 92px;
+            height: 40px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.14);
+            color: #fff;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .follow-btn.active {
+            background: #fff;
+            color: #0f172a;
+        }
+
+        .empty {
+            padding: 34px;
+            border-radius: 18px;
+            text-align: center;
+            color: var(--sub);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px dashed rgba(148, 163, 184, 0.18);
+        }
+
+        @media (max-width: 760px) {
+            .nav {
+                padding: 16px;
+            }
+
+            .page {
+                padding: 22px 16px 48px;
+            }
+
+            .hero {
+                padding: 22px;
+            }
+
+            .profile-summary {
+                width: 100%;
+            }
+
+            .hero-actions {
+                width: 100%;
+            }
+
+            .action-btn {
+                width: 100%;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<nav class="nav">
+    <a th:href="@{/charts}">CineMatch</a>
+    <div class="nav-right">
+        <a class="pill" th:href="@{/people}">People</a>
+        <a class="pill" th:href="@{/mypage}" th:text="${loginUserNickname}">nickname</a>
+        <a class="pill logout" th:href="@{/logout}">Logout</a>
+    </div>
+</nav>
+
+<main class="page">
+    <section class="hero">
+        <div class="profile-summary">
+            <div class="avatar">
+                <img th:if="${!#strings.isEmpty(targetUser.profileImageUrl)}" th:src="${targetUser.profileImageUrl}" th:alt="${targetUser.nickname}">
+                <div class="avatar-fallback" th:if="${#strings.isEmpty(targetUser.profileImageUrl)}" th:text="${#strings.substring(targetUser.nickname, 0, 1)}">C</div>
+            </div>
+            <div class="profile-copy">
+                <p>Social</p>
+                <h1 th:text="${targetUser.nickname}">nickname</h1>
+                <span th:text="|ID ${targetUser.loginId} · 팔로우 관계와 사용자 검색을 여기서 관리할 수 있어요.|">ID target · 팔로우 관계와 사용자 검색을 여기서 관리할 수 있어요.</span>
+                <div class="stats">
+                    <a class="stat-link" th:classappend="${selectedView == 'followers'} ? ' active' : ''"
+                       th:href="@{/people(user=${targetUser.loginId}, view='followers', query=${searchQuery})}">
+                        <span class="stat-count" th:text="${targetUser.followerCount}">0</span>
+                        <span class="stat-label">팔로워</span>
+                    </a>
+                    <a class="stat-link" th:classappend="${selectedView == 'following'} ? ' active' : ''"
+                       th:href="@{/people(user=${targetUser.loginId}, view='following', query=${searchQuery})}">
+                        <span class="stat-count" th:text="${targetUser.followingCount}">0</span>
+                        <span class="stat-label">팔로잉</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-actions">
+            <a class="action-btn" th:href="@{/mypage}" th:if="${targetUser.self}">마이페이지로 돌아가기</a>
+            <form th:if="${!targetUser.self and !targetUser.followedByCurrentUser}" th:action="@{/people/follow}" method="post">
+                <input type="hidden" name="loginId" th:value="${targetUser.loginId}">
+                <input type="hidden" name="redirectTo" th:value="@{/people(user=${targetUser.loginId}, view=${selectedView}, query=${searchQuery})}">
+                <button class="action-btn primary" type="submit">팔로우</button>
+            </form>
+            <form th:if="${!targetUser.self and targetUser.followedByCurrentUser}" th:action="@{/people/unfollow}" method="post">
+                <input type="hidden" name="loginId" th:value="${targetUser.loginId}">
+                <input type="hidden" name="redirectTo" th:value="@{/people(user=${targetUser.loginId}, view=${selectedView}, query=${searchQuery})}">
+                <button class="action-btn" type="submit">팔로잉</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="section-head">
+            <div>
+                <h2>사용자 검색</h2>
+                <p>로그인 ID 또는 닉네임 일부로 검색해서 바로 팔로우할 수 있습니다.</p>
+            </div>
+        </div>
+        <form class="search-form" th:action="@{/people}" method="get">
+            <input type="hidden" name="user" th:value="${targetUser.loginId}">
+            <input type="hidden" name="view" th:value="${selectedView}">
+            <input class="search-input" type="text" name="query" th:value="${searchQuery}" placeholder="testuser01, movieadmin, 닉네임 검색">
+            <button class="search-submit" type="submit">검색</button>
+        </form>
+    </section>
+
+    <section class="section">
+        <div class="section-head">
+            <div>
+                <h2 th:text="${searchSectionTitle}">검색 결과</h2>
+                <p th:text="${#strings.isEmpty(searchQuery) ? '검색어가 없으면 다른 사용자를 먼저 보여줍니다.' : '현재 검색어와 일치하는 사용자 목록입니다.'}">검색 결과 설명</p>
+            </div>
+        </div>
+        <div class="cards" th:if="${!#lists.isEmpty(searchResults)}">
+            <article class="user-card" th:each="userCard : ${searchResults}">
+                <div class="user-main">
+                    <a class="user-link" th:href="@{/people(user=${userCard.loginId}, view='followers')}">
+                        <div class="user-avatar">
+                            <img th:if="${!#strings.isEmpty(userCard.profileImageUrl)}" th:src="${userCard.profileImageUrl}" th:alt="${userCard.nickname}">
+                            <div class="user-avatar-fallback" th:if="${#strings.isEmpty(userCard.profileImageUrl)}" th:text="${#strings.substring(userCard.nickname, 0, 1)}">C</div>
+                        </div>
+                    </a>
+                    <div class="user-copy">
+                        <a class="user-link" th:href="@{/people(user=${userCard.loginId}, view='followers')}">
+                            <div class="user-name" th:text="${userCard.nickname}">nickname</div>
+                            <div class="user-id" th:text="|@${userCard.loginId}|">@loginId</div>
+                        </a>
+                        <div class="user-meta" th:text="|팔로워 ${userCard.followerCount} · 팔로잉 ${userCard.followingCount}|">팔로워 0 · 팔로잉 0</div>
+                    </div>
+                </div>
+                <div class="user-actions">
+                    <form th:if="${!userCard.followingByCurrentUser}" th:action="@{/people/follow}" method="post">
+                        <input type="hidden" name="loginId" th:value="${userCard.loginId}">
+                        <input type="hidden" name="redirectTo" th:value="@{/people(user=${targetUser.loginId}, view=${selectedView}, query=${searchQuery})}">
+                        <button class="follow-btn active" type="submit">팔로우</button>
+                    </form>
+                    <form th:if="${userCard.followingByCurrentUser}" th:action="@{/people/unfollow}" method="post">
+                        <input type="hidden" name="loginId" th:value="${userCard.loginId}">
+                        <input type="hidden" name="redirectTo" th:value="@{/people(user=${targetUser.loginId}, view=${selectedView}, query=${searchQuery})}">
+                        <button class="follow-btn" type="submit">팔로잉</button>
+                    </form>
+                </div>
+            </article>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(searchResults)}">표시할 검색 결과가 없습니다.</div>
+    </section>
+
+    <section class="section">
+        <div class="section-head">
+            <div>
+                <h2 th:text="${relationshipTitle + ' 목록'}">팔로워 목록</h2>
+                <p th:text="|${targetUser.nickname} 사용자의 ${relationshipTitle} 목록입니다.|">관계 목록</p>
+            </div>
+        </div>
+        <div class="cards" th:if="${!#lists.isEmpty(relationshipUsers)}">
+            <article class="user-card" th:each="userCard : ${relationshipUsers}">
+                <div class="user-main">
+                    <a class="user-link" th:href="@{/people(user=${userCard.loginId}, view='followers')}">
+                        <div class="user-avatar">
+                            <img th:if="${!#strings.isEmpty(userCard.profileImageUrl)}" th:src="${userCard.profileImageUrl}" th:alt="${userCard.nickname}">
+                            <div class="user-avatar-fallback" th:if="${#strings.isEmpty(userCard.profileImageUrl)}" th:text="${#strings.substring(userCard.nickname, 0, 1)}">C</div>
+                        </div>
+                    </a>
+                    <div class="user-copy">
+                        <a class="user-link" th:href="@{/people(user=${userCard.loginId}, view='followers')}">
+                            <div class="user-name" th:text="${userCard.nickname}">nickname</div>
+                            <div class="user-id" th:text="|@${userCard.loginId}|">@loginId</div>
+                        </a>
+                        <div class="user-meta" th:text="|팔로워 ${userCard.followerCount} · 팔로잉 ${userCard.followingCount}|">팔로워 0 · 팔로잉 0</div>
+                    </div>
+                </div>
+                <div class="user-actions">
+                    <form th:if="${!userCard.followingByCurrentUser}" th:action="@{/people/follow}" method="post">
+                        <input type="hidden" name="loginId" th:value="${userCard.loginId}">
+                        <input type="hidden" name="redirectTo" th:value="@{/people(user=${targetUser.loginId}, view=${selectedView}, query=${searchQuery})}">
+                        <button class="follow-btn active" type="submit">팔로우</button>
+                    </form>
+                    <form th:if="${userCard.followingByCurrentUser}" th:action="@{/people/unfollow}" method="post">
+                        <input type="hidden" name="loginId" th:value="${userCard.loginId}">
+                        <input type="hidden" name="redirectTo" th:value="@{/people(user=${targetUser.loginId}, view=${selectedView}, query=${searchQuery})}">
+                        <button class="follow-btn" type="submit">팔로잉</button>
+                    </form>
+                </div>
+            </article>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(relationshipUsers)}">표시할 관계 목록이 아직 없습니다.</div>
+    </section>
+</main>
+</body>
+</html>

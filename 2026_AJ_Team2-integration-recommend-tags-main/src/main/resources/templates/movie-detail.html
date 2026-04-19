@@ -16,10 +16,12 @@
                 radial-gradient(circle at left center, rgba(37,99,235,.12), transparent 28%),
                 linear-gradient(180deg,#050b14 0%,#09111d 48%,#0b1322 100%);
         }
+        body.modal-open { overflow:hidden; }
         .nav { display:flex; justify-content:space-between; align-items:center; padding:18px 24px; border-bottom:1px solid rgba(148,163,184,.12); background:rgba(6,11,20,.86); position:sticky; top:0; backdrop-filter:blur(16px); z-index:20; }
         .nav a { color:#fff; text-decoration:none; font-weight:800; }
         .nav-right { display:flex; gap:12px; align-items:center; }
-        .pill { padding:10px 14px; border-radius:999px; background:rgba(255,255,255,.08); }
+        .pill, .pill-button { padding:10px 14px; border-radius:999px; background:rgba(255,255,255,.08); }
+        .pill-button { border:none; color:#fff; font:inherit; font-weight:800; cursor:pointer; }
         .logout { background:#fff; color:#0f172a !important; }
         .page { max-width:1320px; margin:0 auto; padding:32px 20px 64px; }
         .hero {
@@ -158,6 +160,29 @@
         .meta-list { display:grid; gap:10px; }
         .meta-item { border-radius:16px; color:#d9e5f3; }
         .empty { color:#b2c0d3; font-size:.9rem; }
+        .social-modal-backdrop { position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(2,6,23,.76); backdrop-filter:blur(12px); opacity:0; pointer-events:none; transition:opacity .18s ease; }
+        .social-modal-backdrop.open { opacity:1; pointer-events:auto; }
+        .social-modal-card { width:min(520px,100%); max-height:min(82vh,760px); display:flex; flex-direction:column; padding:20px; border-radius:28px; background:linear-gradient(180deg, rgba(10,17,30,.98), rgba(13,22,39,.98)); border:1px solid rgba(148,163,184,.16); box-shadow:0 32px 70px rgba(2,6,23,.5); }
+        .social-modal-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px; }
+        .social-modal-title { font-size:1.06rem; font-weight:900; letter-spacing:-.02em; }
+        .social-close { width:42px; height:42px; border:none; border-radius:50%; background:rgba(255,255,255,.08); color:#fff; font-size:1.4rem; cursor:pointer; }
+        .social-search { width:100%; height:44px; padding:0 14px; border-radius:14px; border:1px solid rgba(148,163,184,.14); background:rgba(255,255,255,.06); color:#fff; font:inherit; outline:none; }
+        .social-search::placeholder { color:rgba(203,213,225,.58); }
+        .social-modal-body { margin-top:14px; overflow:auto; display:grid; gap:10px; }
+        .social-user-card { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border-radius:18px; background:rgba(255,255,255,.04); border:1px solid rgba(148,163,184,.1); }
+        .social-user-main { display:flex; align-items:center; gap:12px; min-width:0; }
+        .social-user-avatar { width:52px; height:52px; border-radius:50%; overflow:hidden; background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03)); flex:0 0 auto; }
+        .social-user-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+        .social-user-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+        .social-user-fallback svg { width:32px; height:32px; fill:#c4ccd7; }
+        .social-user-copy { min-width:0; }
+        .social-user-id { font-weight:800; }
+        .social-user-name { color:#cbd5e1; font-size:.8rem; margin-top:2px; }
+        .social-user-meta { color:#94a3b8; font-size:.76rem; margin-top:6px; }
+        .social-action-btn { min-width:92px; height:38px; padding:0 14px; border:none; border-radius:999px; background:rgba(255,255,255,.92); color:#0f172a; font:inherit; font-weight:800; cursor:pointer; }
+        .social-action-btn.following { background:rgba(255,255,255,.1); color:#fff; border:1px solid rgba(255,255,255,.12); }
+        .social-empty { display:none; padding:24px; border-radius:16px; text-align:center; color:#94a3b8; background:rgba(255,255,255,.03); border:1px dashed rgba(148,163,184,.18); }
+        .social-empty.visible { display:block; }
         @media (max-width:960px) { .hero { grid-template-columns:1fr; } .stats { grid-template-columns:repeat(3,minmax(0,1fr)); } .sections { grid-template-columns:1fr; } }
         @media (max-width:720px) { .row.two,.row.three,.stats { grid-template-columns:1fr; } }
     </style>
@@ -166,6 +191,7 @@
 <nav class="nav">
     <a th:href="@{/charts}">CineMatch</a>
     <div class="nav-right">
+        <button class="pill-button" type="button" data-social-open="suggested">People</button>
         <a class="pill" th:href="@{/mypage}" th:text="${loginUserNickname}">nickname</a>
         <a class="pill logout" th:href="@{/logout}">로그아웃</a>
     </div>
@@ -254,6 +280,47 @@
         <article class="card"><h3>심의 / 제작사</h3><div class="meta-list" th:if="${!#lists.isEmpty(audits) or !#lists.isEmpty(companies)}"><div class="meta-item" th:each="audit : ${audits}" th:text="${(audit.auditNo != null ? audit.auditNo : '심의번호 없음') + ' · ' + (audit.watchGradeName != null ? audit.watchGradeName : '등급 정보 없음')}">심의번호 · 12세 관람가</div><div class="meta-item" th:each="company : ${companies}" th:text="${company.name + ' · ' + (company.role != null ? company.role : '참여사')}">제작사 · 배급</div></div><p class="empty" th:if="${#lists.isEmpty(audits) and #lists.isEmpty(companies)}">추가 정보가 없습니다.</p></article>
     </section>
 </main>
+
+<div class="social-modal-backdrop" id="social-modal">
+    <div class="social-modal-card" role="dialog" aria-modal="true" aria-labelledby="social-modal-title">
+        <div class="social-modal-head">
+            <div class="social-modal-title" id="social-modal-title">추천 친구</div>
+            <button class="social-close" type="button" id="social-modal-close" aria-label="닫기">×</button>
+        </div>
+        <input class="social-search" id="social-search-input" type="text" placeholder="검색">
+        <div class="social-modal-body" id="social-modal-body">
+            <article class="social-user-card"
+                     th:each="userCard : ${socialSuggestedUsers}"
+                     data-social-item
+                     data-social-keywords=""
+                     th:attr="data-social-keywords=${(userCard.loginId + ' ' + userCard.nickname)}">
+                <div class="social-user-main">
+                    <div class="social-user-avatar">
+                        <img th:if="${!#strings.isEmpty(userCard.profileImageUrl)}" th:src="${userCard.profileImageUrl}" th:alt="${userCard.nickname}">
+                        <div class="social-user-fallback" th:if="${#strings.isEmpty(userCard.profileImageUrl)}">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 12.2c2.6 0 4.6-2 4.6-4.5S14.6 3.2 12 3.2 7.4 5.2 7.4 7.7s2 4.5 4.6 4.5Zm0 2.3c-4.1 0-7.5 2.4-8.3 5.8-.1.5.2.9.7.9h15.2c.5 0 .8-.4.7-.9-.8-3.4-4.2-5.8-8.3-5.8Z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="social-user-copy">
+                        <div class="social-user-id" th:text="${userCard.loginId}">testuser01</div>
+                        <div class="social-user-name" th:text="${userCard.nickname}">nickname</div>
+                        <div class="social-user-meta" th:text="|팔로워 ${userCard.followerCount} · 팔로잉 ${userCard.followingCount}|">팔로워 0 · 팔로잉 0</div>
+                    </div>
+                </div>
+                <button class="social-action-btn"
+                        type="button"
+                        data-follow-toggle
+                        th:classappend="${userCard.followingByCurrentUser} ? ' following' : ''"
+                        th:attr="data-login-id=${userCard.loginId},data-following=${userCard.followingByCurrentUser}">
+                    <span th:text="${userCard.followingByCurrentUser ? '팔로잉' : '팔로우'}">팔로우</span>
+                </button>
+            </article>
+            <div class="social-empty" id="social-empty">표시할 추천 친구가 없습니다.</div>
+        </div>
+    </div>
+</div>
 
 <script th:inline="javascript">
     const movieCode = [[${movie.movieCode}]];
@@ -369,6 +436,86 @@
     });
 
     document.getElementById('rating-stars').addEventListener('mouseleave', () => paintStars(movieState.rating || 0));
+    const socialModal = document.getElementById('social-modal');
+    const socialSearchInput = document.getElementById('social-search-input');
+    const socialCloseButton = document.getElementById('social-modal-close');
+
+    const filterSocialCards = () => {
+        if (!socialModal || !socialSearchInput) {
+            return;
+        }
+        const keyword = (socialSearchInput.value || '').trim().toLowerCase();
+        const cards = [...socialModal.querySelectorAll('[data-social-item]')];
+        let visibleCount = 0;
+        cards.forEach((card) => {
+            const haystack = (card.dataset.socialKeywords || '').toLowerCase();
+            const visible = !keyword || haystack.includes(keyword);
+            card.style.display = visible ? 'flex' : 'none';
+            if (visible) {
+                visibleCount += 1;
+            }
+        });
+        socialModal.querySelector('#social-empty')?.classList.toggle('visible', visibleCount === 0);
+    };
+
+    const setSocialOpen = (open) => {
+        socialModal?.classList.toggle('open', open);
+        document.body.classList.toggle('modal-open', open);
+        if (!open && socialSearchInput) {
+            socialSearchInput.value = '';
+            filterSocialCards();
+        }
+    };
+
+    document.querySelectorAll('[data-social-open="suggested"]').forEach((trigger) => {
+        trigger.addEventListener('click', () => setSocialOpen(true));
+    });
+    socialCloseButton?.addEventListener('click', () => setSocialOpen(false));
+    socialModal?.addEventListener('click', (event) => {
+        if (event.target === socialModal) {
+            setSocialOpen(false);
+        }
+    });
+    socialSearchInput?.addEventListener('input', filterSocialCards);
+
+    document.addEventListener('click', async (event) => {
+        const followButton = event.target.closest('[data-follow-toggle]');
+        if (!followButton || !socialModal?.contains(followButton)) {
+            return;
+        }
+        const loginId = followButton.dataset.loginId;
+        const following = followButton.dataset.following === 'true';
+        const endpoint = following ? '/api/people/unfollow' : '/api/people/follow';
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: `loginId=${encodeURIComponent(loginId)}`
+        });
+        if (!response.ok) {
+            alert('팔로우 상태를 변경하지 못했습니다.');
+            return;
+        }
+        const payload = await response.json();
+        socialModal.querySelectorAll(`[data-follow-toggle][data-login-id="${payload.loginId}"]`).forEach((button) => {
+            const isFollowing = !!payload.followingByCurrentUser;
+            button.dataset.following = String(isFollowing);
+            button.classList.toggle('following', isFollowing);
+            const label = button.querySelector('span');
+            if (label) {
+                label.textContent = isFollowing ? '팔로잉' : '팔로우';
+            }
+        });
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && socialModal?.classList.contains('open')) {
+            setSocialOpen(false);
+        }
+    });
+    filterSocialCards();
     updateState(movieState);
 </script>
 </body>

@@ -5,6 +5,8 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,7 @@ public class MovieController {
     private static final int PAGE_SIZE = 10;
     private static final int HOME_BLOCK_ITEM_LIMIT = 10;
     private static final int LIFE_MOVIE_LIMIT = 10;
+    private static final int SOCIAL_PAGE_LIMIT = 24;
     private static final Map<String, String> TAG_TYPE_LABELS = Map.of(
             "MOOD", "분위기",
             "CONTEXT", "추천 상황",
@@ -306,7 +309,7 @@ public class MovieController {
         initializeActivityTables();
         Long userId = getCurrentUserId(session);
         UserProfileView userProfile = jdbcTemplate.query("""
-                SELECT login_id, nickname, gender, age
+                SELECT login_id, nickname, gender, age, profile_image_url
                 FROM "USER"
                 WHERE login_id = ?
                 """, rs -> rs.next()
@@ -314,7 +317,8 @@ public class MovieController {
                         rs.getString("login_id"),
                         rs.getString("nickname"),
                         rs.getString("gender"),
-                        rs.getInt("age"))
+                        rs.getInt("age"),
+                        rs.getString("profile_image_url"))
                 : null, session.getAttribute(LOGIN_SESSION_KEY));
 
         if (userProfile == null) {
@@ -323,8 +327,14 @@ public class MovieController {
         }
 
         int lifeMovieCount = countLifeMovies(userId);
+        long followerCount = countFollowers(userId);
+        long followingCount = countFollowing(userId);
         addCurrentUserAttributes(model, session);
         model.addAttribute("userProfile", userProfile);
+        model.addAttribute("followerCount", followerCount);
+        model.addAttribute("followingCount", followingCount);
+        model.addAttribute("socialFollowerUsers", fetchFollowerUsers(userId, userId, SOCIAL_PAGE_LIMIT));
+        model.addAttribute("socialFollowingUsers", fetchFollowingUsers(userId, userId, SOCIAL_PAGE_LIMIT));
         model.addAttribute("lifeMovies", fetchLifeMovies(userId, LIFE_MOVIE_LIMIT));
         model.addAttribute("lifeMovieCount", lifeMovieCount);
         model.addAttribute("likedMovies", fetchLikedMovies(userId, 12));
@@ -344,6 +354,42 @@ public class MovieController {
         model.addAttribute("lifeSelectionSlots", Math.max(0, LIFE_MOVIE_LIMIT - lifeMovieCount));
         model.addAttribute("lifePickerCandidates", fetchLifeMovieSearchResults(userId));
         return "my-page";
+    }
+
+    @GetMapping("/people")
+    public String peoplePage(@RequestParam(required = false) String user,
+                             @RequestParam(required = false) String query,
+                             @RequestParam(required = false, defaultValue = "followers") String view,
+                             Model model, HttpSession session) {
+        if (!isLoggedIn(session)) {
+            return "redirect:/login";
+        }
+
+        initializeActivityTables();
+        Long currentUserId = getCurrentUserId(session);
+        String currentLoginId = (String) session.getAttribute(LOGIN_SESSION_KEY);
+        String targetLoginId = (user == null || user.isBlank()) ? currentLoginId : user.trim();
+        String normalizedView = normalizePeopleView(view);
+        String normalizedQuery = query == null ? "" : query.trim();
+
+        SocialProfileView targetUser = fetchSocialProfile(targetLoginId, currentUserId);
+        if (targetUser == null) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+
+        addCurrentUserAttributes(model, session);
+        model.addAttribute("targetUser", targetUser);
+        model.addAttribute("selectedView", normalizedView);
+        model.addAttribute("searchQuery", normalizedQuery);
+        model.addAttribute("searchResults", normalizedQuery.isBlank()
+                ? fetchSuggestedUsers(currentUserId, targetUser.userId(), SOCIAL_PAGE_LIMIT)
+                : searchUsers(currentUserId, normalizedQuery, SOCIAL_PAGE_LIMIT));
+        model.addAttribute("relationshipUsers", "following".equals(normalizedView)
+                ? fetchFollowingUsers(targetUser.userId(), currentUserId, SOCIAL_PAGE_LIMIT)
+                : fetchFollowerUsers(targetUser.userId(), currentUserId, SOCIAL_PAGE_LIMIT));
+        model.addAttribute("relationshipTitle", "following".equals(normalizedView) ? "팔로잉" : "팔로워");
+        model.addAttribute("searchSectionTitle", normalizedQuery.isBlank() ? "추천할 만한 사용자" : "검색 결과");
+        return "people-page";
     }
 
     @GetMapping("/stored")
@@ -656,6 +702,51 @@ public class MovieController {
         return buildMovieActionPayload(userId, movieId);
     }
 
+    @PostMapping("/api/people/follow")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> followUserApi(@RequestParam String loginId, HttpSession session) {
+        Long currentUserId = requireCurrentUserId(session);
+        initializeSocialTables();
+        Long targetUserId = findUserIdByLoginId(loginId);
+        if (targetUserId == null) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+        if (currentUserId.equals(targetUserId)) {
+            throw new ResponseStatusException(BAD_REQUEST, "자기 자신은 팔로우할 수 없습니다.");
+        }
+
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM user_follow
+                WHERE follower_user_id = ? AND following_user_id = ?
+                """, Integer.class, currentUserId, targetUserId);
+        if (count == null || count == 0) {
+            jdbcTemplate.update("""
+                    INSERT INTO user_follow (follower_user_id, following_user_id)
+                    VALUES (?, ?)
+                    """, currentUserId, targetUserId);
+        }
+        return buildSocialActionPayload(currentUserId, targetUserId, loginId);
+    }
+
+    @PostMapping("/api/people/unfollow")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> unfollowUserApi(@RequestParam String loginId, HttpSession session) {
+        Long currentUserId = requireCurrentUserId(session);
+        initializeSocialTables();
+        Long targetUserId = findUserIdByLoginId(loginId);
+        if (targetUserId == null) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+        jdbcTemplate.update("""
+                DELETE FROM user_follow
+                WHERE follower_user_id = ? AND following_user_id = ?
+                """, currentUserId, targetUserId);
+        return buildSocialActionPayload(currentUserId, targetUserId, loginId);
+    }
+
     @PostMapping("/mypage/life")
     @Transactional
     public String addLifeMovie(@RequestParam String movieCode, HttpSession session) {
@@ -679,6 +770,72 @@ public class MovieController {
                 WHERE user_id = ? AND movie_id = ?
                 """, getCurrentUserId(session), findMovieId(movieCode));
         recommendationRefreshStateService.markDirty(getCurrentUserId(session));
+        return "redirect:/mypage";
+    }
+
+    @PostMapping("/people/follow")
+    @Transactional
+    public String followUser(@RequestParam String loginId,
+                             @RequestParam(required = false) String redirectTo,
+                             HttpSession session) {
+        Long currentUserId = requireCurrentUserId(session);
+        initializeSocialTables();
+        Long targetUserId = findUserIdByLoginId(loginId);
+        if (targetUserId == null) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+        if (!currentUserId.equals(targetUserId)) {
+            Integer count = jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*)
+                    FROM user_follow
+                    WHERE follower_user_id = ? AND following_user_id = ?
+                    """, Integer.class, currentUserId, targetUserId);
+            if (count == null || count == 0) {
+                jdbcTemplate.update("""
+                        INSERT INTO user_follow (follower_user_id, following_user_id)
+                        VALUES (?, ?)
+                        """, currentUserId, targetUserId);
+            }
+        }
+        return "redirect:" + sanitizeRedirectPath(redirectTo, "/people?user=" + encodeQueryParam(loginId));
+    }
+
+    @PostMapping("/people/unfollow")
+    @Transactional
+    public String unfollowUser(@RequestParam String loginId,
+                               @RequestParam(required = false) String redirectTo,
+                               HttpSession session) {
+        Long currentUserId = requireCurrentUserId(session);
+        initializeSocialTables();
+        Long targetUserId = findUserIdByLoginId(loginId);
+        if (targetUserId == null) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+        jdbcTemplate.update("""
+                DELETE FROM user_follow
+                WHERE follower_user_id = ? AND following_user_id = ?
+                """, currentUserId, targetUserId);
+        return "redirect:" + sanitizeRedirectPath(redirectTo, "/people?user=" + encodeQueryParam(loginId));
+    }
+
+    @PostMapping("/mypage/profile-image")
+    @Transactional
+    public String updateProfileImage(@RequestParam(required = false) String profileImageUrl,
+                                     HttpSession session) {
+        Long userId = requireCurrentUserId(session);
+        initializeSocialTables();
+        String normalizedUrl = profileImageUrl == null ? null : profileImageUrl.trim();
+        if (normalizedUrl != null && normalizedUrl.isBlank()) {
+            normalizedUrl = null;
+        }
+        if (normalizedUrl != null && normalizedUrl.length() > 500) {
+            throw new ResponseStatusException(BAD_REQUEST, "프로필 이미지 주소가 너무 깁니다.");
+        }
+        jdbcTemplate.update("""
+                UPDATE "USER"
+                SET profile_image_url = ?
+                WHERE id = ?
+                """, normalizedUrl, userId);
         return "redirect:/mypage";
     }
 
@@ -712,8 +869,14 @@ public class MovieController {
     }
 
     private void addCurrentUserAttributes(Model model, HttpSession session) {
+        initializeSocialTables();
         model.addAttribute("loginUserId", session.getAttribute(LOGIN_SESSION_KEY));
         model.addAttribute("loginUserNickname", session.getAttribute(LOGIN_NICKNAME_SESSION_KEY));
+        model.addAttribute("loginUserProfileImageUrl", fetchCurrentUserProfileImageUrl(session));
+        if (isLoggedIn(session)) {
+            Long currentUserId = getCurrentUserId(session);
+            model.addAttribute("socialSuggestedUsers", fetchSuggestedUsers(currentUserId, currentUserId, SOCIAL_PAGE_LIMIT));
+        }
     }
 
     private Long requireCurrentUserId(HttpSession session) {
@@ -726,6 +889,7 @@ public class MovieController {
     private void initializeActivityTables() {
         initializeWatchedTable();
         initializeCollectionTable();
+        initializeSocialTables();
     }
 
     private void initializeWatchedTable() {
@@ -767,6 +931,269 @@ public class MovieController {
                     CONSTRAINT fk_user_movie_collection_movie FOREIGN KEY (movie_id) REFERENCES movie(id)
                 )
                 """);
+    }
+
+    private void initializeSocialTables() {
+        jdbcTemplate.execute("""
+                ALTER TABLE "USER"
+                ADD COLUMN IF NOT EXISTS profile_image_url VARCHAR(500)
+                """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS user_follow (
+                    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    follower_user_id BIGINT NOT NULL,
+                    following_user_id BIGINT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_user_follow_follower FOREIGN KEY (follower_user_id) REFERENCES "USER"(id),
+                    CONSTRAINT fk_user_follow_following FOREIGN KEY (following_user_id) REFERENCES "USER"(id),
+                    CONSTRAINT uk_user_follow_pair UNIQUE (follower_user_id, following_user_id),
+                    CONSTRAINT ck_user_follow_self CHECK (follower_user_id <> following_user_id)
+                )
+                """);
+        jdbcTemplate.execute("""
+                CREATE INDEX IF NOT EXISTS idx_user_follow_follower
+                ON user_follow (follower_user_id, created_at)
+                """);
+        jdbcTemplate.execute("""
+                CREATE INDEX IF NOT EXISTS idx_user_follow_following
+                ON user_follow (following_user_id, created_at)
+                """);
+    }
+
+    private String fetchCurrentUserProfileImageUrl(HttpSession session) {
+        Object loginId = session.getAttribute(LOGIN_SESSION_KEY);
+        if (!(loginId instanceof String currentLoginId) || currentLoginId.isBlank()) {
+            return null;
+        }
+        return jdbcTemplate.query("""
+                SELECT profile_image_url
+                FROM "USER"
+                WHERE login_id = ?
+                """, rs -> rs.next() ? rs.getString("profile_image_url") : null, currentLoginId);
+    }
+
+    private Long findUserIdByLoginId(String loginId) {
+        return jdbcTemplate.query("""
+                SELECT id
+                FROM "USER"
+                WHERE login_id = ?
+                """, rs -> rs.next() ? rs.getLong("id") : null, loginId);
+    }
+
+    private long countFollowers(Long userId) {
+        Long count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM user_follow
+                WHERE following_user_id = ?
+                """, Long.class, userId);
+        return count == null ? 0L : count;
+    }
+
+    private long countFollowing(Long userId) {
+        Long count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM user_follow
+                WHERE follower_user_id = ?
+                """, Long.class, userId);
+        return count == null ? 0L : count;
+    }
+
+    private String normalizePeopleView(String view) {
+        if ("following".equalsIgnoreCase(view)) {
+            return "following";
+        }
+        return "followers";
+    }
+
+    private SocialProfileView fetchSocialProfile(String loginId, Long currentUserId) {
+        return jdbcTemplate.query("""
+                SELECT
+                    u.id,
+                    u.login_id,
+                    u.nickname,
+                    u.profile_image_url,
+                    (SELECT COUNT(*) FROM user_follow uf WHERE uf.following_user_id = u.id) AS follower_count,
+                    (SELECT COUNT(*) FROM user_follow uf WHERE uf.follower_user_id = u.id) AS following_count,
+                    EXISTS(
+                        SELECT 1
+                        FROM user_follow uf
+                        WHERE uf.follower_user_id = ?
+                          AND uf.following_user_id = u.id
+                    ) AS followed_by_current_user
+                FROM "USER" u
+                WHERE u.login_id = ?
+                """, rs -> rs.next()
+                ? new SocialProfileView(
+                        rs.getLong("id"),
+                        rs.getString("login_id"),
+                        rs.getString("nickname"),
+                        rs.getString("profile_image_url"),
+                        rs.getLong("follower_count"),
+                        rs.getLong("following_count"),
+                        rs.getBoolean("followed_by_current_user"),
+                        rs.getLong("id") == currentUserId
+                )
+                : null, currentUserId, loginId);
+    }
+
+    private List<SocialUserCardView> searchUsers(Long currentUserId, String query, int limit) {
+        String pattern = "%" + query + "%";
+        return jdbcTemplate.query("""
+                SELECT
+                    u.id,
+                    u.login_id,
+                    u.nickname,
+                    u.profile_image_url,
+                    (SELECT COUNT(*) FROM user_follow uf WHERE uf.following_user_id = u.id) AS follower_count,
+                    (SELECT COUNT(*) FROM user_follow uf WHERE uf.follower_user_id = u.id) AS following_count,
+                    EXISTS(
+                        SELECT 1
+                        FROM user_follow uf
+                        WHERE uf.follower_user_id = ?
+                          AND uf.following_user_id = u.id
+                    ) AS followed_by_current_user
+                FROM "USER" u
+                WHERE u.id <> ?
+                  AND (
+                        UPPER(u.login_id) LIKE UPPER(?)
+                        OR UPPER(u.nickname) LIKE UPPER(?)
+                  )
+                ORDER BY
+                    CASE
+                        WHEN UPPER(u.login_id) = UPPER(?) THEN 0
+                        WHEN UPPER(u.login_id) LIKE UPPER(?) THEN 1
+                        ELSE 2
+                    END,
+                    u.login_id ASC
+                LIMIT ?
+                """, this::mapSocialUserCard,
+                currentUserId,
+                currentUserId,
+                pattern,
+                pattern,
+                query,
+                query + "%",
+                limit);
+    }
+
+    private List<SocialUserCardView> fetchSuggestedUsers(Long currentUserId, Long targetUserId, int limit) {
+        return jdbcTemplate.query("""
+                SELECT
+                    u.id,
+                    u.login_id,
+                    u.nickname,
+                    u.profile_image_url,
+                    (SELECT COUNT(*) FROM user_follow uf WHERE uf.following_user_id = u.id) AS follower_count,
+                    (SELECT COUNT(*) FROM user_follow uf WHERE uf.follower_user_id = u.id) AS following_count,
+                    EXISTS(
+                        SELECT 1
+                        FROM user_follow uf
+                        WHERE uf.follower_user_id = ?
+                          AND uf.following_user_id = u.id
+                    ) AS followed_by_current_user
+                FROM "USER" u
+                WHERE u.id <> ?
+                ORDER BY
+                    CASE WHEN u.id = ? THEN 0 ELSE 1 END,
+                    u.id DESC
+                LIMIT ?
+                """, this::mapSocialUserCard,
+                currentUserId,
+                currentUserId,
+                targetUserId,
+                limit);
+    }
+
+    private List<SocialUserCardView> fetchFollowerUsers(Long targetUserId, Long currentUserId, int limit) {
+        return jdbcTemplate.query("""
+                SELECT
+                    u.id,
+                    u.login_id,
+                    u.nickname,
+                    u.profile_image_url,
+                    (SELECT COUNT(*) FROM user_follow inner_uf WHERE inner_uf.following_user_id = u.id) AS follower_count,
+                    (SELECT COUNT(*) FROM user_follow inner_uf WHERE inner_uf.follower_user_id = u.id) AS following_count,
+                    EXISTS(
+                        SELECT 1
+                        FROM user_follow current_rel
+                        WHERE current_rel.follower_user_id = ?
+                          AND current_rel.following_user_id = u.id
+                    ) AS followed_by_current_user
+                FROM user_follow uf
+                JOIN "USER" u ON u.id = uf.follower_user_id
+                WHERE uf.following_user_id = ?
+                ORDER BY uf.created_at DESC, u.login_id ASC
+                LIMIT ?
+                """, this::mapSocialUserCard, currentUserId, targetUserId, limit);
+    }
+
+    private List<SocialUserCardView> fetchFollowingUsers(Long targetUserId, Long currentUserId, int limit) {
+        return jdbcTemplate.query("""
+                SELECT
+                    u.id,
+                    u.login_id,
+                    u.nickname,
+                    u.profile_image_url,
+                    (SELECT COUNT(*) FROM user_follow inner_uf WHERE inner_uf.following_user_id = u.id) AS follower_count,
+                    (SELECT COUNT(*) FROM user_follow inner_uf WHERE inner_uf.follower_user_id = u.id) AS following_count,
+                    EXISTS(
+                        SELECT 1
+                        FROM user_follow current_rel
+                        WHERE current_rel.follower_user_id = ?
+                          AND current_rel.following_user_id = u.id
+                    ) AS followed_by_current_user
+                FROM user_follow uf
+                JOIN "USER" u ON u.id = uf.following_user_id
+                WHERE uf.follower_user_id = ?
+                ORDER BY uf.created_at DESC, u.login_id ASC
+                LIMIT ?
+                """, this::mapSocialUserCard, currentUserId, targetUserId, limit);
+    }
+
+    private SocialUserCardView mapSocialUserCard(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        long userId = rs.getLong("id");
+        return new SocialUserCardView(
+                userId,
+                rs.getString("login_id"),
+                rs.getString("nickname"),
+                rs.getString("profile_image_url"),
+                rs.getLong("follower_count"),
+                rs.getLong("following_count"),
+                rs.getBoolean("followed_by_current_user"),
+                false
+        );
+    }
+
+    private String sanitizeRedirectPath(String redirectTo, String fallback) {
+        if (redirectTo == null || redirectTo.isBlank()) {
+            return fallback;
+        }
+        String normalized = redirectTo.trim();
+        if (!normalized.startsWith("/") || normalized.startsWith("//")) {
+            return fallback;
+        }
+        return normalized;
+    }
+
+    private String encodeQueryParam(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private Map<String, Object> buildSocialActionPayload(Long currentUserId, Long targetUserId, String targetLoginId) {
+        Integer followingCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM user_follow
+                WHERE follower_user_id = ? AND following_user_id = ?
+                """, Integer.class, currentUserId, targetUserId);
+        boolean following = followingCount != null && followingCount > 0;
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("loginId", targetLoginId);
+        payload.put("followingByCurrentUser", following);
+        payload.put("currentUserFollowerCount", countFollowers(currentUserId));
+        payload.put("currentUserFollowingCount", countFollowing(currentUserId));
+        payload.put("targetFollowerCount", countFollowers(targetUserId));
+        payload.put("targetFollowingCount", countFollowing(targetUserId));
+        return payload;
     }
 
     private void applyLikeState(Long userId, Long movieId, boolean liked) {
@@ -1342,7 +1769,31 @@ public class MovieController {
     public record TagFilterGroupView(String key, String label, List<TagChipView> tags) {
     }
 
-    public record UserProfileView(String loginId, String nickname, String gender, int age) {
+    public record UserProfileView(String loginId, String nickname, String gender, int age, String profileImageUrl) {
+    }
+
+    public record SocialProfileView(
+            Long userId,
+            String loginId,
+            String nickname,
+            String profileImageUrl,
+            long followerCount,
+            long followingCount,
+            boolean followedByCurrentUser,
+            boolean self
+    ) {
+    }
+
+    public record SocialUserCardView(
+            Long userId,
+            String loginId,
+            String nickname,
+            String profileImageUrl,
+            long followerCount,
+            long followingCount,
+            boolean followingByCurrentUser,
+            boolean self
+    ) {
     }
 
     public record LifeMovieSearchResultView(
