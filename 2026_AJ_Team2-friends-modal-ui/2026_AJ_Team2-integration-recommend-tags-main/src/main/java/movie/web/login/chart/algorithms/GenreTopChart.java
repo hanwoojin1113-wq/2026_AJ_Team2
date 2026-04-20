@@ -35,35 +35,39 @@ public class GenreTopChart extends AbstractJdbcChartAlgorithm {
          * display_order = 1 인 첫 번째 장르 기준으로만 대표 장르 뱃지를 표시한다.
          */
         return runQuery("""
-                SELECT
-                    movie_code,
-                    movie_name,
-                    movie_name_en,
-                    poster_image_url,
-                    open_date,
-                    production_year,
-                    genre_name,
-                    CAST(ROUND(raw_audi / 10000.0) AS VARCHAR) || '만 명' AS metric_value
+                SELECT movie_code, movie_name, movie_name_en, poster_image_url,
+                       open_date, production_year, genre_name, metric_value
                 FROM (
                     SELECT
-                        m.movie_cd                                          AS movie_code,
-                        COALESCE(m.title, m.movie_name)                    AS movie_name,
-                        COALESCE(m.movie_name_en, m.original_title)        AS movie_name_en,
-                        m.poster_image_url,
-                        COALESCE(m.release_date, m.box_office_open_date)   AS open_date,
-                        m.production_year,
-                        g.name                                             AS genre_name,
-                        m.box_office_audi_acc                              AS raw_audi,
+                        movie_code, movie_name, movie_name_en, poster_image_url,
+                        open_date, production_year, genre_name, raw_audi,
+                        CAST(ROUND(raw_audi / 10000.0) AS VARCHAR) || '만 명' AS metric_value,
                         ROW_NUMBER() OVER (
-                            PARTITION BY g.id
-                            ORDER BY m.box_office_audi_acc DESC
-                        ) AS rn
-                    FROM movie m
-                    JOIN movie_genre mg ON mg.movie_id = m.id
-                    JOIN genre g ON g.id = mg.genre_id
-                    WHERE m.box_office_audi_acc IS NOT NULL
-                ) ranked
-                WHERE rn = 1
+                            PARTITION BY movie_code
+                            ORDER BY raw_audi DESC
+                        ) AS movie_rn
+                    FROM (
+                        SELECT
+                            m.movie_cd                                          AS movie_code,
+                            COALESCE(m.title, m.movie_name)                    AS movie_name,
+                            COALESCE(m.movie_name_en, m.original_title)        AS movie_name_en,
+                            m.poster_image_url,
+                            COALESCE(m.release_date, m.box_office_open_date)   AS open_date,
+                            m.production_year,
+                            g.name                                             AS genre_name,
+                            m.box_office_audi_acc                              AS raw_audi,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY g.id
+                                ORDER BY m.box_office_audi_acc DESC
+                            ) AS rn
+                        FROM movie m
+                        JOIN movie_genre mg ON mg.movie_id = m.id
+                        JOIN genre g ON g.id = mg.genre_id
+                        WHERE m.box_office_audi_acc IS NOT NULL
+                    ) ranked
+                    WHERE rn = 1
+                ) deduped
+                WHERE movie_rn = 1
                 ORDER BY raw_audi DESC
                 """,
                 new Object[]{}, limit, "장르 1위 관객",

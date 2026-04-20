@@ -26,6 +26,9 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
+import movie.web.login.chart.ChartEntry;
+import movie.web.login.chart.ChartRegistry;
+import movie.web.login.chart.ChartSection;
 import movie.web.login.recommendation.RecommendationRefreshStateService;
 import movie.web.login.recommendation.RecommendationBlockService;
 import movie.web.login.recommendation.RecommendationMaintenanceService;
@@ -75,19 +78,24 @@ public class MovieController {
             Map.entry("revenge", "복수")
     );
 
+    private static final List<String> HOME_CHART_CODES = List.of("top-sales", "million-club", "flash-hit");
+
     private final JdbcTemplate jdbcTemplate;
     private final RecommendationRefreshStateService recommendationRefreshStateService;
     private final RecommendationMaintenanceService recommendationMaintenanceService;
     private final RecommendationBlockService recommendationBlockService;
+    private final ChartRegistry chartRegistry;
 
     public MovieController(JdbcTemplate jdbcTemplate,
                            RecommendationRefreshStateService recommendationRefreshStateService,
                            RecommendationMaintenanceService recommendationMaintenanceService,
-                           RecommendationBlockService recommendationBlockService) {
+                           RecommendationBlockService recommendationBlockService,
+                           ChartRegistry chartRegistry) {
         this.jdbcTemplate = jdbcTemplate;
         this.recommendationRefreshStateService = recommendationRefreshStateService;
         this.recommendationMaintenanceService = recommendationMaintenanceService;
         this.recommendationBlockService = recommendationBlockService;
+        this.chartRegistry = chartRegistry;
     }
 
     @GetMapping("/")
@@ -278,6 +286,7 @@ public class MovieController {
             model.addAttribute("pages", java.util.stream.IntStream.rangeClosed(1, totalPages).boxed().toList());
             model.addAttribute("recommendationBlocks", List.of());
             model.addAttribute("fallbackMovies", List.of());
+            model.addAttribute("homeChartSections", List.of());
         } else {
             Long userId = getCurrentUserId(session);
             recommendationMaintenanceService.ensureRecommendations(userId, 200);
@@ -295,6 +304,12 @@ public class MovieController {
             model.addAttribute("pages", List.of(1));
             model.addAttribute("recommendationBlocks", recommendationBlocks);
             model.addAttribute("fallbackMovies", recommendationBlocks.isEmpty() ? fetchPopularMovies(12) : List.of());
+
+            List<ChartSection> homeChartSections = HOME_CHART_CODES.stream()
+                    .flatMap(code -> chartRegistry.find(code).stream())
+                    .map(a -> new ChartSection(ChartEntry.of(a), a.fetch(10)))
+                    .toList();
+            model.addAttribute("homeChartSections", homeChartSections);
         }
         return "index";
     }

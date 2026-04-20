@@ -49,18 +49,20 @@ public class ChartController {
             HttpSession session
     ) {
         if (session.getAttribute("loginUserId") == null) return "redirect:/login";
-        // 카테고리 파싱 (유효하지 않은 값이면 null 처리해 전체 표시)
         ChartCategory selectedCategory = parseCategory(category);
 
-        List<ChartEntry> entries = selectedCategory == null
-                ? chartRegistry.allEntries()
-                : chartRegistry.entriesByCategory(selectedCategory);
+        List<ChartSection> sections = (selectedCategory == null
+                ? chartRegistry.allAlgorithms()
+                : chartRegistry.algorithmsByCategory(selectedCategory))
+                .stream()
+                .map(a -> new ChartSection(ChartEntry.of(a), a.fetch(10)))
+                .toList();
 
         model.addAttribute("loginUserNickname", session.getAttribute(SESSION_NICKNAME_KEY));
-        model.addAttribute("entries", entries);                        // 차트 카드 목록
-        model.addAttribute("categories", ChartCategory.values());     // 탭 필터용 전체 카테고리
-        model.addAttribute("selectedCategory", selectedCategory);     // 현재 선택된 카테고리
-        model.addAttribute("totalCount", chartRegistry.size());       // 전체 차트 수
+        model.addAttribute("sections", sections);
+        model.addAttribute("categories", ChartCategory.values());
+        model.addAttribute("selectedCategory", selectedCategory);
+        model.addAttribute("totalCount", chartRegistry.size());
 
         return "ranking";
     }

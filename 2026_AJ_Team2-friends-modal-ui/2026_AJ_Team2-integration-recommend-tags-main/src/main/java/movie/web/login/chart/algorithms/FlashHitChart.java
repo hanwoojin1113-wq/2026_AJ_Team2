@@ -38,14 +38,14 @@ public class FlashHitChart extends AbstractJdbcChartAlgorithm {
                     COALESCE(m.release_date, m.box_office_open_date)   AS open_date,
                     m.production_year,
                     CAST(ROUND(m.box_office_sales_acc * 1.0
-                        / GREATEST(DATEDIFF(CURRENT_DATE, COALESCE(m.release_date, m.box_office_open_date)), 1)
+                        / GREATEST(DATEDIFF('DAY', COALESCE(m.release_date, m.box_office_open_date), CURRENT_DATE), 1)
                         / 10000)
                          AS VARCHAR) || '만원/일'                      AS metric_value
                 FROM movie m
                 WHERE m.box_office_sales_acc IS NOT NULL
                   AND COALESCE(m.release_date, m.box_office_open_date) IS NOT NULL
                 ORDER BY (m.box_office_sales_acc * 1.0
-                    / GREATEST(DATEDIFF(CURRENT_DATE, COALESCE(m.release_date, m.box_office_open_date)), 1)) DESC
+                    / GREATEST(DATEDIFF('DAY', COALESCE(m.release_date, m.box_office_open_date), CURRENT_DATE), 1)) DESC
                 """,
                 new Object[]{}, limit, "일평균 매출",
                 rs -> "반짝 흥행");

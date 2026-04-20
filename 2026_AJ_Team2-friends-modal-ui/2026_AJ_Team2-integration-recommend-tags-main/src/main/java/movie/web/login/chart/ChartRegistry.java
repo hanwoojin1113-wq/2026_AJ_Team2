@@ -74,6 +74,23 @@ public class ChartRegistry {
     }
 
     /**
+     * 등록된 모든 알고리즘 구현체를 반환한다.
+     */
+    public List<ChartAlgorithm> allAlgorithms() {
+        return List.copyOf(algorithmMap.values());
+    }
+
+    /**
+     * 특정 카테고리의 알고리즘 구현체만 반환한다.
+     */
+    public List<ChartAlgorithm> algorithmsByCategory(ChartCategory category) {
+        if (category == null) return allAlgorithms();
+        return algorithmMap.values().stream()
+                .filter(a -> a.category() == category)
+                .toList();
+    }
+
+    /**
      * 등록된 알고리즘 코드 목록을 반환한다 (디버깅·관리용).
      */
     public List<String> registeredCodes() {
