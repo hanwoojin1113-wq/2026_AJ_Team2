@@ -710,6 +710,56 @@
         .social-empty.visible {
             display: block;
         }
+
+        /* ── 홈 차트 섹션 ── */
+        .home-chart-section {
+            margin-top: 32px;
+        }
+        .home-chart-block {
+            margin-top: 24px;
+        }
+        .home-chart-head {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; margin-bottom: 14px;
+        }
+        .home-chart-head-left {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .home-chart-title {
+            font-size: 1.14rem; font-weight: 900; letter-spacing: -0.03em;
+        }
+        .home-chart-sub {
+            color: var(--text-hint); font-size: 0.86rem; margin-top: 3px;
+        }
+        .home-chart-see-all {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 0.82rem; font-weight: 800;
+            color: rgba(96,165,250,0.85);
+            text-decoration: none;
+        }
+        .home-chart-see-all:hover { color: white; }
+        .home-chart-see-all svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+        .rank-num-badge {
+            position: absolute;
+            top: 6px; left: 6px;
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(7,11,20,0.88);
+            font-size: 0.72rem; font-weight: 900;
+            color: white;
+            z-index: 2;
+        }
+        .rank-num-badge.top1 { background: rgba(245,158,11,0.92); color: #0f172a; }
+        .rank-num-badge.top2 { background: rgba(148,163,184,0.88); color: #0f172a; }
+        .rank-num-badge.top3 { background: rgba(180,83,9,0.88); color: white; }
+        .chart-metric-sub {
+            margin-top: 2px;
+            font-size: 0.7rem;
+            color: var(--text-hint);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
         @media (max-width: 768px) {
             .navbar { padding: 0 16px; }
             .page { padding: 22px 16px 56px; }
@@ -862,6 +912,50 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
                             <path d="M9 6l6 6-6 6"/>
                         </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 홈 차트 섹션 -->
+        <div class="home-chart-section" th:if="${!#lists.isEmpty(homeChartSections)}">
+            <div class="home-chart-block" th:each="section : ${homeChartSections}">
+                <div class="home-chart-head">
+                    <div>
+                        <div class="home-chart-title" th:text="${section.entry().title()}">차트 이름</div>
+                        <div class="home-chart-sub" th:text="${section.entry().description()}">설명</div>
+                    </div>
+                    <a class="home-chart-see-all" th:href="@{|/ranking/${section.entry().code()}|}">
+                        전체 보기
+                        <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+                <div class="row-carousel" data-row-carousel>
+                    <button class="row-arrow left" type="button" data-row-direction="prev" aria-label="이전">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>
+                    </button>
+                    <div class="row-track">
+                        <a class="movie-card" th:each="row : ${section.rows()}"
+                           th:href="@{|/movies/${row.movieCode()}|}">
+                            <div class="poster-shell">
+                                <img class="poster"
+                                     th:if="${!#strings.isEmpty(row.posterImageUrl())}"
+                                     th:src="${row.posterImageUrl()}"
+                                     th:alt="${row.movieName()}">
+                                <div class="poster-fallback" th:if="${#strings.isEmpty(row.posterImageUrl())}">
+                                    <span th:text="${row.movieName()}">영화 제목</span>
+                                </div>
+                                <div class="poster-overlay"><span>상세 보기</span></div>
+                                <span class="rank-num-badge"
+                                      th:classappend="${row.rankNo() == 1} ? ' top1' : (${row.rankNo() == 2} ? ' top2' : (${row.rankNo() == 3} ? ' top3' : ''))"
+                                      th:text="${row.rankNo()}">1</span>
+                            </div>
+                            <div class="movie-title" th:text="${row.movieName()}">영화 제목</div>
+                            <div class="chart-metric-sub" th:text="${row.metricValue()}">지표값</div>
+                        </a>
+                    </div>
+                    <button class="row-arrow right" type="button" data-row-direction="next" aria-label="다음">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>
                     </button>
                 </div>
             </div>
