@@ -46,14 +46,51 @@ public class TmdbMovieNormalizeService {
         initializeProviderTables();
         initializeKeywordTables();
 
-        List<RawMovieRow> rawMovies = jdbcTemplate.query("""
+        List<RawMovieRow> rawMovies = loadRawMovies("""
                 SELECT tmdb_movie_id, payload
                 FROM tmdb_movie_raw
                 ORDER BY tmdb_movie_id
-                """, (rs, rowNum) -> new RawMovieRow(
+                """);
+
+        return normalizeRawMovieRows(rawMovies);
+    }
+
+    @Transactional
+    public NormalizeResult normalizeMovieIds(List<Long> tmdbMovieIds) {
+        initializeProviderTables();
+        initializeKeywordTables();
+
+        if (tmdbMovieIds == null || tmdbMovieIds.isEmpty()) {
+            return new NormalizeResult(0, 0, 0, 0, 0);
+        }
+
+        List<Long> normalizedIds = tmdbMovieIds.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .toList();
+        if (normalizedIds.isEmpty()) {
+            return new NormalizeResult(0, 0, 0, 0, 0);
+        }
+
+        String placeholders = String.join(", ", normalizedIds.stream().map(id -> "?").toList());
+        List<RawMovieRow> rawMovies = loadRawMovies("""
+                SELECT tmdb_movie_id, payload
+                FROM tmdb_movie_raw
+                WHERE tmdb_movie_id IN (%s)
+                ORDER BY tmdb_movie_id
+                """.formatted(placeholders), normalizedIds.toArray());
+
+        return normalizeRawMovieRows(rawMovies);
+    }
+
+    private List<RawMovieRow> loadRawMovies(String sql, Object... params) {
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new RawMovieRow(
                 rs.getLong("tmdb_movie_id"),
                 rs.getString("payload")
-        ));
+        ), params);
+    }
+
+    private NormalizeResult normalizeRawMovieRows(List<RawMovieRow> rawMovies) {
 
         int processedCount = 0;
         int insertedMovieCount = 0;

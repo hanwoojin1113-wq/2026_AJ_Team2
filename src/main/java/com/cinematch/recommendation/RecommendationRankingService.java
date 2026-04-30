@@ -20,16 +20,6 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class RecommendationRankingService {
-    /*
-     * 전체 개인화 랭킹을 만드는 핵심 서비스다.
-     * 구조는
-     * 1) 사용자 프로필 로드
-     * 2) 이미 반응한 영화를 제외한 후보 추출
-     * 3) 후보별 feature match score 계산
-     * 4) 최종 점수 정렬 + 간단한 diversity 재정렬
-     * 5) user_recommendation_result 저장
-     * 순서다.
-     */
 
     private static final int DEFAULT_LIMIT = 200;
     private static final int MAX_LIMIT = 300;
@@ -40,19 +30,21 @@ public class RecommendationRankingService {
     private final JdbcTemplate jdbcTemplate;
     private final RecommendationRefreshStateService recommendationRefreshStateService;
     private final RecommendationFeaturePolicy recommendationFeaturePolicy;
+    private final RecommendationMovieFilterService recommendationMovieFilterService;
 
     public RecommendationRankingService(
             JdbcTemplate jdbcTemplate,
             RecommendationRefreshStateService recommendationRefreshStateService,
-            RecommendationFeaturePolicy recommendationFeaturePolicy
+            RecommendationFeaturePolicy recommendationFeaturePolicy,
+            RecommendationMovieFilterService recommendationMovieFilterService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.recommendationRefreshStateService = recommendationRefreshStateService;
         this.recommendationFeaturePolicy = recommendationFeaturePolicy;
+        this.recommendationMovieFilterService = recommendationMovieFilterService;
     }
 
     public RankingRebuildResult rebuildRanking(Long userId, Integer limit) {
-        // 랭킹도 파생 데이터라서 rebuild 시 기존 결과를 지우고 다시 계산한다.
         initializeRecommendationResultTable();
 
         int normalizedLimit = normalizeLimit(limit);
@@ -65,7 +57,6 @@ public class RecommendationRankingService {
             return new RankingRebuildResult(userId, 0, 0, normalizedLimit, RecommendationFeaturePolicy.ALGORITHM_VERSION);
         }
 
-        // 이미 명시적으로 반응한 영화는 추천 상위에 다시 올리지 않는다.
         Set<Long> excludedMovieIds = loadExcludedMovieIds(userId);
         List<CandidateMovie> candidateMovies = loadCandidateMovies(profile, excludedMovieIds);
         if (candidateMovies.isEmpty()) {
@@ -76,6 +67,22 @@ public class RecommendationRankingService {
         Set<Long> candidateMovieIds = candidateMovies.stream()
                 .map(CandidateMovie::movieId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        Set<Long> recommendableCandidateMovieIds =
+                recommendationMovieFilterService.filterRecommendableMovieIds(candidateMovieIds);
+        candidateMovies = candidateMovies.stream()
+                .filter(movie -> recommendableCandidateMovieIds.contains(movie.movieId()))
+                .toList();
+        if (candidateMovies.isEmpty()) {
+            recommendationRefreshStateService.markRefreshed(userId, RecommendationFeaturePolicy.ALGORITHM_VERSION);
+            return new RankingRebuildResult(userId, 0, 0, normalizedLimit, RecommendationFeaturePolicy.ALGORITHM_VERSION);
+        }
+
+        candidateMovieIds = candidateMovies.stream()
+                .map(CandidateMovie::movieId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Long> actorEligibleCandidateMovieIds =
+                recommendationMovieFilterService.filterActorEligibleMovieIds(candidateMovieIds);
 
         Map<Long, Set<String>> tagsByMovie = loadNamedFeatureSetMap(candidateMovieIds, """
                 SELECT mt.movie_id, t.tag_name AS feature_name
@@ -103,7 +110,9 @@ public class RecommendationRankingService {
                 JOIN person p ON p.id = md.person_id
                 WHERE md.movie_id IN (%s)
                 """);
-        Map<Long, Set<String>> actorsByMovie = loadNamedFeatureSetMap(candidateMovieIds, """
+        Map<Long, Set<String>> actorsByMovie = actorEligibleCandidateMovieIds.isEmpty()
+                ? Collections.emptyMap()
+                : loadNamedFeatureSetMap(actorEligibleCandidateMovieIds, """
                 SELECT ma.movie_id, p.name AS feature_name
                 FROM movie_actor ma
                 JOIN person p ON p.id = ma.person_id
@@ -117,9 +126,11 @@ public class RecommendationRankingService {
                 WHERE mk.movie_id IN (%s)
                   AND mk.display_order <= %d
                   AND LOWER(k.name) NOT IN (%s)
-                """.formatted("%s",
+                """.formatted(
+                "%s",
                 recommendationFeaturePolicy.keywordLimit(),
-                recommendationFeaturePolicy.keywordBlacklistSqlLiteralList()));
+                recommendationFeaturePolicy.keywordBlacklistSqlLiteralList()
+        ));
         Map<Long, Set<String>> providersByMovie = loadNamedFeatureSetMap(candidateMovieIds, """
                 SELECT DISTINCT mp.movie_id, p.provider_name AS feature_name
                 FROM movie_provider mp
@@ -127,33 +138,58 @@ public class RecommendationRankingService {
                 WHERE mp.movie_id IN (%s)
                   AND mp.provider_type = '%s'
                   AND mp.region_code = '%s'
-                """.formatted("%s",
+                """.formatted(
+                "%s",
                 recommendationFeaturePolicy.preferredProviderType(),
-                recommendationFeaturePolicy.preferredProviderRegionCode()));
+                recommendationFeaturePolicy.preferredProviderRegionCode()
+        ));
 
         List<ScoredRecommendation> rankedRecommendations = new ArrayList<>();
         for (CandidateMovie movie : candidateMovies) {
-            // feature_type별 매칭 점수를 따로 계산해두면 최종 점수와 추천 이유를 함께 만들 수 있다.
-            MatchSummary tagMatch = computeMatch("TAG", profile.tagScores(), profile.tagTotalScore(),
-                    tagsByMovie.getOrDefault(movie.movieId(), Collections.emptySet()));
-            MatchSummary genreMatch = computeMatch("GENRE", profile.genreScores(), profile.genreTotalScore(),
-                    genresByMovie.getOrDefault(movie.movieId(), Collections.emptySet()));
-            MatchSummary directorMatch = computeMatch("DIRECTOR", profile.directorScores(), profile.directorTotalScore(),
-                    directorsByMovie.getOrDefault(movie.movieId(), Collections.emptySet()));
-            MatchSummary actorMatch = computeMatch("ACTOR", profile.actorScores(), profile.actorTotalScore(),
-                    actorsByMovie.getOrDefault(movie.movieId(), Collections.emptySet()));
-            MatchSummary keywordMatch = computeMatch("KEYWORD", profile.keywordScores(), profile.keywordTotalScore(),
-                    keywordsByMovie.getOrDefault(movie.movieId(), Collections.emptySet()));
-            MatchSummary providerMatch = computeMatch("PROVIDER", profile.providerScores(), profile.providerTotalScore(),
-                    providersByMovie.getOrDefault(movie.movieId(), Collections.emptySet()));
-            MatchSummary cautionMatch = computeMatch("CAUTION", profile.cautionScores(), profile.cautionTotalScore(),
-                    cautionTagsByMovie.getOrDefault(movie.movieId(), Collections.emptySet()));
+            MatchSummary tagMatch = computeMatch(
+                    "TAG",
+                    profile.tagScores(),
+                    tagsByMovie.getOrDefault(movie.movieId(), Collections.emptySet())
+            );
+            MatchSummary genreMatch = computeMatch(
+                    "GENRE",
+                    profile.genreScores(),
+                    genresByMovie.getOrDefault(movie.movieId(), Collections.emptySet())
+            );
+            MatchSummary directorMatch = computeMatch(
+                    "DIRECTOR",
+                    profile.directorScores(),
+                    directorsByMovie.getOrDefault(movie.movieId(), Collections.emptySet())
+            );
+            MatchSummary actorMatch = computeMatch(
+                    "ACTOR",
+                    profile.actorScores(),
+                    actorsByMovie.getOrDefault(movie.movieId(), Collections.emptySet())
+            );
+            MatchSummary keywordMatch = computeMatch(
+                    "KEYWORD",
+                    profile.keywordScores(),
+                    keywordsByMovie.getOrDefault(movie.movieId(), Collections.emptySet())
+            );
+            MatchSummary providerMatch = computeMatch(
+                    "PROVIDER",
+                    profile.providerScores(),
+                    providersByMovie.getOrDefault(movie.movieId(), Collections.emptySet())
+            );
+            MatchSummary cautionMatch = computeMatch(
+                    "CAUTION",
+                    profile.cautionScores(),
+                    cautionTagsByMovie.getOrDefault(movie.movieId(), Collections.emptySet())
+            );
 
             double tagScore = tagMatch.normalizedScore();
             double genreScore = genreMatch.normalizedScore();
             double keywordScore = keywordMatch.normalizedScore();
-            double peopleScore = Math.min(1.0,
-                    (directorMatch.normalizedScore() * DIRECTOR_SHARE) + (actorMatch.normalizedScore() * ACTOR_SHARE));
+            double peopleScore = Math.min(
+                    1.0,
+                    (directorMatch.normalizedScore() * DIRECTOR_SHARE)
+                            + (actorMatch.normalizedScore() * ACTOR_SHARE)
+            );
             double providerScore = providerMatch.normalizedScore();
             double penaltyScore = roundScore(cautionMatch.normalizedScore() * recommendationFeaturePolicy.cautionPenaltyWeight());
             double popularityScore = popularityScore(movie);
@@ -165,7 +201,6 @@ public class RecommendationRankingService {
                 continue;
             }
 
-            // 태그/장르/사람 정보를 중심으로 가중합하고, 인기도/최신성은 약한 보조 신호로 쓴다.
             double finalScore = roundScore(
                     (recommendationFeaturePolicy.rankingWeight("TAG") * tagScore)
                             + (recommendationFeaturePolicy.rankingWeight("GENRE") * genreScore)
@@ -203,7 +238,6 @@ public class RecommendationRankingService {
                 .thenComparing(ScoredRecommendation::movieRanking, Comparator.nullsLast(Integer::compareTo))
                 .thenComparing(ScoredRecommendation::movieTitle, Comparator.nullsLast(String::compareTo)));
 
-        // 상위 후보 풀에서 비슷한 태그/장르/감독이 연속되는 것을 조금 눌러주는 단순 diversity 후처리.
         List<ScoredRecommendation> topRecommendations = applyDiversityReRank(rankedRecommendations, normalizedLimit);
 
         saveRecommendations(userId, topRecommendations);
@@ -273,24 +307,13 @@ public class RecommendationRankingService {
 
         return new PreferenceProfile(
                 tagScores,
-                totalScore(tagScores),
                 cautionScores,
-                totalScore(cautionScores),
                 genreScores,
-                totalScore(genreScores),
                 directorScores,
-                totalScore(directorScores),
                 actorScores,
-                totalScore(actorScores),
                 keywordScores,
-                totalScore(keywordScores),
-                providerScores,
-                totalScore(providerScores)
+                providerScores
         );
-    }
-
-    private double totalScore(Map<String, Double> scores) {
-        return scores.values().stream().mapToDouble(Double::doubleValue).sum();
     }
 
     private Set<Long> loadExcludedMovieIds(Long userId) {
@@ -311,7 +334,7 @@ public class RecommendationRankingService {
                       AND COALESCE(status, 'WATCHED') = 'WATCHED'
                 ) excluded
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs ->
-                        excludedMovieIds.add(rs.getLong("movie_id")), userId, userId, userId, userId);
+                excludedMovieIds.add(rs.getLong("movie_id")), userId, userId, userId, userId);
         return excludedMovieIds;
     }
 
@@ -344,11 +367,10 @@ public class RecommendationRankingService {
     }
 
     private List<CandidateMovie> loadCandidateMovies(PreferenceProfile profile, Set<Long> excludedMovieIds) {
-        // 전체 영화를 다 점수화하지 않고, 프로필 feature와 하나라도 겹치는 영화만 후보로 뽑는다.
         List<String> matchConditions = new ArrayList<>();
         List<Object> matchParams = new ArrayList<>();
 
-        addExistsCondition(matchConditions, matchParams, profile.tagScores().keySet(), """
+        addExistsCondition(matchConditions, matchParams, positiveFeatureNames(profile.tagScores()), """
                 EXISTS (
                     SELECT 1
                     FROM movie_tag mt
@@ -358,7 +380,7 @@ public class RecommendationRankingService {
                       AND t.tag_name IN (%s)
                 )
                 """);
-        addExistsCondition(matchConditions, matchParams, profile.genreScores().keySet(), """
+        addExistsCondition(matchConditions, matchParams, positiveFeatureNames(profile.genreScores()), """
                 EXISTS (
                     SELECT 1
                     FROM movie_genre mg
@@ -367,7 +389,7 @@ public class RecommendationRankingService {
                       AND g.name IN (%s)
                 )
                 """);
-        addExistsCondition(matchConditions, matchParams, profile.directorScores().keySet(), """
+        addExistsCondition(matchConditions, matchParams, positiveFeatureNames(profile.directorScores()), """
                 EXISTS (
                     SELECT 1
                     FROM movie_director md
@@ -376,7 +398,7 @@ public class RecommendationRankingService {
                       AND p.name IN (%s)
                 )
                 """);
-        addExistsCondition(matchConditions, matchParams, profile.actorScores().keySet(), """
+        addExistsCondition(matchConditions, matchParams, positiveFeatureNames(profile.actorScores()), """
                 EXISTS (
                     SELECT 1
                     FROM movie_actor ma
@@ -386,7 +408,7 @@ public class RecommendationRankingService {
                       AND p.name IN (%s)
                 )
                 """.formatted(recommendationFeaturePolicy.actorLimit(), "%s"));
-        addExistsCondition(matchConditions, matchParams, profile.keywordScores().keySet(), """
+        addExistsCondition(matchConditions, matchParams, positiveFeatureNames(profile.keywordScores()), """
                 EXISTS (
                     SELECT 1
                     FROM movie_keyword mk
@@ -399,8 +421,9 @@ public class RecommendationRankingService {
                 """.formatted(
                 recommendationFeaturePolicy.keywordLimit(),
                 recommendationFeaturePolicy.keywordBlacklistSqlLiteralList(),
-                "%s"));
-        addExistsCondition(matchConditions, matchParams, profile.providerScores().keySet(), """
+                "%s"
+        ));
+        addExistsCondition(matchConditions, matchParams, positiveFeatureNames(profile.providerScores()), """
                 EXISTS (
                     SELECT 1
                     FROM movie_provider mp
@@ -413,7 +436,8 @@ public class RecommendationRankingService {
                 """.formatted(
                 recommendationFeaturePolicy.preferredProviderType(),
                 recommendationFeaturePolicy.preferredProviderRegionCode(),
-                "%s"));
+                "%s"
+        ));
 
         if (matchConditions.isEmpty()) {
             return List.of();
@@ -456,6 +480,13 @@ public class RecommendationRankingService {
         ), params.toArray());
     }
 
+    private Set<String> positiveFeatureNames(Map<String, Double> scores) {
+        return scores.entrySet().stream()
+                .filter(entry -> entry.getValue() > 0.0)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
     private void addExistsCondition(
             List<String> conditions,
             List<Object> params,
@@ -484,8 +515,7 @@ public class RecommendationRankingService {
             if (featureName == null || featureName.isBlank()) {
                 return;
             }
-            featuresByMovie.computeIfAbsent(movieId, ignored -> new LinkedHashSet<>())
-                    .add(featureName);
+            featuresByMovie.computeIfAbsent(movieId, ignored -> new LinkedHashSet<>()).add(featureName);
         }, params.toArray());
 
         return featuresByMovie;
@@ -494,28 +524,82 @@ public class RecommendationRankingService {
     private MatchSummary computeMatch(
             String featureType,
             Map<String, Double> profileScores,
-            double totalProfileScore,
             Set<String> candidateFeatures
     ) {
-        if (profileScores.isEmpty() || totalProfileScore <= 0.0 || candidateFeatures.isEmpty()) {
+        if (profileScores.isEmpty() || candidateFeatures.isEmpty()) {
             return MatchSummary.empty();
         }
 
-        // raw score만 보면 태그 1개 일치가 과대평가될 수 있어서,
-        // 프로필 내 비중(rawShare) + 증거 개수(evidenceFactor) + 영화 내 밀도(densityFactor)를 함께 쓴다.
-        List<WeightedFeature> matchedFeatures = candidateFeatures.stream()
-                .map(feature -> {
-                    double baseScore = profileScores.getOrDefault(feature, 0.0);
-                    double weightedScore = baseScore * recommendationFeaturePolicy.featureSpecificWeight(featureType, feature);
-                    return new WeightedFeature(feature, weightedScore);
-                })
+        double positiveTotalScore = totalWeightedMagnitude(profileScores, featureType, true);
+        double negativeTotalScore = totalWeightedMagnitude(profileScores, featureType, false);
+
+        List<WeightedFeature> positiveMatchedFeatures = candidateFeatures.stream()
+                .map(feature -> weightedFeature(featureType, feature, profileScores.getOrDefault(feature, 0.0)))
                 .filter(feature -> feature.score() > 0.0)
                 .sorted(Comparator.comparingDouble(WeightedFeature::score).reversed()
                         .thenComparing(WeightedFeature::name))
                 .toList();
 
-        if (matchedFeatures.isEmpty()) {
+        List<WeightedFeature> negativeMatchedFeatures = candidateFeatures.stream()
+                .map(feature -> weightedFeature(featureType, feature, profileScores.getOrDefault(feature, 0.0)))
+                .filter(feature -> feature.score() < 0.0)
+                .map(feature -> new WeightedFeature(feature.name(), Math.abs(feature.score())))
+                .sorted(Comparator.comparingDouble(WeightedFeature::score).reversed()
+                        .thenComparing(WeightedFeature::name))
+                .toList();
+
+        if (positiveMatchedFeatures.isEmpty() && negativeMatchedFeatures.isEmpty()) {
             return MatchSummary.empty();
+        }
+
+        double positiveNormalized = computeNormalizedMatch(
+                featureType,
+                positiveMatchedFeatures,
+                candidateFeatures.size(),
+                positiveTotalScore
+        );
+        double negativeNormalized = computeNormalizedMatch(
+                featureType,
+                negativeMatchedFeatures,
+                candidateFeatures.size(),
+                negativeTotalScore
+        );
+
+        double finalNormalized = Math.max(0.0, positiveNormalized - negativeNormalized);
+        if (finalNormalized <= 0.0) {
+            return MatchSummary.empty();
+        }
+
+        String primaryFeatureName = positiveMatchedFeatures.isEmpty() ? null : positiveMatchedFeatures.get(0).name();
+        double topFeatureShare = positiveMatchedFeatures.isEmpty()
+                ? 1.0
+                : positiveMatchedFeatures.get(0).score()
+                / positiveMatchedFeatures.stream().mapToDouble(WeightedFeature::score).sum();
+
+        finalNormalized = recommendationFeaturePolicy.applyMatchDominanceDamping(
+                featureType,
+                primaryFeatureName,
+                finalNormalized,
+                topFeatureShare,
+                positiveMatchedFeatures.size()
+        );
+
+        double matchedScore = positiveMatchedFeatures.stream().mapToDouble(WeightedFeature::score).sum();
+        return new MatchSummary(
+                matchedScore,
+                roundScore(finalNormalized),
+                positiveMatchedFeatures
+        );
+    }
+
+    private double computeNormalizedMatch(
+            String featureType,
+            List<WeightedFeature> matchedFeatures,
+            int candidateFeatureCount,
+            double totalProfileScore
+    ) {
+        if (matchedFeatures.isEmpty() || totalProfileScore <= 0.0 || candidateFeatureCount <= 0) {
+            return 0.0;
         }
 
         double matchedScore = matchedFeatures.stream().mapToDouble(WeightedFeature::score).sum();
@@ -524,8 +608,8 @@ public class RecommendationRankingService {
                 1.0,
                 (double) matchedFeatures.size() / recommendationFeaturePolicy.idealMatchCount(featureType)
         );
-        double densityFactor = (double) matchedFeatures.size() / candidateFeatures.size();
-        double normalizedScore = Math.min(
+        double densityFactor = (double) matchedFeatures.size() / candidateFeatureCount;
+        return Math.min(
                 1.0,
                 rawShare
                         * (recommendationFeaturePolicy.evidenceBase(featureType)
@@ -533,8 +617,19 @@ public class RecommendationRankingService {
                         * (recommendationFeaturePolicy.densityBase(featureType)
                         + ((1.0 - recommendationFeaturePolicy.densityBase(featureType)) * densityFactor))
         );
+    }
 
-        return new MatchSummary(matchedScore, roundScore(normalizedScore), matchedFeatures);
+    private double totalWeightedMagnitude(Map<String, Double> profileScores, String featureType, boolean positive) {
+        return profileScores.entrySet().stream()
+                .filter(entry -> positive ? entry.getValue() > 0.0 : entry.getValue() < 0.0)
+                .mapToDouble(entry -> Math.abs(entry.getValue())
+                        * recommendationFeaturePolicy.featureSpecificWeight(featureType, entry.getKey()))
+                .sum();
+    }
+
+    private WeightedFeature weightedFeature(String featureType, String featureName, double baseScore) {
+        double weightedScore = baseScore * recommendationFeaturePolicy.featureSpecificWeight(featureType, featureName);
+        return new WeightedFeature(featureName, weightedScore);
     }
 
     private double popularityScore(CandidateMovie movie) {
@@ -571,7 +666,6 @@ public class RecommendationRankingService {
             return List.of();
         }
 
-        // 전체 재정렬을 복잡하게 만들기보다, 상위 후보 pool에서 최근 선택과 겹치는 feature만 약하게 감점한다.
         int poolSize = Math.min(rankedRecommendations.size(), Math.max(limit * 3, 30));
         List<ScoredRecommendation> pool = new ArrayList<>(rankedRecommendations.subList(0, poolSize));
         List<ScoredRecommendation> selected = new ArrayList<>();
@@ -710,7 +804,6 @@ public class RecommendationRankingService {
             MatchSummary keywordMatch,
             MatchSummary providerMatch
     ) {
-        // 추천 이유는 "가장 강한 1~2개 신호"만 보여주는 식으로 단순화해 사용자 설명성을 유지한다.
         List<String> reasons = new ArrayList<>();
 
         if (tagMatch.primaryFeatureName() != null) {
@@ -732,7 +825,7 @@ public class RecommendationRankingService {
         }
 
         if (reasons.isEmpty()) {
-            return "선호 특징과 유사한 영화";
+            return "취향 프로필과 유사한 영화";
         }
         if (reasons.size() == 1) {
             return "추천 이유: " + reasons.get(0) + " 일치";
@@ -752,19 +845,12 @@ public class RecommendationRankingService {
 
     private record PreferenceProfile(
             Map<String, Double> tagScores,
-            double tagTotalScore,
             Map<String, Double> cautionScores,
-            double cautionTotalScore,
             Map<String, Double> genreScores,
-            double genreTotalScore,
             Map<String, Double> directorScores,
-            double directorTotalScore,
             Map<String, Double> actorScores,
-            double actorTotalScore,
             Map<String, Double> keywordScores,
-            double keywordTotalScore,
-            Map<String, Double> providerScores,
-            double providerTotalScore
+            Map<String, Double> providerScores
     ) {
         private boolean isEmpty() {
             return tagScores.isEmpty()

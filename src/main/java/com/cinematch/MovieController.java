@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
@@ -27,13 +28,15 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 import com.cinematch.chart.ChartEntry;
+import com.cinematch.chart.ChartMovieRow;
 import com.cinematch.chart.ChartRegistry;
-import com.cinematch.chart.ChartSection;
+import com.cinematch.recommendation.CollaborativeLifeMovieRecommendationService;
 import com.cinematch.recommendation.RecommendationRefreshStateService;
 import com.cinematch.recommendation.RecommendationBlockService;
 import com.cinematch.recommendation.RecommendationMaintenanceService;
 import com.cinematch.tag.RecommendationTag;
 import com.cinematch.tag.RecommendationTagType;
+import com.cinematch.tmdb.TmdbTrendingService;
 
 @Controller
 public class MovieController {
@@ -44,6 +47,7 @@ public class MovieController {
     private static final int HOME_BLOCK_ITEM_LIMIT = 10;
     private static final int LIFE_MOVIE_LIMIT = 10;
     private static final int SOCIAL_PAGE_LIMIT = 24;
+    private static final Set<String> SEARCH_EXCLUDED_GENRES = Set.of("공연", "공연실황", "콘서트", "라이브");
     private static final Map<String, String> TAG_TYPE_LABELS = Map.of(
             "MOOD", "분위기",
             "CONTEXT", "추천 상황",
@@ -84,18 +88,24 @@ public class MovieController {
     private final RecommendationRefreshStateService recommendationRefreshStateService;
     private final RecommendationMaintenanceService recommendationMaintenanceService;
     private final RecommendationBlockService recommendationBlockService;
+    private final CollaborativeLifeMovieRecommendationService collaborativeLifeMovieRecommendationService;
     private final ChartRegistry chartRegistry;
+    private final TmdbTrendingService tmdbTrendingService;
 
     public MovieController(JdbcTemplate jdbcTemplate,
                            RecommendationRefreshStateService recommendationRefreshStateService,
                            RecommendationMaintenanceService recommendationMaintenanceService,
                            RecommendationBlockService recommendationBlockService,
-                           ChartRegistry chartRegistry) {
+                           CollaborativeLifeMovieRecommendationService collaborativeLifeMovieRecommendationService,
+                           ChartRegistry chartRegistry,
+                           TmdbTrendingService tmdbTrendingService) {
         this.jdbcTemplate = jdbcTemplate;
         this.recommendationRefreshStateService = recommendationRefreshStateService;
         this.recommendationMaintenanceService = recommendationMaintenanceService;
         this.recommendationBlockService = recommendationBlockService;
+        this.collaborativeLifeMovieRecommendationService = collaborativeLifeMovieRecommendationService;
         this.chartRegistry = chartRegistry;
+        this.tmdbTrendingService = tmdbTrendingService;
     }
 
     @GetMapping("/")
@@ -183,6 +193,9 @@ public class MovieController {
 
         String normalizedQuery = query == null ? "" : query.trim();
         String normalizedGenre = genre == null ? "" : genre.trim();
+        if (isSearchExcludedGenre(normalizedGenre)) {
+            normalizedGenre = "";
+        }
         String normalizedTagType = tagType == null ? "" : tagType.trim().toUpperCase();
         String normalizedTagName = tagName == null ? "" : tagName.trim();
         if (normalizedTagType.isEmpty() || normalizedTagName.isEmpty()) {
@@ -225,17 +238,20 @@ public class MovieController {
                               AND t.tag_type = ?
                               AND t.tag_name = ?
                       ))
-                    """;
+                    """ + searchExcludedGenreClause();
             String queryPattern = "%" + normalizedQuery + "%";
-            int totalMovies = jdbcTemplate.queryForObject(countSql, Integer.class,
+            java.util.ArrayList<Object> countParams = new java.util.ArrayList<>(List.of(
                     normalizedQuery, queryPattern, queryPattern, queryPattern, queryPattern, queryPattern,
                     normalizedGenre, normalizedGenre,
-                    normalizedTagName, normalizedTagType, normalizedTagName);
+                    normalizedTagName, normalizedTagType, normalizedTagName
+            ));
+            countParams.addAll(SEARCH_EXCLUDED_GENRES);
+            int totalMovies = jdbcTemplate.queryForObject(countSql, Integer.class, countParams.toArray());
             int totalPages = Math.max(1, (int) Math.ceil((double) totalMovies / PAGE_SIZE));
             int currentPage = Math.min(Math.max(page, 1), totalPages);
             int offset = (currentPage - 1) * PAGE_SIZE;
 
-            List<MoviePosterView> movies = jdbcTemplate.query("""
+            String movieSearchSql = """
                     SELECT DISTINCT
                         m.ranking,
                         m.movie_cd,
@@ -264,16 +280,24 @@ public class MovieController {
                         m.ranking ASC,
                         COALESCE(m.title, m.movie_name) ASC
                     LIMIT ? OFFSET ?
-                    """, (rs, rowNum) -> new MoviePosterView(
+                    """ + searchExcludedGenreClause();
+
+            java.util.ArrayList<Object> movieSearchParams = new java.util.ArrayList<>(List.of(
+                    normalizedQuery, queryPattern, queryPattern, queryPattern, queryPattern, queryPattern,
+                    normalizedGenre, normalizedGenre,
+                    normalizedTagName, normalizedTagType, normalizedTagName
+            ));
+            movieSearchParams.addAll(SEARCH_EXCLUDED_GENRES);
+            movieSearchParams.add(PAGE_SIZE);
+            movieSearchParams.add(offset);
+
+            List<MoviePosterView> movies = jdbcTemplate.query(movieSearchSql, (rs, rowNum) -> new MoviePosterView(
                     rs.getInt("ranking"),
                     rs.getString("movie_cd"),
                     rs.getString("movie_name"),
                     rs.getString("movie_name_en"),
                     rs.getString("poster_image_url")
-            ), normalizedQuery, queryPattern, queryPattern, queryPattern, queryPattern, queryPattern,
-                    normalizedGenre, normalizedGenre,
-                    normalizedTagName, normalizedTagType, normalizedTagName,
-                    PAGE_SIZE, offset);
+            ), movieSearchParams.toArray());
 
             model.addAttribute("movies", movies);
             model.addAttribute("searchResultCount", totalMovies);
@@ -285,13 +309,26 @@ public class MovieController {
             model.addAttribute("nextPage", currentPage + 1);
             model.addAttribute("pages", java.util.stream.IntStream.rangeClosed(1, totalPages).boxed().toList());
             model.addAttribute("recommendationBlocks", List.of());
+            model.addAttribute("primaryRecommendationBlock", null);
+            model.addAttribute("collaborativeLifeBlock", null);
+            model.addAttribute("secondaryRecommendationBlocks", List.of());
             model.addAttribute("fallbackMovies", List.of());
             model.addAttribute("homeChartSections", List.of());
+            model.addAttribute("trendingMovies", List.of());
         } else {
             Long userId = getCurrentUserId(session);
             recommendationMaintenanceService.ensureRecommendations(userId, 200);
             List<RecommendationBlockService.RecommendationBlock> recommendationBlocks =
                     recommendationBlockService.buildBlocks(userId, 120, HOME_BLOCK_ITEM_LIMIT).blocks();
+            RecommendationBlockService.RecommendationBlock primaryRecommendationBlock = recommendationBlocks.stream()
+                    .filter(block -> "PERSONALIZED".equals(block.key()))
+                    .findFirst()
+                    .orElse(null);
+            List<RecommendationBlockService.RecommendationBlock> secondaryRecommendationBlocks = recommendationBlocks.stream()
+                    .filter(block -> !"PERSONALIZED".equals(block.key()))
+                    .toList();
+            RecommendationBlockService.RecommendationBlock collaborativeLifeBlock =
+                    collaborativeLifeMovieRecommendationService.buildBlock(userId).orElse(null);
 
             model.addAttribute("movies", List.of());
             model.addAttribute("searchResultCount", 0);
@@ -303,11 +340,15 @@ public class MovieController {
             model.addAttribute("nextPage", 1);
             model.addAttribute("pages", List.of(1));
             model.addAttribute("recommendationBlocks", recommendationBlocks);
+            model.addAttribute("primaryRecommendationBlock", primaryRecommendationBlock);
+            model.addAttribute("collaborativeLifeBlock", collaborativeLifeBlock);
+            model.addAttribute("secondaryRecommendationBlocks", secondaryRecommendationBlocks);
             model.addAttribute("fallbackMovies", recommendationBlocks.isEmpty() ? fetchPopularMovies(12) : List.of());
+            model.addAttribute("trendingMovies", tmdbTrendingService.fetchTrendingMovies(10));
 
-            List<ChartSection> homeChartSections = HOME_CHART_CODES.stream()
+            List<HomeChartSectionView> homeChartSections = HOME_CHART_CODES.stream()
                     .flatMap(code -> chartRegistry.find(code).stream())
-                    .map(a -> new ChartSection(ChartEntry.of(a), a.fetch(10)))
+                    .map(a -> new HomeChartSectionView(ChartEntry.of(a), a.fetch(10)))
                     .toList();
             model.addAttribute("homeChartSections", homeChartSections);
         }
@@ -1678,8 +1719,33 @@ public class MovieController {
         return jdbcTemplate.query("""
                 SELECT name
                 FROM genre
+                WHERE name NOT IN (%s)
                 ORDER BY name ASC
-                """, (rs, rowNum) -> rs.getString("name"));
+                """.formatted(placeholders(SEARCH_EXCLUDED_GENRES.size())),
+                (rs, rowNum) -> rs.getString("name"),
+                SEARCH_EXCLUDED_GENRES.toArray());
+    }
+
+    private boolean isSearchExcludedGenre(String genreName) {
+        return genreName != null && SEARCH_EXCLUDED_GENRES.contains(genreName.trim());
+    }
+
+    private String searchExcludedGenreClause() {
+        return """
+                  AND NOT EXISTS (
+                        SELECT 1
+                        FROM movie_genre mg_excluded
+                        JOIN genre g_excluded ON g_excluded.id = mg_excluded.genre_id
+                        WHERE mg_excluded.movie_id = m.id
+                          AND g_excluded.name IN (%s)
+                  )
+                """.formatted(placeholders(SEARCH_EXCLUDED_GENRES.size()));
+    }
+
+    private String placeholders(int count) {
+        return java.util.stream.IntStream.range(0, count)
+                .mapToObj(index -> "?")
+                .collect(java.util.stream.Collectors.joining(", "));
     }
 
     private List<TagFilterGroupView> fetchChartTagGroups() {
@@ -1782,6 +1848,9 @@ public class MovieController {
     }
 
     public record TagFilterGroupView(String key, String label, List<TagChipView> tags) {
+    }
+
+    public record HomeChartSectionView(ChartEntry entry, List<ChartMovieRow> rows) {
     }
 
     public record UserProfileView(String loginId, String nickname, String gender, int age, String profileImageUrl) {
