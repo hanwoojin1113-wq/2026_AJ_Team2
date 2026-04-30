@@ -15,8 +15,7 @@
   - 개인화 추천 블록의 중복/반복을 줄이도록 diversity를 강화
   <img width="1666" height="599" alt="Image" src="https://github.com/user-attachments/assets/b2024636-08f8-489b-9239-ae92111ae344" />
 
-https://private-user-images.githubusercontent.com/167871380/585874570-e8ecd15a-5628-4ab1-b8ed-498d2f01b60f.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3Nzc1MzUyODMsIm5iZiI6MTc3NzUzNDk4MywicGF0aCI6Ii8xNjc4NzEzODAvNTg1ODc0NTcwLWU4ZWNkMTVhLTU2MjgtNGFiMS1iOGVkLTQ5OGQyZjAxYjYwZi5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjYwNDMwJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI2MDQzMFQwNzQzMDNaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT0yYzA3ZTRiMDU3ZDQ0YTQ4Mzc0NDJkYmU1NzNlNjI5NzA0YTBlYTQ2Y2E3MjczN2EzY2JkMjkzYzk4MTMyYmE2JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZyZXNwb25zZS1jb250ZW50LXR5cGU9aW1hZ2UlMkZwbmcifQ.fAFA85e-gMlViIm37IPzH3iPtFHpQTLI7z01bv7Q6d4
-
+<img width="877" height="582" alt="Image" src="https://github.com/user-attachments/assets/e8ecd15a-5628-4ab1-b8ed-498d2f01b60f" />
 # CineMatch
 
 영화 메타데이터와 사용자 활동 기록을 기반으로 개인화 추천을 제공하는 Spring Boot 기반 영화 추천 웹 프로젝트입니다.
