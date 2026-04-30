@@ -4,6 +4,7 @@ import java.sql.PreparedStatement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -17,28 +18,25 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class UserPreferenceProfileService {
-    /*
-     * 이 서비스는 사용자의 명시적 행동을 "취향 프로필"로 압축한다.
-     * 영화 단위 행동을 그대로 쓰지 않고, 그 영화들에 공통으로 나타난
-     * 태그/장르/감독/배우/키워드/OTT feature를 score로 누적해 user_preference_profile에 저장한다.
-     */
 
     private final JdbcTemplate jdbcTemplate;
     private final RecommendationFeaturePolicy recommendationFeaturePolicy;
+    private final RecommendationMovieFilterService recommendationMovieFilterService;
 
     public UserPreferenceProfileService(
             JdbcTemplate jdbcTemplate,
-            RecommendationFeaturePolicy recommendationFeaturePolicy
+            RecommendationFeaturePolicy recommendationFeaturePolicy,
+            RecommendationMovieFilterService recommendationMovieFilterService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.recommendationFeaturePolicy = recommendationFeaturePolicy;
+        this.recommendationMovieFilterService = recommendationMovieFilterService;
     }
 
     public ProfileRebuildResult rebuildProfile(Long userId) {
-        // 프로필은 파생 데이터라서 매번 재생성하는 편이 규칙 변경과 디버깅에 유리하다.
         initializeProfileTable();
 
-        Map<Long, Double> signalWeightsByMovie = loadSignalWeights(userId);
+        Map<Long, MovieSignalWeights> signalWeightsByMovie = loadSignalWeights(userId);
         jdbcTemplate.update("""
                 DELETE FROM user_preference_profile
                 WHERE user_id = ?
@@ -48,94 +46,161 @@ public class UserPreferenceProfileService {
             return new ProfileRebuildResult(userId, 0, 0, Map.of());
         }
 
+        signalWeightsByMovie.keySet().retainAll(
+                recommendationMovieFilterService.filterRecommendableMovieIds(signalWeightsByMovie.keySet())
+        );
+        if (signalWeightsByMovie.isEmpty()) {
+            return new ProfileRebuildResult(userId, 0, 0, Map.of());
+        }
+
+        Set<Long> actorEligibleMovieIds =
+                recommendationMovieFilterService.filterActorEligibleMovieIds(signalWeightsByMovie.keySet());
+
         LocalDateTime updatedAt = LocalDateTime.now();
         Map<String, Integer> featureCounts = new LinkedHashMap<>();
         int insertedRows = 0;
 
-        // TAG는 가장 핵심 feature라서 별도 multiplier와 limit를 가장 보수적으로 준다.
+        Map<Long, List<String>> tagFeatures = loadMovieTagFeatures(signalWeightsByMovie.keySet(), false);
+        Map<Long, List<String>> cautionTagFeatures = loadMovieTagFeatures(signalWeightsByMovie.keySet(), true);
+        Map<Long, List<String>> genreFeatures = loadNamedFeatures(signalWeightsByMovie.keySet(), """
+                SELECT mg.movie_id, g.name AS feature_name
+                FROM movie_genre mg
+                JOIN genre g ON g.id = mg.genre_id
+                WHERE mg.movie_id IN (%s)
+                """);
+        Map<Long, List<String>> directorFeatures = loadNamedFeatures(signalWeightsByMovie.keySet(), """
+                SELECT md.movie_id, p.name AS feature_name
+                FROM movie_director md
+                JOIN person p ON p.id = md.person_id
+                WHERE md.movie_id IN (%s)
+                """);
+        Map<Long, List<String>> actorFeatures = loadNamedFeatures(signalWeightsByMovie.keySet(), """
+                SELECT ma.movie_id, p.name AS feature_name
+                FROM movie_actor ma
+                JOIN person p ON p.id = ma.person_id
+                WHERE ma.movie_id IN (%s)
+                  AND ma.display_order <= %d
+                """.formatted("%s", recommendationFeaturePolicy.actorLimit()));
+        Map<Long, List<String>> keywordFeatures = loadNamedFeatures(signalWeightsByMovie.keySet(), """
+                SELECT mk.movie_id, k.name AS feature_name
+                FROM movie_keyword mk
+                JOIN keyword k ON k.id = mk.keyword_id
+                WHERE mk.movie_id IN (%s)
+                  AND mk.display_order <= %d
+                  AND LOWER(k.name) NOT IN (%s)
+                """.formatted(
+                "%s",
+                recommendationFeaturePolicy.keywordLimit(),
+                recommendationFeaturePolicy.keywordBlacklistSqlLiteralList()
+        ));
+        Map<Long, List<String>> providerFeatures = loadNamedFeatures(signalWeightsByMovie.keySet(), """
+                SELECT DISTINCT mp.movie_id, p.provider_name AS feature_name
+                FROM movie_provider mp
+                JOIN provider p ON p.id = mp.provider_id
+                WHERE mp.movie_id IN (%s)
+                  AND mp.provider_type = '%s'
+                  AND mp.region_code = '%s'
+                """.formatted(
+                "%s",
+                recommendationFeaturePolicy.preferredProviderType(),
+                recommendationFeaturePolicy.preferredProviderRegionCode()
+        ));
+
         insertedRows += saveFeatureScores(userId, "TAG",
-                aggregateFeatureScores(signalWeightsByMovie,
-                        loadMovieTagFeatures(signalWeightsByMovie.keySet(), false),
-                        recommendationFeaturePolicy.profileMultiplier("TAG"),
-                        feature -> 1.0),
-                updatedAt, featureCounts);
+                applyTagDominanceControl(
+                        aggregateFeatureScores(
+                                "TAG",
+                                signalWeightsByMovie,
+                                tagFeatures,
+                                recommendationFeaturePolicy.profileMultiplier("TAG"),
+                                feature -> 1.0,
+                                null
+                        )
+                ),
+                updatedAt,
+                featureCounts
+        );
 
-        // CAUTION은 "좋아함"이 아니라 회피 경향을 담는 보조 profile이다.
         insertedRows += saveFeatureScores(userId, "CAUTION",
-                aggregateFeatureScores(signalWeightsByMovie,
-                        loadMovieTagFeatures(signalWeightsByMovie.keySet(), true),
+                aggregateFeatureScores(
+                        "CAUTION",
+                        signalWeightsByMovie,
+                        cautionTagFeatures,
                         recommendationFeaturePolicy.profileMultiplier("CAUTION"),
-                        feature -> 1.0),
-                updatedAt, featureCounts);
+                        feature -> 1.0,
+                        null
+                ),
+                updatedAt,
+                featureCounts
+        );
 
-        // 장르는 broad genre 확산을 줄이기 위해 feature별 감쇠(weight)를 한 번 더 적용한다.
         insertedRows += saveFeatureScores(userId, "GENRE",
-                aggregateFeatureScores(signalWeightsByMovie,
-                        loadNamedFeatures(signalWeightsByMovie.keySet(), """
-                                SELECT mg.movie_id, g.name AS feature_name
-                                FROM movie_genre mg
-                                JOIN genre g ON g.id = mg.genre_id
-                                WHERE mg.movie_id IN (%s)
-                                """),
-                        recommendationFeaturePolicy.profileMultiplier("GENRE"),
-                        feature -> recommendationFeaturePolicy.featureSpecificWeight("GENRE", feature)),
-                updatedAt, featureCounts);
+                applyGenreDominanceControl(
+                        aggregateFeatureScores(
+                                "GENRE",
+                                signalWeightsByMovie,
+                                genreFeatures,
+                                recommendationFeaturePolicy.profileMultiplier("GENRE"),
+                                feature -> recommendationFeaturePolicy.featureSpecificWeight("GENRE", feature),
+                                null
+                        ),
+                        buildFeatureEvidence(signalWeightsByMovie, genreFeatures, null)
+                ),
+                updatedAt,
+                featureCounts
+        );
 
         insertedRows += saveFeatureScores(userId, "DIRECTOR",
-                aggregateFeatureScores(signalWeightsByMovie,
-                        loadNamedFeatures(signalWeightsByMovie.keySet(), """
-                                SELECT md.movie_id, p.name AS feature_name
-                                FROM movie_director md
-                                JOIN person p ON p.id = md.person_id
-                                WHERE md.movie_id IN (%s)
-                                """),
+                aggregateFeatureScores(
+                        "DIRECTOR",
+                        signalWeightsByMovie,
+                        directorFeatures,
                         recommendationFeaturePolicy.profileMultiplier("DIRECTOR"),
-                        feature -> 1.0),
-                updatedAt, featureCounts);
+                        feature -> 1.0,
+                        null
+                ),
+                updatedAt,
+                featureCounts
+        );
 
         insertedRows += saveFeatureScores(userId, "ACTOR",
-                aggregateFeatureScores(signalWeightsByMovie,
-                        loadNamedFeatures(signalWeightsByMovie.keySet(), """
-                                SELECT ma.movie_id, p.name AS feature_name
-                                FROM movie_actor ma
-                                JOIN person p ON p.id = ma.person_id
-                                WHERE ma.movie_id IN (%s)
-                                  AND ma.display_order <= %d
-                                """.formatted("%s", recommendationFeaturePolicy.actorLimit())),
+                aggregateFeatureScores(
+                        "ACTOR",
+                        signalWeightsByMovie,
+                        actorFeatures,
                         recommendationFeaturePolicy.profileMultiplier("ACTOR"),
-                        feature -> 1.0),
-                updatedAt, featureCounts);
+                        feature -> 1.0,
+                        actorEligibleMovieIds
+                ),
+                updatedAt,
+                featureCounts
+        );
 
         insertedRows += saveFeatureScores(userId, "KEYWORD",
-                aggregateFeatureScores(signalWeightsByMovie,
-                        loadNamedFeatures(signalWeightsByMovie.keySet(), """
-                                SELECT mk.movie_id, k.name AS feature_name
-                                FROM movie_keyword mk
-                                JOIN keyword k ON k.id = mk.keyword_id
-                                WHERE mk.movie_id IN (%s)
-                                  AND mk.display_order <= %d
-                                  AND LOWER(k.name) NOT IN (%s)
-                                """.formatted("%s", recommendationFeaturePolicy.keywordLimit(),
-                                        recommendationFeaturePolicy.keywordBlacklistSqlLiteralList())),
+                aggregateFeatureScores(
+                        "KEYWORD",
+                        signalWeightsByMovie,
+                        keywordFeatures,
                         recommendationFeaturePolicy.profileMultiplier("KEYWORD"),
-                        feature -> 1.0),
-                updatedAt, featureCounts);
+                        feature -> 1.0,
+                        null
+                ),
+                updatedAt,
+                featureCounts
+        );
 
         insertedRows += saveFeatureScores(userId, "PROVIDER",
-                aggregateFeatureScores(signalWeightsByMovie,
-                        loadNamedFeatures(signalWeightsByMovie.keySet(), """
-                                SELECT DISTINCT mp.movie_id, p.provider_name AS feature_name
-                                FROM movie_provider mp
-                                JOIN provider p ON p.id = mp.provider_id
-                                WHERE mp.movie_id IN (%s)
-                                  AND mp.provider_type = '%s'
-                                  AND mp.region_code = '%s'
-                                """.formatted("%s",
-                                        recommendationFeaturePolicy.preferredProviderType(),
-                                        recommendationFeaturePolicy.preferredProviderRegionCode())),
+                aggregateFeatureScores(
+                        "PROVIDER",
+                        signalWeightsByMovie,
+                        providerFeatures,
                         recommendationFeaturePolicy.profileMultiplier("PROVIDER"),
-                        feature -> 1.0),
-                updatedAt, featureCounts);
+                        feature -> 1.0,
+                        null
+                ),
+                updatedAt,
+                featureCounts
+        );
 
         return new ProfileRebuildResult(userId, signalWeightsByMovie.size(), insertedRows, featureCounts);
     }
@@ -154,13 +219,11 @@ public class UserPreferenceProfileService {
                 """);
     }
 
-    private Map<Long, Double> loadSignalWeights(Long userId) {
-        Map<Long, Double> signalWeightsByMovie = new LinkedHashMap<>();
+    private Map<Long, MovieSignalWeights> loadSignalWeights(Long userId) {
+        Map<Long, MovieSignalWeights> signalWeightsByMovie = new LinkedHashMap<>();
 
         initializeWatchedSignalTable();
 
-        // 강한 선호 신호부터 약한 신호 순서로 가중치를 합산한다.
-        // 같은 영화에 여러 행동이 겹치면 점수가 누적되어 "이 영화가 취향 앵커"라는 의미가 강해진다.
         mergeFixedSignal(signalWeightsByMovie, userId, """
                 SELECT movie_id
                 FROM user_movie_life
@@ -180,12 +243,18 @@ public class UserPreferenceProfileService {
                 WHERE user_id = ?
                   AND COALESCE(status, 'WATCHED') = 'WATCHED'
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
-                    signalWeightsByMovie.merge(
-                            rs.getLong("movie_id"),
-                            recommendationFeaturePolicy.watchedSignalWeight(rs.getObject("rating", Integer.class)),
-                            Double::sum
-                    );
-                }, userId);
+            long movieId = rs.getLong("movie_id");
+            double watchedSignal = recommendationFeaturePolicy.watchedSignalWeight(
+                    rs.getObject("rating", Integer.class)
+            );
+            signalWeightsByMovie.compute(
+                    movieId,
+                    (ignored, current) -> {
+                        MovieSignalWeights base = current == null ? MovieSignalWeights.empty() : current;
+                        return base.addWatchedSignal(watchedSignal);
+                    }
+            );
+        }, userId);
 
         mergeFixedSignal(signalWeightsByMovie, userId, """
                 SELECT movie_id
@@ -193,15 +262,23 @@ public class UserPreferenceProfileService {
                 WHERE user_id = ?
                 """, recommendationFeaturePolicy.storeSignalWeight());
 
+        signalWeightsByMovie.entrySet().removeIf(entry -> !entry.getValue().hasAnySignal());
         return signalWeightsByMovie;
     }
 
-    private void mergeFixedSignal(Map<Long, Double> signalWeightsByMovie, Long userId, String sql, double weight) {
+    private void mergeFixedSignal(
+            Map<Long, MovieSignalWeights> signalWeightsByMovie,
+            Long userId,
+            String sql,
+            double weight
+    ) {
         jdbcTemplate.query(sql, (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
-            signalWeightsByMovie.merge(
+            signalWeightsByMovie.compute(
                     rs.getLong("movie_id"),
-                    weight,
-                    Double::sum
+                    (ignored, current) -> {
+                        MovieSignalWeights base = current == null ? MovieSignalWeights.empty() : current;
+                        return base.addPositive(weight);
+                    }
             );
         }, userId);
     }
@@ -277,51 +354,136 @@ public class UserPreferenceProfileService {
                 ));
     }
 
-    private Map<String, Double> aggregateFeatureScores(Map<Long, Double> signalWeightsByMovie,
-                                                       Map<Long, List<String>> featuresByMovie,
-                                                       double featureMultiplier,
-                                                       ToDoubleFunction<String> featureWeightResolver) {
+    private Map<String, Double> aggregateFeatureScores(
+            String featureType,
+            Map<Long, MovieSignalWeights> signalWeightsByMovie,
+            Map<Long, List<String>> featuresByMovie,
+            double featureMultiplier,
+            ToDoubleFunction<String> featureWeightResolver,
+            Set<Long> includedMovieIds
+    ) {
         Map<String, Double> scores = new LinkedHashMap<>();
 
-        for (Map.Entry<Long, Double> entry : signalWeightsByMovie.entrySet()) {
+        for (Map.Entry<Long, MovieSignalWeights> entry : signalWeightsByMovie.entrySet()) {
             Long movieId = entry.getKey();
+            if (includedMovieIds != null && !includedMovieIds.contains(movieId)) {
+                continue;
+            }
+
             List<String> features = featuresByMovie.get(movieId);
             if (features == null || features.isEmpty()) {
                 continue;
             }
 
-            // 한 영화의 행동 신호는 해당 영화에 달린 feature 개수만큼 분산해서 과도한 편향을 줄인다.
-            double contribution = featureMultiplier * entry.getValue() / features.size();
+            double positiveContribution = featureMultiplier * entry.getValue().positiveWeight() / features.size();
+            double negativeContribution = featureMultiplier * entry.getValue().negativeWeight() / features.size();
+
             for (String feature : features) {
-                double adjustedContribution = contribution * Math.max(0.0, featureWeightResolver.applyAsDouble(feature));
-                if (adjustedContribution <= 0.0) {
+                double featureWeight = Math.max(0.0, featureWeightResolver.applyAsDouble(feature));
+                if (featureWeight <= 0.0) {
                     continue;
                 }
-                scores.merge(feature, adjustedContribution, Double::sum);
+
+                double adjustedPositive = positiveContribution * featureWeight;
+                double adjustedNegative = negativeContribution
+                        * featureWeight
+                        * recommendationFeaturePolicy.negativeFeatureScale(featureType);
+
+                double totalContribution = adjustedPositive + adjustedNegative;
+                if (totalContribution == 0.0) {
+                    continue;
+                }
+                scores.merge(feature, totalContribution, Double::sum);
             }
         }
 
         return scores;
     }
 
-    private int saveFeatureScores(Long userId,
-                                  String featureType,
-                                  Map<String, Double> scores,
-                                  LocalDateTime updatedAt,
-                                  Map<String, Integer> featureCounts) {
+    private Map<String, Double> applyTagDominanceControl(Map<String, Double> rawScores) {
+        Map<String, Double> adjustedScores = new LinkedHashMap<>();
+        rawScores.forEach((feature, rawScore) -> {
+            double adjustedScore = applySignedSaturation(rawScore, recommendationFeaturePolicy::saturateTagScore);
+            if (adjustedScore != 0.0) {
+                adjustedScores.put(feature, adjustedScore);
+            }
+        });
+        return adjustedScores;
+    }
+
+    private Map<String, Double> applyGenreDominanceControl(
+            Map<String, Double> rawScores,
+            Map<String, FeatureEvidence> evidenceByFeature
+    ) {
+        Map<String, Double> adjustedScores = new LinkedHashMap<>();
+        rawScores.forEach((feature, rawScore) -> {
+            FeatureEvidence evidence = evidenceByFeature.getOrDefault(feature, FeatureEvidence.empty());
+            double adjustedScore = recommendationFeaturePolicy.applyGenreDominanceControl(
+                    feature,
+                    rawScore,
+                    evidence.movieCount(),
+                    evidence.signalWeightSum()
+            );
+            if (adjustedScore != 0.0) {
+                adjustedScores.put(feature, adjustedScore);
+            }
+        });
+        return adjustedScores;
+    }
+
+    private Map<String, FeatureEvidence> buildFeatureEvidence(
+            Map<Long, MovieSignalWeights> signalWeightsByMovie,
+            Map<Long, List<String>> featuresByMovie,
+            Set<Long> includedMovieIds
+    ) {
+        Map<String, FeatureEvidence> evidenceByFeature = new LinkedHashMap<>();
+
+        for (Map.Entry<Long, MovieSignalWeights> entry : signalWeightsByMovie.entrySet()) {
+            Long movieId = entry.getKey();
+            if (includedMovieIds != null && !includedMovieIds.contains(movieId)) {
+                continue;
+            }
+            if (entry.getValue().positiveWeight() <= 0.0) {
+                continue;
+            }
+
+            List<String> features = featuresByMovie.get(movieId);
+            if (features == null || features.isEmpty()) {
+                continue;
+            }
+
+            for (String feature : features) {
+                evidenceByFeature.compute(feature, (ignored, current) -> {
+                    FeatureEvidence base = current == null ? FeatureEvidence.empty() : current;
+                    return base.add(entry.getValue().positiveWeight());
+                });
+            }
+        }
+
+        return evidenceByFeature;
+    }
+
+    private int saveFeatureScores(
+            Long userId,
+            String featureType,
+            Map<String, Double> scores,
+            LocalDateTime updatedAt,
+            Map<String, Integer> featureCounts
+    ) {
         if (scores.isEmpty()) {
             featureCounts.put(featureType, 0);
             return 0;
         }
 
         List<Map.Entry<String, Double>> entries = scores.entrySet().stream()
-                .filter(entry -> entry.getValue() > 0.0)
-                .sorted(Map.Entry.<String, Double>comparingByValue().reversed()
+                .filter(entry -> entry.getValue() != 0.0)
+                .sorted(Comparator
+                        .comparingDouble((Map.Entry<String, Double> entry) -> Math.abs(entry.getValue())).reversed()
+                        .thenComparing(Map.Entry.<String, Double>comparingByValue().reversed())
                         .thenComparing(Map.Entry::getKey))
                 .limit(recommendationFeaturePolicy.profileFeatureLimit(featureType))
                 .toList();
 
-        // feature_type별 상위 일부만 저장해서 노이즈를 줄이고, 이후 랭킹 계산 비용도 함께 낮춘다.
         jdbcTemplate.batchUpdate("""
                 INSERT INTO user_preference_profile (
                     user_id,
@@ -349,6 +511,13 @@ public class UserPreferenceProfileService {
                 .collect(Collectors.joining(", "));
     }
 
+    private double applySignedSaturation(double rawScore, ToDoubleFunction<Double> saturationFunction) {
+        if (rawScore == 0.0) {
+            return 0.0;
+        }
+        return Math.signum(rawScore) * saturationFunction.applyAsDouble(Math.abs(rawScore));
+    }
+
     private double roundScore(double value) {
         return Math.round(value * 1000.0) / 1000.0;
     }
@@ -359,5 +528,39 @@ public class UserPreferenceProfileService {
             int insertedFeatureCount,
             Map<String, Integer> featureCounts
     ) {
+    }
+
+    private record FeatureEvidence(int movieCount, double signalWeightSum) {
+        private static FeatureEvidence empty() {
+            return new FeatureEvidence(0, 0.0);
+        }
+
+        private FeatureEvidence add(double signalWeight) {
+            return new FeatureEvidence(movieCount + 1, signalWeightSum + signalWeight);
+        }
+    }
+
+    private record MovieSignalWeights(double positiveWeight, double negativeWeight) {
+        private static MovieSignalWeights empty() {
+            return new MovieSignalWeights(0.0, 0.0);
+        }
+
+        private MovieSignalWeights addPositive(double weight) {
+            return new MovieSignalWeights(positiveWeight + Math.max(0.0, weight), negativeWeight);
+        }
+
+        private MovieSignalWeights addWatchedSignal(double watchedSignal) {
+            if (watchedSignal > 0.0) {
+                return new MovieSignalWeights(positiveWeight + watchedSignal, negativeWeight);
+            }
+            if (watchedSignal < 0.0) {
+                return new MovieSignalWeights(positiveWeight, negativeWeight + watchedSignal);
+            }
+            return this;
+        }
+
+        private boolean hasAnySignal() {
+            return positiveWeight > 0.0 || negativeWeight < 0.0;
+        }
     }
 }

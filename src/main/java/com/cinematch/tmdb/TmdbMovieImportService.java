@@ -124,6 +124,36 @@ public class TmdbMovieImportService {
         return new ExistingImportResult(processedCount, matchedCount, noMatchCount, savedRawCount, updatedRawCount);
     }
 
+    @Transactional
+    public ImportResult importMovieIds(List<Long> tmdbMovieIds) {
+        initializeRawTable();
+
+        if (tmdbMovieIds == null || tmdbMovieIds.isEmpty()) {
+            return new ImportResult(0, 0, 0);
+        }
+
+        int requestedCount = 0;
+        int savedRawCount = 0;
+        int updatedRawCount = 0;
+
+        for (Long tmdbMovieId : tmdbMovieIds.stream().filter(id -> id != null && id > 0).distinct().toList()) {
+            requestedCount++;
+
+            JsonNode detailNode = readTree(tmdbRestTemplate.getForObject(buildMovieDetailUri(tmdbMovieId), String.class));
+            if (detailNode == null) {
+                continue;
+            }
+
+            if (upsertRawMovie(tmdbMovieId, toJson(detailNode))) {
+                savedRawCount++;
+            } else {
+                updatedRawCount++;
+            }
+        }
+
+        return new ImportResult(requestedCount, savedRawCount, updatedRawCount);
+    }
+
     private void initializeRawTable() {
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS tmdb_movie_raw (

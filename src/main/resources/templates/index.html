@@ -877,8 +877,65 @@
     </div>
 
     <section th:if="${!hasActiveSearch}">
-        <div class="home-section" th:if="${!#lists.isEmpty(recommendationBlocks)}">
-            <div th:each="block : ${recommendationBlocks}" class="home-section">
+        <div class="home-section" th:if="${!#lists.isEmpty(trendingMovies)}">
+            <div class="section-head">
+                <div class="section-head-main">
+                    <h2>실시간 인기 작품</h2>
+                    <p>TMDB trending movie/day 기준 상위 10개 작품입니다.</p>
+                </div>
+            </div>
+            <div class="row-carousel" data-row-carousel>
+                <button class="row-arrow left" type="button" data-row-direction="prev" aria-label="이전 인기 작품 보기">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                </button>
+                <div class="row-track">
+                    <th:block th:each="movie : ${trendingMovies}">
+                        <a class="movie-card"
+                           th:if="${movie.detailUrl != null}"
+                           th:href="${movie.detailUrl}">
+                            <div class="poster-shell">
+                                <img class="poster"
+                                     th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                                     th:src="${movie.posterImageUrl}"
+                                     th:alt="${movie.title}">
+                                <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                                    <span th:text="${movie.title}">영화 제목</span>
+                                </div>
+                                <div class="poster-overlay"><span>상세 보기</span></div>
+                            </div>
+                            <div class="movie-title" th:text="${movie.title}">영화 제목</div>
+                            <div class="movie-sub"
+                                 th:text="${#strings.isEmpty(movie.subtitle) ? 'TMDB Trending' : movie.subtitle}">TMDB Trending</div>
+                        </a>
+                        <div class="movie-card" th:unless="${movie.detailUrl != null}">
+                            <div class="poster-shell">
+                                <img class="poster"
+                                     th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                                     th:src="${movie.posterImageUrl}"
+                                     th:alt="${movie.title}">
+                                <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                                    <span th:text="${movie.title}">영화 제목</span>
+                                </div>
+                                <div class="poster-overlay"><span>TMDB Trending</span></div>
+                            </div>
+                            <div class="movie-title" th:text="${movie.title}">영화 제목</div>
+                            <div class="movie-sub"
+                                 th:text="${#strings.isEmpty(movie.subtitle) ? 'TMDB Trending' : movie.subtitle}">TMDB Trending</div>
+                        </div>
+                    </th:block>
+                </div>
+                <button class="row-arrow right" type="button" data-row-direction="next" aria-label="다음 인기 작품 보기">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                        <path d="M9 6l6 6-6 6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="home-section" th:if="${primaryRecommendationBlock != null}" th:with="block=${primaryRecommendationBlock}">
+            <div class="home-section">
                 <div class="section-head">
                     <div class="section-head-main">
                         <h2 th:text="${block.title}">추천 블록</h2>
@@ -918,6 +975,84 @@
         </div>
 
         <!-- 홈 차트 섹션 -->
+        <div class="home-section" th:if="${collaborativeLifeBlock != null}" th:with="block=${collaborativeLifeBlock}">
+            <div class="section-head">
+                <div class="section-head-main">
+                    <h2 th:text="${block.title}">나와 취향이 비슷한 사람들이 고른 인생영화</h2>
+                    <p th:text="${block.description}">유사 취향 사용자의 인생영화만 모은 추천입니다.</p>
+                </div>
+            </div>
+            <div class="row-carousel" data-row-carousel>
+                <button class="row-arrow left" type="button" data-row-direction="prev" aria-label="?댁쟾 異붿쿇 蹂닿린">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                </button>
+                <div class="row-track">
+                <a class="movie-card" th:each="movie : ${block.items}" th:href="@{|/movies/${movie.movieCode}|}">
+                    <div class="poster-shell">
+                        <img class="poster"
+                             th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                             th:src="${movie.posterImageUrl}"
+                             th:alt="${movie.title}">
+                        <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                            <span th:text="${movie.title}">?곹솕 ?쒕ぉ</span>
+                        </div>
+                        <div class="poster-overlay"><span>?곸꽭 蹂닿린</span></div>
+                    </div>
+                    <div class="movie-title" th:text="${movie.title}">?곹솕 ?쒕ぉ</div>
+                    <div class="movie-sub"
+                         th:text="${#strings.isEmpty(movie.reasonSummary) ? movie.subtitle : movie.reasonSummary}">異붿쿇 ?댁쑀</div>
+                </a>
+                </div>
+                <button class="row-arrow right" type="button" data-row-direction="next" aria-label="?ㅼ쓬 異붿쿇 蹂닿린">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                        <path d="M9 6l6 6-6 6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="home-section" th:if="${!#lists.isEmpty(secondaryRecommendationBlocks)}">
+            <div th:each="block : ${secondaryRecommendationBlocks}" class="home-section">
+                <div class="section-head">
+                    <div class="section-head-main">
+                        <h2 th:text="${block.title}">異붿쿇 釉붾줉</h2>
+                        <p th:text="${block.description}">?ㅻ챸</p>
+                    </div>
+                </div>
+                <div class="row-carousel" data-row-carousel>
+                    <button class="row-arrow left" type="button" data-row-direction="prev" aria-label="?댁쟾 異붿쿇 蹂닿린">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                            <path d="M15 18l-6-6 6-6"/>
+                        </svg>
+                    </button>
+                    <div class="row-track">
+                    <a class="movie-card" th:each="movie : ${block.items}" th:href="@{|/movies/${movie.movieCode}|}">
+                        <div class="poster-shell">
+                            <img class="poster"
+                                 th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                                 th:src="${movie.posterImageUrl}"
+                                 th:alt="${movie.title}">
+                            <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                                <span th:text="${movie.title}">?곹솕 ?쒕ぉ</span>
+                            </div>
+                            <div class="poster-overlay"><span>?곸꽭 蹂닿린</span></div>
+                        </div>
+                        <div class="movie-title" th:text="${movie.title}">?곹솕 ?쒕ぉ</div>
+                        <div class="movie-sub"
+                             th:text="${#strings.isEmpty(movie.reasonSummary) ? movie.subtitle : movie.reasonSummary}">異붿쿇 ?댁쑀</div>
+                    </a>
+                    </div>
+                    <button class="row-arrow right" type="button" data-row-direction="next" aria-label="?ㅼ쓬 異붿쿇 蹂닿린">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                            <path d="M9 6l6 6-6 6"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div class="home-chart-section" th:if="${!#lists.isEmpty(homeChartSections)}">
             <div class="home-chart-block" th:each="section : ${homeChartSections}">
                 <div class="home-chart-head">
