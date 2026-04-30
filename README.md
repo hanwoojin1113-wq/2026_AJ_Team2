@@ -1,4 +1,4 @@
-﻿# CineMatch
+# CineMatch
 
 영화 메타데이터와 사용자 활동 기록을 기반으로 개인화 추천을 제공하는 Spring Boot 기반 영화 추천 웹 프로젝트입니다.
 
