@@ -312,6 +312,7 @@ public class MovieController {
             model.addAttribute("primaryRecommendationBlock", null);
             model.addAttribute("collaborativeLifeBlock", null);
             model.addAttribute("secondaryRecommendationBlocks", List.of());
+            model.addAttribute("collaborativeLifeRepresentative", null);
             model.addAttribute("fallbackMovies", List.of());
             model.addAttribute("homeChartSections", List.of());
             model.addAttribute("trendingMovies", List.of());
@@ -327,8 +328,10 @@ public class MovieController {
             List<RecommendationBlockService.RecommendationBlock> secondaryRecommendationBlocks = recommendationBlocks.stream()
                     .filter(block -> !"PERSONALIZED".equals(block.key()))
                     .toList();
+            CollaborativeLifeMovieRecommendationService.CollaborativeLifeSection collaborativeLifeSection =
+                    collaborativeLifeMovieRecommendationService.buildSection(userId).orElse(null);
             RecommendationBlockService.RecommendationBlock collaborativeLifeBlock =
-                    collaborativeLifeMovieRecommendationService.buildBlock(userId).orElse(null);
+                    collaborativeLifeSection == null ? null : collaborativeLifeSection.block();
 
             model.addAttribute("movies", List.of());
             model.addAttribute("searchResultCount", 0);
@@ -342,6 +345,8 @@ public class MovieController {
             model.addAttribute("recommendationBlocks", recommendationBlocks);
             model.addAttribute("primaryRecommendationBlock", primaryRecommendationBlock);
             model.addAttribute("collaborativeLifeBlock", collaborativeLifeBlock);
+            model.addAttribute("collaborativeLifeRepresentative",
+                    collaborativeLifeSection == null ? null : collaborativeLifeSection.representativeUser());
             model.addAttribute("secondaryRecommendationBlocks", secondaryRecommendationBlocks);
             model.addAttribute("fallbackMovies", recommendationBlocks.isEmpty() ? fetchPopularMovies(12) : List.of());
             model.addAttribute("trendingMovies", tmdbTrendingService.fetchTrendingMovies(10));
@@ -353,6 +358,43 @@ public class MovieController {
             model.addAttribute("homeChartSections", homeChartSections);
         }
         return "index";
+    }
+
+    @GetMapping("/users/{loginId}")
+    public String userProfilePage(@PathVariable String loginId, Model model, HttpSession session) {
+        if (!isLoggedIn(session)) {
+            return "redirect:/login";
+        }
+
+        initializeActivityTables();
+        Long currentUserId = getCurrentUserId(session);
+        String normalizedLoginId = loginId == null ? "" : loginId.trim();
+        if (normalizedLoginId.isBlank()) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+
+        String currentLoginId = (String) session.getAttribute(LOGIN_SESSION_KEY);
+        if (normalizedLoginId.equalsIgnoreCase(currentLoginId)) {
+            return "redirect:/mypage";
+        }
+
+        SocialProfileView targetUser = fetchSocialProfile(normalizedLoginId, currentUserId);
+        if (targetUser == null) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+
+        addCurrentUserAttributes(model, session);
+        model.addAttribute("targetUser", targetUser);
+        model.addAttribute("lifeMovies", fetchLifeMovies(targetUser.userId(), LIFE_MOVIE_LIMIT));
+        model.addAttribute("lifeMovieCount", countLifeMovies(targetUser.userId()));
+        model.addAttribute("watchingMovies", fetchWatchedMovies(targetUser.userId(), "WATCHING", LIFE_MOVIE_LIMIT));
+        model.addAttribute("watchingMovieCount", countWatchedMovies(targetUser.userId(), "WATCHING"));
+        model.addAttribute("watchedMovies", fetchWatchedMovies(targetUser.userId(), "WATCHED", LIFE_MOVIE_LIMIT));
+        model.addAttribute("watchedMovieCount", countWatchedMovies(targetUser.userId(), "WATCHED"));
+        model.addAttribute("likedMovies", fetchLikedMovies(targetUser.userId(), LIFE_MOVIE_LIMIT));
+        model.addAttribute("likedMovieCount", countLikedMovies(targetUser.userId()));
+        model.addAttribute("profileRedirectPath", "/users/" + targetUser.loginId());
+        return "user-profile";
     }
 
     @GetMapping("/mypage")

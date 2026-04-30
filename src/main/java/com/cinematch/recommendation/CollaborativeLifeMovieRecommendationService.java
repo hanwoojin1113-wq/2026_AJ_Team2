@@ -7,7 +7,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -25,9 +24,7 @@ public class CollaborativeLifeMovieRecommendationService {
     private static final int MAX_RESULT_COUNT = 10;
 
     private static final String BLOCK_KEY = "COLLABORATIVE_LIFE";
-    private static final String BLOCK_TITLE = "나와 취향이 비슷한 사람들이 고른 인생영화";
-    private static final String BLOCK_DESCRIPTION = "취향 프로필이 비슷한 사용자가 인생영화로 고른 작품만 모은 추천입니다.";
-    private static final String BLOCK_REASON = "유사 취향 사용자들이 선택한 인생영화";
+    private static final String BLOCK_REASON = "취향이 비슷한 사용자가 인생영화로 고른 작품";
 
     private final JdbcTemplate jdbcTemplate;
     private final RecommendationMovieFilterService recommendationMovieFilterService;
@@ -40,7 +37,7 @@ public class CollaborativeLifeMovieRecommendationService {
         this.recommendationMovieFilterService = recommendationMovieFilterService;
     }
 
-    public Optional<RecommendationBlockService.RecommendationBlock> buildBlock(Long userId) {
+    public Optional<CollaborativeLifeSection> buildSection(Long userId) {
         try {
             if (userId == null) {
                 return Optional.empty();
@@ -51,73 +48,81 @@ public class CollaborativeLifeMovieRecommendationService {
                 return Optional.empty();
             }
 
+            Set<Long> excludedMovieIds = loadExcludedMovieIds(userId);
             List<SimilarUser> similarUsers = findSimilarUsers(userId, currentProfile);
             if (similarUsers.isEmpty()) {
                 return Optional.empty();
             }
 
-            Map<Long, CandidateScore> candidateScores = collectLifeMovieScores(similarUsers);
-            if (candidateScores.isEmpty()) {
-                return Optional.empty();
+            for (SimilarUser similarUser : similarUsers) {
+                Optional<CollaborativeLifeSection> section = buildRepresentativeSection(similarUser, excludedMovieIds);
+                if (section.isPresent()) {
+                    return section;
+                }
             }
-
-            candidateScores.keySet().removeAll(loadExcludedMovieIds(userId));
-            if (candidateScores.isEmpty()) {
-                return Optional.empty();
-            }
-
-            Set<Long> recommendableMovieIds =
-                    recommendationMovieFilterService.filterRecommendableMovieIds(candidateScores.keySet());
-            candidateScores.keySet().retainAll(recommendableMovieIds);
-            if (candidateScores.size() < MIN_CANDIDATE_COUNT) {
-                return Optional.empty();
-            }
-
-            Map<Long, MovieCardMetadata> metadataByMovieId = loadMovieMetadata(candidateScores.keySet());
-            List<RecommendationBlockService.BlockMovie> items = candidateScores.entrySet().stream()
-                    .filter(entry -> metadataByMovieId.containsKey(entry.getKey()))
-                    .sorted((left, right) -> compareCandidates(
-                            left.getKey(),
-                            left.getValue(),
-                            right.getKey(),
-                            right.getValue(),
-                            metadataByMovieId
-                    ))
-                    .limit(MAX_RESULT_COUNT)
-                    .map(Map.Entry::getKey)
-                    .map(metadataByMovieId::get)
-                    .filter(metadata -> metadata != null && metadata.movieCode() != null)
-                    .toList()
-                    .stream()
-                    .map(metadata -> metadata.toBlockMovie(BLOCK_REASON))
-                    .toList();
-
-            if (items.size() < MIN_CANDIDATE_COUNT) {
-                return Optional.empty();
-            }
-
-            List<RecommendationBlockService.BlockMovie> rankedItems = new ArrayList<>();
-            for (int index = 0; index < items.size(); index++) {
-                RecommendationBlockService.BlockMovie item = items.get(index);
-                rankedItems.add(new RecommendationBlockService.BlockMovie(
-                        index + 1,
-                        item.movieCode(),
-                        item.title(),
-                        item.subtitle(),
-                        item.posterImageUrl(),
-                        item.reasonSummary()
-                ));
-            }
-
-            return Optional.of(new RecommendationBlockService.RecommendationBlock(
-                    BLOCK_KEY,
-                    BLOCK_TITLE,
-                    BLOCK_DESCRIPTION,
-                    rankedItems
-            ));
+            return Optional.empty();
         } catch (Exception ignored) {
             return Optional.empty();
         }
+    }
+
+    private Optional<CollaborativeLifeSection> buildRepresentativeSection(SimilarUser similarUser, Set<Long> excludedMovieIds) {
+        RepresentativeUser representativeUser = loadRepresentativeUser(similarUser.userId(), similarUser.similarity());
+        if (representativeUser == null) {
+            return Optional.empty();
+        }
+
+        List<Long> candidateMovieIds = loadLifeMovieIds(similarUser.userId()).stream()
+                .filter(movieId -> !excludedMovieIds.contains(movieId))
+                .toList();
+        if (candidateMovieIds.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Set<Long> recommendableMovieIds = recommendationMovieFilterService
+                .filterRecommendableMovieIds(new LinkedHashSet<>(candidateMovieIds));
+        if (recommendableMovieIds.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Map<Long, MovieCardMetadata> metadataByMovieId = loadMovieMetadata(candidateMovieIds);
+        List<RecommendationBlockService.BlockMovie> items = candidateMovieIds.stream()
+                .filter(recommendableMovieIds::contains)
+                .map(metadataByMovieId::get)
+                .filter(metadata -> metadata != null && metadata.movieCode() != null)
+                .limit(MAX_RESULT_COUNT)
+                .map(metadata -> metadata.toBlockMovie(BLOCK_REASON))
+                .toList();
+
+        if (items.size() < MIN_CANDIDATE_COUNT) {
+            return Optional.empty();
+        }
+
+        List<RecommendationBlockService.BlockMovie> rankedItems = new ArrayList<>();
+        for (int index = 0; index < items.size(); index++) {
+            RecommendationBlockService.BlockMovie item = items.get(index);
+            rankedItems.add(new RecommendationBlockService.BlockMovie(
+                    index + 1,
+                    item.movieCode(),
+                    item.title(),
+                    item.subtitle(),
+                    item.posterImageUrl(),
+                    item.reasonSummary()
+            ));
+        }
+
+        String title = representativeUser.loginId() + "님의 인생영화";
+        String description = "취향이 비슷한 사용자의 인생영화만 골라 보여드려요.";
+
+        return Optional.of(new CollaborativeLifeSection(
+                new RecommendationBlockService.RecommendationBlock(
+                        BLOCK_KEY,
+                        title,
+                        description,
+                        rankedItems
+                ),
+                representativeUser
+        ));
     }
 
     private List<SimilarUser> findSimilarUsers(Long currentUserId, Map<String, Double> currentProfile) {
@@ -125,44 +130,15 @@ public class CollaborativeLifeMovieRecommendationService {
         return otherProfiles.entrySet().stream()
                 .map(entry -> new SimilarUser(entry.getKey(), cosineSimilarity(currentProfile, entry.getValue())))
                 .filter(similarUser -> similarUser.similarity() >= SIMILARITY_THRESHOLD)
-                .sorted(Comparator.comparingDouble(SimilarUser::similarity).reversed()
-                        .thenComparing(SimilarUser::userId))
+                .sorted((left, right) -> {
+                    int similarityCompare = Double.compare(right.similarity(), left.similarity());
+                    if (similarityCompare != 0) {
+                        return similarityCompare;
+                    }
+                    return Long.compare(left.userId(), right.userId());
+                })
                 .limit(MAX_SIMILAR_USERS)
                 .toList();
-    }
-
-    private Map<Long, CandidateScore> collectLifeMovieScores(List<SimilarUser> similarUsers) {
-        if (similarUsers.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        Map<Long, Double> similarityByUserId = similarUsers.stream()
-                .collect(Collectors.toMap(
-                        SimilarUser::userId,
-                        SimilarUser::similarity,
-                        (left, right) -> left,
-                        LinkedHashMap::new
-                ));
-
-        Map<Long, CandidateScore> scoresByMovieId = new LinkedHashMap<>();
-        List<Object> params = new ArrayList<>(similarityByUserId.keySet());
-        jdbcTemplate.query("""
-                SELECT user_id, movie_id
-                FROM user_movie_life
-                WHERE user_id IN (%s)
-                """.formatted(placeholders(similarityByUserId.size())), rs -> {
-            long userId = rs.getLong("user_id");
-            long movieId = rs.getLong("movie_id");
-            double similarity = similarityByUserId.getOrDefault(userId, 0.0);
-            if (similarity <= 0.0) {
-                return;
-            }
-            CandidateScore score = scoresByMovieId.computeIfAbsent(movieId, ignored -> new CandidateScore());
-            score.totalScore += similarity;
-            score.supportCount += 1;
-        }, params.toArray());
-
-        return scoresByMovieId;
     }
 
     private Map<String, Double> loadPositiveProfile(Long userId) {
@@ -228,6 +204,31 @@ public class CollaborativeLifeMovieRecommendationService {
         jdbcTemplate.query(sql, (org.springframework.jdbc.core.RowCallbackHandler) rs -> movieIds.add(rs.getLong("movie_id")), userId);
     }
 
+    private List<Long> loadLifeMovieIds(Long userId) {
+        return jdbcTemplate.query("""
+                SELECT movie_id
+                FROM user_movie_life
+                WHERE user_id = ?
+                ORDER BY created_at DESC, movie_id DESC
+                """, (rs, rowNum) -> rs.getLong("movie_id"), userId);
+    }
+
+    private RepresentativeUser loadRepresentativeUser(Long userId, double similarity) {
+        return jdbcTemplate.query("""
+                SELECT id, login_id, nickname, profile_image_url
+                FROM "USER"
+                WHERE id = ?
+                """, rs -> rs.next()
+                ? new RepresentativeUser(
+                        rs.getLong("id"),
+                        rs.getString("login_id"),
+                        rs.getString("nickname"),
+                        rs.getString("profile_image_url"),
+                        similarity
+                )
+                : null, userId);
+    }
+
     private Map<Long, MovieCardMetadata> loadMovieMetadata(Collection<Long> movieIds) {
         if (movieIds.isEmpty()) {
             return Collections.emptyMap();
@@ -259,52 +260,6 @@ public class CollaborativeLifeMovieRecommendationService {
                 )
         ), params.toArray());
         return metadataByMovieId;
-    }
-
-    private int compareCandidates(
-            Long leftMovieId,
-            CandidateScore leftScore,
-            Long rightMovieId,
-            CandidateScore rightScore,
-            Map<Long, MovieCardMetadata> metadataByMovieId
-    ) {
-        int scoreCompare = Double.compare(rightScore.totalScore, leftScore.totalScore);
-        if (scoreCompare != 0) {
-            return scoreCompare;
-        }
-
-        int supportCompare = Integer.compare(rightScore.supportCount, leftScore.supportCount);
-        if (supportCompare != 0) {
-            return supportCompare;
-        }
-
-        MovieCardMetadata leftMetadata = metadataByMovieId.get(leftMovieId);
-        MovieCardMetadata rightMetadata = metadataByMovieId.get(rightMovieId);
-
-        int popularityCompare = Double.compare(
-                rightMetadata == null || rightMetadata.popularity() == null ? 0.0 : rightMetadata.popularity(),
-                leftMetadata == null || leftMetadata.popularity() == null ? 0.0 : leftMetadata.popularity()
-        );
-        if (popularityCompare != 0) {
-            return popularityCompare;
-        }
-
-        LocalDate leftReleaseDate = leftMetadata == null ? null : leftMetadata.releaseDate();
-        LocalDate rightReleaseDate = rightMetadata == null ? null : rightMetadata.releaseDate();
-        if (leftReleaseDate == null && rightReleaseDate != null) {
-            return 1;
-        }
-        if (leftReleaseDate != null && rightReleaseDate == null) {
-            return -1;
-        }
-        if (leftReleaseDate != null) {
-            int releaseCompare = rightReleaseDate.compareTo(leftReleaseDate);
-            if (releaseCompare != 0) {
-                return releaseCompare;
-            }
-        }
-
-        return Long.compare(leftMovieId, rightMovieId);
     }
 
     private double cosineSimilarity(Map<String, Double> left, Map<String, Double> right) {
@@ -351,9 +306,22 @@ public class CollaborativeLifeMovieRecommendationService {
                 .collect(Collectors.joining(", "));
     }
 
-    private static final class CandidateScore {
-        private double totalScore;
-        private int supportCount;
+    public record CollaborativeLifeSection(
+            RecommendationBlockService.RecommendationBlock block,
+            RepresentativeUser representativeUser
+    ) {
+    }
+
+    public record RepresentativeUser(
+            Long userId,
+            String loginId,
+            String nickname,
+            String profileImageUrl,
+            double similarity
+    ) {
+        public int similarityPercent() {
+            return (int) Math.round(similarity * 100.0);
+        }
     }
 
     private record SimilarUser(Long userId, double similarity) {
