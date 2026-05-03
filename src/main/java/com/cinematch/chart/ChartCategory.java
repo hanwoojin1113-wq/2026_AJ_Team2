@@ -25,7 +25,13 @@ public enum ChartCategory {
     GENRE("장르"),
 
     /** 감독/배우 기반 순위 */
-    PEOPLE("인물");
+    PEOPLE("인물"),
+
+    /** TMDB 평점 기반 순위 */
+    RATING("평점"),
+
+    /** 서비스 내 유저 활동 기반 순위 */
+    COMMUNITY("커뮤니티");
 
     private final String label;
 
