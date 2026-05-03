@@ -36,7 +36,8 @@ import com.cinematch.recommendation.RecommendationBlockService;
 import com.cinematch.recommendation.RecommendationMaintenanceService;
 import com.cinematch.tag.RecommendationTag;
 import com.cinematch.tag.RecommendationTagType;
-import com.cinematch.tmdb.TmdbTrendingService;
+import com.cinematch.kobis.KobisBoxOfficeService;
+import com.cinematch.notification.NotificationService;
 
 @Controller
 public class MovieController {
@@ -90,7 +91,8 @@ public class MovieController {
     private final RecommendationBlockService recommendationBlockService;
     private final CollaborativeLifeMovieRecommendationService collaborativeLifeMovieRecommendationService;
     private final ChartRegistry chartRegistry;
-    private final TmdbTrendingService tmdbTrendingService;
+    private final KobisBoxOfficeService kobisBoxOfficeService;
+    private final NotificationService notificationService;
 
     public MovieController(JdbcTemplate jdbcTemplate,
                            RecommendationRefreshStateService recommendationRefreshStateService,
@@ -98,14 +100,16 @@ public class MovieController {
                            RecommendationBlockService recommendationBlockService,
                            CollaborativeLifeMovieRecommendationService collaborativeLifeMovieRecommendationService,
                            ChartRegistry chartRegistry,
-                           TmdbTrendingService tmdbTrendingService) {
+                           KobisBoxOfficeService kobisBoxOfficeService,
+                           NotificationService notificationService) {
         this.jdbcTemplate = jdbcTemplate;
         this.recommendationRefreshStateService = recommendationRefreshStateService;
         this.recommendationMaintenanceService = recommendationMaintenanceService;
         this.recommendationBlockService = recommendationBlockService;
         this.collaborativeLifeMovieRecommendationService = collaborativeLifeMovieRecommendationService;
         this.chartRegistry = chartRegistry;
-        this.tmdbTrendingService = tmdbTrendingService;
+        this.kobisBoxOfficeService = kobisBoxOfficeService;
+        this.notificationService = notificationService;
     }
 
     @GetMapping("/")
@@ -349,7 +353,9 @@ public class MovieController {
                     collaborativeLifeSection == null ? null : collaborativeLifeSection.representativeUser());
             model.addAttribute("secondaryRecommendationBlocks", secondaryRecommendationBlocks);
             model.addAttribute("fallbackMovies", recommendationBlocks.isEmpty() ? fetchPopularMovies(12) : List.of());
-            model.addAttribute("trendingMovies", tmdbTrendingService.fetchTrendingMovies(10));
+            model.addAttribute("trendingMovies", kobisBoxOfficeService.fetchBoxOffice(10).stream()
+                    .filter(movie -> movie.posterImageUrl() != null && !movie.posterImageUrl().isBlank())
+                    .toList());
 
             List<HomeChartSectionView> homeChartSections = HOME_CHART_CODES.stream()
                     .flatMap(code -> chartRegistry.find(code).stream())
@@ -824,6 +830,7 @@ public class MovieController {
                     INSERT INTO user_follow (follower_user_id, following_user_id)
                     VALUES (?, ?)
                     """, currentUserId, targetUserId);
+            notificationService.createFollowNotification(currentUserId, targetUserId);
         }
         return buildSocialActionPayload(currentUserId, targetUserId, loginId);
     }
@@ -893,6 +900,7 @@ public class MovieController {
                         INSERT INTO user_follow (follower_user_id, following_user_id)
                         VALUES (?, ?)
                         """, currentUserId, targetUserId);
+                notificationService.createFollowNotification(currentUserId, targetUserId);
             }
         }
         return "redirect:" + sanitizeRedirectPath(redirectTo, "/people?user=" + encodeQueryParam(loginId));
@@ -1447,6 +1455,7 @@ public class MovieController {
                     VALUES (?, ?)
                     """, userId, movieId);
             recommendationRefreshStateService.markDirty(userId);
+            notificationService.createLifeMovieNotifications(userId, movieId);
         }
     }
 

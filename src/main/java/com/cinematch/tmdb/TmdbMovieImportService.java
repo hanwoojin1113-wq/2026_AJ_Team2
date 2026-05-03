@@ -189,6 +189,10 @@ public class TmdbMovieImportService {
         return true;
     }
 
+    public JsonNode findBestTmdbMatch(String title, LocalDate releaseDate) {
+        return findBestSearchMatch(new ExistingMovieCandidate(null, title, null, releaseDate));
+    }
+
     private List<ExistingMovieCandidate> loadExistingMovieCandidates(int limit) {
         return jdbcTemplate.query("""
                 SELECT

@@ -247,6 +247,8 @@ public class CollaborativeLifeMovieRecommendationService {
                     COALESCE(m.release_date, m.movie_info_open_date, m.box_office_open_date) AS release_date
                 FROM movie m
                 WHERE m.id IN (%s)
+                  AND m.poster_image_url IS NOT NULL
+                  AND m.poster_image_url <> ''
                 """.formatted(placeholders(movieIds.size())), (org.springframework.jdbc.core.RowCallbackHandler) rs -> metadataByMovieId.put(
                 rs.getLong("id"),
                 new MovieCardMetadata(

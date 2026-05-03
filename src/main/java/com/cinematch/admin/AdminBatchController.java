@@ -1,5 +1,6 @@
 package com.cinematch.admin;
 
+import com.cinematch.tmdb.TmdbTrendingService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,9 +12,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminBatchController {
 
     private final MovieDataBatchService movieDataBatchService;
+    private final TmdbTrendingService tmdbTrendingService;
 
-    public AdminBatchController(MovieDataBatchService movieDataBatchService) {
+    public AdminBatchController(
+            MovieDataBatchService movieDataBatchService,
+            TmdbTrendingService tmdbTrendingService
+    ) {
         this.movieDataBatchService = movieDataBatchService;
+        this.tmdbTrendingService = tmdbTrendingService;
     }
 
     @GetMapping("/runs")
@@ -52,6 +58,11 @@ public class AdminBatchController {
     @PostMapping("/tmdb/normalize")
     public MovieDataBatchService.JobRunResponse normalizeTmdb() {
         return movieDataBatchService.runTmdbNormalize();
+    }
+
+    @PostMapping("/tmdb-trending/refresh")
+    public TmdbTrendingService.TrendingRefreshResult refreshTmdbTrending() {
+        return tmdbTrendingService.refreshTrendingCatalog();
     }
 
     @PostMapping("/tags/rebuild")
