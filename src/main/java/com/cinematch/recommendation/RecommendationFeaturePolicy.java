@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class RecommendationFeaturePolicy {
 
-    public static final String ALGORITHM_VERSION = "content-ranking-v3.2";
+    public static final String ALGORITHM_VERSION = "content-ranking-v3.3";
 
     private static final int ACTOR_LIMIT = 3;
     private static final int KEYWORD_LIMIT = 8;
@@ -46,6 +46,8 @@ public class RecommendationFeaturePolicy {
     private static final double REASON_REPEAT_PENALTY_WEIGHT = 0.024;
     private static final double THEMATIC_OVERLAP_PENALTY_WEIGHT = 0.060;
     private static final double MILD_DIVERSITY_BONUS_WEIGHT = 0.010;
+    private static final double TRENDING_BONUS_MAX = 0.08;
+    private static final double TRENDING_BONUS_MIN = 0.02;
 
     private static final double LIFE_SIGNAL_WEIGHT = 5.0;
     private static final double LIKE_SIGNAL_WEIGHT = 3.0;
@@ -411,6 +413,22 @@ public class RecommendationFeaturePolicy {
 
     public double mildDiversityBonusWeight() {
         return MILD_DIVERSITY_BONUS_WEIGHT;
+    }
+
+    public double trendingBonusMax() {
+        return TRENDING_BONUS_MAX;
+    }
+
+    public double trendingBonusMin() {
+        return TRENDING_BONUS_MIN;
+    }
+
+    public double trendingBonusForRank(Integer rankNo) {
+        if (rankNo == null || rankNo < 1 || rankNo > 10) {
+            return 0.0;
+        }
+        return TRENDING_BONUS_MIN
+                + ((TRENDING_BONUS_MAX - TRENDING_BONUS_MIN) * ((10 - rankNo) / 9.0));
     }
 
     public boolean isGenreDominanceUnlocked(int movieCount, double signalWeightSum) {

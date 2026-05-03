@@ -36,3 +36,6 @@ build/
 spring-boot*.log
 data/*
 !data/.gitkeep
+
+### Local secrets (API keys) ###
+**/application-local.properties

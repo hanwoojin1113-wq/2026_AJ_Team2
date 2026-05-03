@@ -1,5 +1,7 @@
 package com.cinematch.recommendation;
 
+import com.cinematch.kobis.KobisBoxOfficeService;
+
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -31,17 +33,20 @@ public class RecommendationRankingService {
     private final RecommendationRefreshStateService recommendationRefreshStateService;
     private final RecommendationFeaturePolicy recommendationFeaturePolicy;
     private final RecommendationMovieFilterService recommendationMovieFilterService;
+    private final KobisBoxOfficeService kobisBoxOfficeService;
 
     public RecommendationRankingService(
             JdbcTemplate jdbcTemplate,
             RecommendationRefreshStateService recommendationRefreshStateService,
             RecommendationFeaturePolicy recommendationFeaturePolicy,
-            RecommendationMovieFilterService recommendationMovieFilterService
+            RecommendationMovieFilterService recommendationMovieFilterService,
+            KobisBoxOfficeService kobisBoxOfficeService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.recommendationRefreshStateService = recommendationRefreshStateService;
         this.recommendationFeaturePolicy = recommendationFeaturePolicy;
         this.recommendationMovieFilterService = recommendationMovieFilterService;
+        this.kobisBoxOfficeService = kobisBoxOfficeService;
     }
 
     public RankingRebuildResult rebuildRanking(Long userId, Integer limit) {
@@ -83,6 +88,11 @@ public class RecommendationRankingService {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         Set<Long> actorEligibleCandidateMovieIds =
                 recommendationMovieFilterService.filterActorEligibleMovieIds(candidateMovieIds);
+        Set<String> candidateMovieCodes = candidateMovies.stream()
+                .map(CandidateMovie::movieCode)
+                .filter(movieCode -> movieCode != null && !movieCode.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<String, Integer> boxOfficeRanksByMovieCode = loadBoxOfficeRanks(candidateMovieCodes);
 
         Map<Long, Set<String>> tagsByMovie = loadNamedFeatureSetMap(candidateMovieIds, """
                 SELECT mt.movie_id, t.tag_name AS feature_name
@@ -194,6 +204,9 @@ public class RecommendationRankingService {
             double penaltyScore = roundScore(cautionMatch.normalizedScore() * recommendationFeaturePolicy.cautionPenaltyWeight());
             double popularityScore = popularityScore(movie);
             double freshnessBonus = freshnessBonus(movie);
+            double trendingBonus = recommendationFeaturePolicy.trendingBonusForRank(
+                    boxOfficeRanksByMovieCode.get(movie.movieCode())
+            );
 
             int matchedSignalCount = countMatchedSignals(tagScore, genreScore, peopleScore, keywordScore, providerScore);
             double matchCoverage = tagScore + genreScore + peopleScore + keywordScore + providerScore;
@@ -210,6 +223,7 @@ public class RecommendationRankingService {
                             + (recommendationFeaturePolicy.rankingWeight("POPULARITY") * popularityScore)
                             + (recommendationFeaturePolicy.rankingWeight("FRESHNESS") * freshnessBonus)
                             + recommendationFeaturePolicy.multiSignalBonus(matchedSignalCount)
+                            + trendingBonus
                             - penaltyScore
             );
 
@@ -519,6 +533,31 @@ public class RecommendationRankingService {
         }, params.toArray());
 
         return featuresByMovie;
+    }
+
+    private Map<String, Integer> loadBoxOfficeRanks(Set<String> movieCodes) {
+        if (movieCodes.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        try {
+            var boxOfficeMovies = kobisBoxOfficeService.fetchBoxOffice(10);
+            Map<String, Integer> ranksByMovieCode = new LinkedHashMap<>();
+            for (int index = 0; index < boxOfficeMovies.size(); index++) {
+                String detailUrl = boxOfficeMovies.get(index).detailUrl();
+                if (detailUrl == null || !detailUrl.startsWith("/movies/")) {
+                    continue;
+                }
+                String movieCode = detailUrl.substring("/movies/".length());
+                if (!movieCodes.contains(movieCode)) {
+                    continue;
+                }
+                ranksByMovieCode.put(movieCode, index + 1);
+            }
+            return ranksByMovieCode;
+        } catch (Exception ignored) {
+            return Collections.emptyMap();
+        }
     }
 
     private MatchSummary computeMatch(
