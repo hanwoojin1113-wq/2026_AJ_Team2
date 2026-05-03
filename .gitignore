@@ -31,6 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+.claude/
+CLAUDE.md
 
 ### Runtime artifacts ###
 spring-boot*.log
