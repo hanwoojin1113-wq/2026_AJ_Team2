@@ -279,12 +279,13 @@ public class MovieController {
                               AND t.tag_type = ?
                               AND t.tag_name = ?
                       ))
+                    """ + searchExcludedGenreClause() + """
                     ORDER BY
                         CASE WHEN m.ranking IS NULL THEN 1 ELSE 0 END,
                         m.ranking ASC,
                         COALESCE(m.title, m.movie_name) ASC
                     LIMIT ? OFFSET ?
-                    """ + searchExcludedGenreClause();
+                    """;
 
             java.util.ArrayList<Object> movieSearchParams = new java.util.ArrayList<>(List.of(
                     normalizedQuery, queryPattern, queryPattern, queryPattern, queryPattern, queryPattern,
