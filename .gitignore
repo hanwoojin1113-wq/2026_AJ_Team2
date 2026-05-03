@@ -31,8 +31,13 @@ build/
 
 ### VS Code ###
 .vscode/
+.claude/
+CLAUDE.md
 
 ### Runtime artifacts ###
 spring-boot*.log
 data/*
 !data/.gitkeep
+
+### Local secrets (API keys) ###
+**/application-local.properties

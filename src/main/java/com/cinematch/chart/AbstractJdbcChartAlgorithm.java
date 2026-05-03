@@ -39,8 +39,7 @@ public abstract class AbstractJdbcChartAlgorithm implements ChartAlgorithm {
             java.util.function.Function<java.sql.ResultSet, String> badgeResolver
     ) {
         String sql = innerSql + " LIMIT " + Math.max(1, Math.min(limit, 200));
-
-        return jdbcTemplate.query(sql, (rs, rowNum) -> new ChartMovieRow(
+        List<ChartMovieRow> rows = jdbcTemplate.query(sql, (rs, rowNum) -> new ChartMovieRow(
                 rowNum + 1,
                 rs.getString("movie_code"),
                 rs.getString("movie_name"),
@@ -52,6 +51,10 @@ public abstract class AbstractJdbcChartAlgorithm implements ChartAlgorithm {
                 rs.getString("metric_value"),
                 badgeResolver != null ? safeResolveBadge(badgeResolver, rs) : null
         ), params);
+
+        return rows.stream()
+                .filter(row -> row.posterImageUrl() != null && !row.posterImageUrl().isBlank())
+                .toList();
     }
 
     /** badge resolver 실행 중 예외 발생 시 null 반환 */

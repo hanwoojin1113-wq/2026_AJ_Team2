@@ -134,6 +134,59 @@ public class MovieTagService {
         return new RebuildResult(candidates.size(), totalTaggedRows, insertedCounts);
     }
 
+    @Transactional
+    public TaggingResult tagMovies(Set<Long> movieIds) {
+        initializeTagTables();
+        seedTags();
+
+        if (movieIds == null || movieIds.isEmpty()) {
+            return new TaggingResult(0, 0);
+        }
+
+        Set<Long> normalizedMovieIds = new LinkedHashSet<>();
+        for (Long movieId : movieIds) {
+            if (movieId != null && movieId > 0) {
+                normalizedMovieIds.add(movieId);
+            }
+        }
+        if (normalizedMovieIds.isEmpty()) {
+            return new TaggingResult(0, 0);
+        }
+
+        List<MovieTagInput> candidates = loadCandidateMovies().stream()
+                .filter(candidate -> normalizedMovieIds.contains(candidate.movieId()))
+                .toList();
+        if (candidates.isEmpty()) {
+            return new TaggingResult(0, 0);
+        }
+
+        String placeholders = String.join(", ", candidates.stream().map(candidate -> "?").toList());
+        jdbcTemplate.update(
+                "DELETE FROM movie_tag WHERE movie_id IN (" + placeholders + ")",
+                candidates.stream().map(MovieTagInput::movieId).toArray()
+        );
+
+        int totalTaggedRows = 0;
+        Timestamp createdAt = Timestamp.valueOf(LocalDateTime.now());
+        for (MovieTagInput candidate : candidates) {
+            List<MovieTagResult> generatedTags = movieTagGenerator.generate(candidate);
+            for (MovieTagResult generatedTag : generatedTags) {
+                Long tagId = findTagId(generatedTag.tagType().name(), generatedTag.tagName());
+                if (tagId == null) {
+                    continue;
+                }
+
+                jdbcTemplate.update("""
+                        INSERT INTO movie_tag (movie_id, tag_id, created_at)
+                        VALUES (?, ?, ?)
+                        """, candidate.movieId(), tagId, createdAt);
+                totalTaggedRows++;
+            }
+        }
+
+        return new TaggingResult(candidates.size(), totalTaggedRows);
+    }
+
     public TagStats stats() {
         List<MovieTagInput> candidates = loadCandidateMovies();
         Set<Long> candidateMovieIds = new LinkedHashSet<>();
@@ -493,6 +546,12 @@ public class MovieTagService {
     public record GenreCount(
             String genreName,
             int movieCount
+    ) {
+    }
+
+    public record TaggingResult(
+            int candidateCount,
+            int totalTaggedRows
     ) {
     }
 }

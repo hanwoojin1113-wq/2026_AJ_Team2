@@ -697,6 +697,8 @@ public class RecommendationBlockService {
                 FROM user_recommendation_result urr
                 JOIN movie m ON m.id = urr.movie_id
                 WHERE urr.user_id = ?
+                  AND m.poster_image_url IS NOT NULL
+                  AND m.poster_image_url <> ''
                 ORDER BY urr.rank_no
                 LIMIT ?
                 """, (rs, rowNum) -> new RankedMovie(

@@ -22,6 +22,7 @@ public class UserPreferenceProfileService {
     private final JdbcTemplate jdbcTemplate;
     private final RecommendationFeaturePolicy recommendationFeaturePolicy;
     private final RecommendationMovieFilterService recommendationMovieFilterService;
+    private volatile boolean watchedTableInitialized = false;
 
     public UserPreferenceProfileService(
             JdbcTemplate jdbcTemplate,
@@ -283,7 +284,11 @@ public class UserPreferenceProfileService {
         }, userId);
     }
 
-    private void initializeWatchedSignalTable() {
+    private synchronized void initializeWatchedSignalTable() {
+        if (watchedTableInitialized) {
+            return;
+        }
+        watchedTableInitialized = true;
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS user_movie_watched (
                     user_id BIGINT NOT NULL,
