@@ -10,19 +10,19 @@
         :root {
             --blue: #0048FF;
             --bg: #070B14;
-            --surface: #101828;
+            --surface: #0E1828;
             --text: #F8FAFC;
             --text-sub: #CBD5E1;
             --text-hint: #94A3B8;
-            --border: rgba(148,163,184,0.18);
+            --border: rgba(148,163,184,0.14);
             --shadow: 0 24px 60px rgba(2,6,23,0.42);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Pretendard', 'Segoe UI', sans-serif;
             background:
-                radial-gradient(circle at top right, rgba(0,72,255,0.18), transparent 28%),
-                linear-gradient(180deg, #06101f 0%, #070b14 45%, #0a1222 100%);
+                radial-gradient(ellipse at top right, rgba(0,72,255,0.15) 0%, transparent 50%),
+                #070B14;
             color: var(--text);
             min-height: 100vh;
         }
@@ -31,268 +31,367 @@
         .navbar {
             position: sticky; top: 0; z-index: 100;
             display: flex; align-items: center; justify-content: space-between;
-            padding: 0 32px; height: 68px;
-            background: rgba(7,11,20,0.82);
-            backdrop-filter: blur(16px);
-            border-bottom: 1px solid rgba(148,163,184,0.12);
+            padding: 0 32px; height: 60px;
+            background: rgba(7,11,20,0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(148,163,184,0.1);
         }
         .navbar-logo {
             display: inline-flex; align-items: center; gap: 10px;
             color: white; text-decoration: none;
-            font-size: 1.2rem; font-weight: 900; letter-spacing: -0.03em;
+            font-size: 1.15rem; font-weight: 900; letter-spacing: -0.03em;
         }
         .logo-mark {
-            width: 34px; height: 34px; border-radius: 10px;
+            width: 32px; height: 32px; border-radius: 9px;
             display: inline-flex; align-items: center; justify-content: center;
             background: linear-gradient(135deg, #0048FF, #38BDF8);
-            box-shadow: 0 12px 24px rgba(0,72,255,0.28);
         }
-        .logo-mark svg { width: 18px; height: 18px; fill: white; }
-        .navbar-right { display: flex; align-items: center; gap: 12px; }
+        .logo-mark svg { width: 16px; height: 16px; fill: white; }
+        .navbar-right { display: flex; align-items: center; gap: 10px; }
         .user-badge {
             display: inline-flex; align-items: center; gap: 8px;
-            padding: 8px 14px; border-radius: 999px;
-            background: rgba(255,255,255,0.08);
+            padding: 7px 13px; border-radius: 999px;
+            background: rgba(255,255,255,0.07);
             color: white; text-decoration: none;
-            font-size: 0.88rem; font-weight: 700;
+            font-size: 0.85rem; font-weight: 700;
         }
         .logout-btn {
             display: inline-flex; align-items: center; justify-content: center;
-            min-width: 92px; height: 40px; border-radius: 999px;
+            min-width: 84px; height: 36px; border-radius: 999px;
             background: white; color: #0F172A;
-            text-decoration: none; font-size: 0.88rem; font-weight: 800;
+            text-decoration: none; font-size: 0.84rem; font-weight: 800;
         }
 
         /* ── Page ── */
-        .page { max-width: 1200px; margin: 0 auto; padding: 28px 24px 72px; }
+        .page { max-width: 1280px; margin: 0 auto; padding: 24px 24px 80px; }
 
         /* ── Hero ── */
         .hero {
-            padding: 36px 44px;
-            border-radius: 28px;
-            background:
-                linear-gradient(120deg, rgba(0,72,255,0.88) 0%, rgba(14,165,233,0.72) 52%, rgba(10,18,34,0.94) 100%);
-            box-shadow: var(--shadow);
-            margin-bottom: 24px;
+            padding: 32px 40px;
+            border-radius: 24px;
+            background: linear-gradient(120deg,
+                rgba(0,72,255,0.9) 0%,
+                rgba(14,165,233,0.75) 50%,
+                rgba(10,18,34,0.95) 100%);
+            margin-bottom: 20px;
             position: relative; overflow: hidden;
         }
         .hero::after {
             content: '';
-            position: absolute; right: -30px; bottom: -30px;
-            width: 220px; height: 220px; border-radius: 50%;
-            background: rgba(255,255,255,0.07);
+            position: absolute; right: -20px; bottom: -20px;
+            width: 200px; height: 200px; border-radius: 50%;
+            background: rgba(255,255,255,0.06);
+            pointer-events: none;
         }
-        .hero-badge {
-            display: inline-flex; align-items: center; gap: 8px;
-            padding: 7px 14px; border-radius: 999px;
-            background: rgba(255,255,255,0.16);
-            color: rgba(255,255,255,0.92);
-            font-size: 0.8rem; font-weight: 800; margin-bottom: 16px;
+        .hero-eyebrow {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 12px; border-radius: 999px;
+            background: rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.9);
+            font-size: 0.76rem; font-weight: 800; letter-spacing: 0.04em;
+            margin-bottom: 12px;
         }
         .hero h1 {
-            font-size: clamp(2rem, 4vw, 3.2rem);
-            line-height: 1.05; letter-spacing: -0.04em; margin-bottom: 12px;
+            font-size: clamp(1.8rem, 4vw, 3rem);
+            line-height: 1.05; letter-spacing: -0.04em; margin-bottom: 8px;
         }
         .hero p {
-            max-width: 580px;
-            color: rgba(255,255,255,0.78); line-height: 1.7; font-size: 0.98rem;
+            max-width: 520px;
+            color: rgba(255,255,255,0.75); font-size: 0.94rem; line-height: 1.65;
         }
 
-        /* ── 카테고리 탭 ── */
+        /* ── 뷰 토글 + 카테고리 탭 바 ── */
+        .toolbar {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; margin-bottom: 24px; flex-wrap: wrap;
+        }
         .tabs {
-            display: flex; flex-wrap: wrap; gap: 10px;
-            margin-bottom: 32px;
+            display: flex; flex-wrap: wrap; gap: 8px;
         }
         .tab {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 10px 18px; border-radius: 999px;
-            text-decoration: none; font-size: 0.88rem; font-weight: 700;
-            border: 1px solid rgba(148,163,184,0.18);
-            background: rgba(255,255,255,0.05);
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 8px 16px; border-radius: 999px;
+            text-decoration: none; font-size: 0.84rem; font-weight: 700;
+            border: 1px solid rgba(148,163,184,0.15);
+            background: rgba(255,255,255,0.04);
             color: var(--text-hint);
-            transition: all 0.15s ease;
+            transition: all 0.14s ease;
         }
-        .tab:hover { color: white; border-color: rgba(148,163,184,0.38); }
-        .tab.active {
-            background: white; color: #0F172A;
-            border-color: white; box-shadow: 0 4px 14px rgba(255,255,255,0.12);
-        }
+        .tab:hover { color: white; border-color: rgba(148,163,184,0.3); }
+        .tab.active { background: white; color: #0F172A; border-color: white; }
         .tab-count {
             display: inline-flex; align-items: center; justify-content: center;
-            min-width: 20px; height: 20px; padding: 0 6px;
-            border-radius: 999px; font-size: 0.72rem; font-weight: 800;
-            background: rgba(255,255,255,0.14); color: inherit;
+            min-width: 18px; height: 18px; padding: 0 5px;
+            border-radius: 999px; font-size: 0.68rem; font-weight: 800;
+            background: rgba(255,255,255,0.14);
         }
-        .tab.active .tab-count { background: rgba(0,0,0,0.12); }
+        .tab.active .tab-count { background: rgba(0,0,0,0.1); }
 
-        /* ── 섹션 ── */
+        .view-toggle {
+            display: flex; gap: 4px; flex-shrink: 0;
+        }
+        .view-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 36px; height: 36px; border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(148,163,184,0.15);
+            color: var(--text-hint); cursor: pointer;
+            transition: all 0.14s ease;
+        }
+        .view-btn:hover { color: white; border-color: rgba(148,163,184,0.3); }
+        .view-btn.active { background: rgba(255,255,255,0.12); color: white; border-color: rgba(255,255,255,0.25); }
+        .view-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+        /* ── 차트 섹션 ── */
         .chart-section {
-            margin-bottom: 48px;
-            border-radius: 22px;
-            background: rgba(12,20,36,0.72);
-            border: 1px solid rgba(148,163,184,0.1);
+            margin-bottom: 40px;
+            border-radius: 20px;
+            background: rgba(10,17,30,0.7);
+            border: 1px solid rgba(148,163,184,0.09);
             overflow: hidden;
         }
 
-        /* 섹션 헤더 */
         .chart-section-header {
-            display: flex; align-items: center;
-            justify-content: space-between; gap: 16px;
-            padding: 20px 24px 16px;
-            border-bottom: 1px solid rgba(148,163,184,0.08);
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 18px 22px 14px;
+            border-bottom: 1px solid rgba(148,163,184,0.07);
         }
-        .chart-section-left {
-            display: flex; align-items: center; gap: 14px; min-width: 0;
-        }
+        .section-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
         .section-icon {
-            width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+            width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(148,163,184,0.12);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(148,163,184,0.1);
         }
-        .section-icon svg { width: 20px; height: 20px; stroke: var(--text-sub); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-        .section-title-wrap { min-width: 0; }
-        .section-title {
-            font-size: 1.06rem; font-weight: 900;
-            letter-spacing: -0.02em; margin-bottom: 2px;
+        .section-icon svg { width: 18px; height: 18px; stroke: var(--text-sub); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+        .section-texts { min-width: 0; }
+        .section-title { font-size: 1rem; font-weight: 900; letter-spacing: -0.02em; margin-bottom: 1px; }
+        .section-desc { font-size: 0.76rem; color: var(--text-hint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .section-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .cat-badge {
+            padding: 3px 9px; border-radius: 999px;
+            font-size: 0.7rem; font-weight: 800;
+            background: rgba(255,255,255,0.06); color: var(--text-hint);
         }
-        .section-desc {
-            font-size: 0.8rem; color: var(--text-hint);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .chart-section-right {
-            display: flex; align-items: center; gap: 10px; flex-shrink: 0;
-        }
-        .category-badge {
-            padding: 4px 10px; border-radius: 999px;
-            font-size: 0.72rem; font-weight: 800;
-            background: rgba(255,255,255,0.07);
-            color: var(--text-hint);
-        }
-        .see-all-btn {
+        .see-all {
             display: inline-flex; align-items: center; gap: 4px;
-            padding: 8px 14px; border-radius: 999px;
-            font-size: 0.8rem; font-weight: 800;
-            background: rgba(0,72,255,0.18);
-            color: #93c5fd;
+            padding: 7px 13px; border-radius: 999px;
+            font-size: 0.78rem; font-weight: 800;
+            background: rgba(0,72,255,0.15); color: #93c5fd;
             text-decoration: none;
-            border: 1px solid rgba(0,72,255,0.28);
-            transition: background 0.15s ease;
-        }
-        .see-all-btn:hover { background: rgba(0,72,255,0.32); color: white; }
-        .see-all-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-
-        /* ── 순위 리스트 ── */
-        .rank-list { padding: 0; }
-
-        .rank-row {
-            display: grid;
-            grid-template-columns: 52px 64px 1fr auto;
-            align-items: center;
-            gap: 14px;
-            padding: 12px 24px;
-            border-bottom: 1px solid rgba(148,163,184,0.06);
-            text-decoration: none; color: inherit;
+            border: 1px solid rgba(0,72,255,0.25);
             transition: background 0.14s ease;
         }
-        .rank-row:last-child { border-bottom: none; }
-        .rank-row:hover { background: rgba(255,255,255,0.04); }
+        .see-all:hover { background: rgba(0,72,255,0.28); color: white; }
+        .see-all svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 
-        /* 순위 번호 */
-        .rank-no {
-            text-align: center;
-            font-size: 1.4rem; font-weight: 900;
-            letter-spacing: -0.04em;
-            color: var(--text-hint);
+        /* ═══════════════════════════════════════════
+           GRID VIEW (키노라이츠 스타일 — 기본값)
+        ═══════════════════════════════════════════ */
+        .movie-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            padding: 14px 18px 18px;
+        }
+
+        .movie-card {
+            display: flex; flex-direction: column;
+            text-decoration: none; color: inherit;
+            cursor: pointer;
+        }
+
+        .card-poster {
+            position: relative;
+            aspect-ratio: 2/3;
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(148,163,184,0.1);
+            margin-bottom: 7px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .movie-card:hover .card-poster {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 36px rgba(0,0,0,0.55);
+        }
+
+        .card-poster img {
+            width: 100%; height: 100%;
+            display: block; object-fit: cover;
+        }
+
+        .card-poster-fallback {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 8px;
+            background: linear-gradient(135deg, rgba(0,72,255,0.22), rgba(14,165,233,0.18));
+            color: rgba(255,255,255,0.65);
+            font-size: 0.7rem; font-weight: 700; line-height: 1.35;
+        }
+
+        /* 순위 번호 오버레이 — 포스터 하단 */
+        .card-rank {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 28px 8px 6px;
+            background: linear-gradient(to top, rgba(0,0,0,0.78) 0%, transparent 100%);
+            font-size: 1.8rem; font-weight: 900; letter-spacing: -0.05em;
+            color: white;
             line-height: 1;
         }
-        .rank-row:nth-child(1) .rank-no { color: #f59e0b; font-size: 1.7rem; }
-        .rank-row:nth-child(2) .rank-no { color: #94a3b8; font-size: 1.55rem; }
-        .rank-row:nth-child(3) .rank-no { color: #b45309; font-size: 1.55rem; }
+        /* 1·2·3위 특별 색상 */
+        .movie-card:nth-child(1) .card-rank { color: #fbbf24; }
+        .movie-card:nth-child(2) .card-rank { color: #cbd5e1; }
+        .movie-card:nth-child(3) .card-rank { color: #d97706; }
 
-        /* 포스터 */
-        .rank-poster-wrap {
-            aspect-ratio: 2/3;
-            border-radius: 8px;
+        /* 뱃지 오버레이 */
+        .card-badge {
+            position: absolute; top: 6px; left: 6px;
+            padding: 2px 6px; border-radius: 5px;
+            font-size: 0.6rem; font-weight: 800;
+            background: rgba(10,16,28,0.9);
+            color: #fde68a;
+            white-space: nowrap;
+            z-index: 2;
+        }
+
+        /* 호버 오버레이 */
+        .card-hover {
+            position: absolute; inset: 0;
+            background: rgba(0,0,0,0);
+            display: flex; flex-direction: column; justify-content: flex-end;
+            padding: 10px;
+            opacity: 0;
+            transition: opacity 0.18s ease, background 0.18s ease;
+            border-radius: 10px;
+        }
+        .movie-card:hover .card-hover {
+            opacity: 1;
+            background: rgba(0,0,0,0.45);
+        }
+        .card-hover-metric {
+            font-size: 0.68rem; font-weight: 700;
+            color: rgba(255,255,255,0.88);
+            background: rgba(0,0,0,0.55);
+            border-radius: 4px;
+            padding: 3px 6px;
+            display: inline-block;
+            align-self: flex-start;
+            margin-bottom: 24px; /* rank 번호 위 여백 */
+        }
+
+        /* 카드 텍스트 */
+        .card-info { padding: 0 2px; }
+        .card-title {
+            font-size: 0.8rem; font-weight: 700;
+            line-height: 1.35;
             overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            margin-bottom: 3px;
+            color: var(--text-sub);
+        }
+        .movie-card:hover .card-title { color: white; }
+        .card-year { font-size: 0.7rem; color: var(--text-hint); }
+
+        /* ═══════════════════════════════════════════
+           LIST VIEW
+        ═══════════════════════════════════════════ */
+        .rank-list { display: none; }
+        .rank-row {
+            display: grid;
+            grid-template-columns: 48px 58px 1fr auto;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 22px;
+            border-bottom: 1px solid rgba(148,163,184,0.06);
+            text-decoration: none; color: inherit;
+            transition: background 0.12s ease;
+        }
+        .rank-row:last-child { border-bottom: none; }
+        .rank-row:hover { background: rgba(255,255,255,0.03); }
+        .rank-no {
+            text-align: center;
+            font-size: 1.3rem; font-weight: 900; letter-spacing: -0.04em;
+            color: var(--text-hint); line-height: 1;
+        }
+        .rank-row:nth-child(1) .rank-no { color: #fbbf24; font-size: 1.6rem; }
+        .rank-row:nth-child(2) .rank-no { color: #94a3b8; font-size: 1.45rem; }
+        .rank-row:nth-child(3) .rank-no { color: #d97706; font-size: 1.45rem; }
+        .rank-poster-wrap {
+            aspect-ratio: 2/3; border-radius: 7px; overflow: hidden;
             background: rgba(255,255,255,0.07);
-            border: 1px solid rgba(148,163,184,0.12);
+            border: 1px solid rgba(148,163,184,0.1);
             position: relative;
         }
         .rank-poster { width: 100%; height: 100%; display: block; object-fit: cover; }
         .rank-poster-fallback {
             width: 100%; height: 100%;
             display: flex; align-items: center; justify-content: center;
-            text-align: center; padding: 6px;
-            background: linear-gradient(135deg, rgba(0,72,255,0.22), rgba(14,165,233,0.18));
-            color: rgba(255,255,255,0.7);
-            font-size: 0.62rem; font-weight: 800;
+            text-align: center; padding: 5px;
+            background: linear-gradient(135deg, rgba(0,72,255,0.2), rgba(14,165,233,0.16));
+            color: rgba(255,255,255,0.65); font-size: 0.6rem; font-weight: 700;
         }
         .rank-badge-overlay {
-            position: absolute; left: 4px; top: 4px;
+            position: absolute; left: 3px; top: 3px;
             padding: 2px 5px; border-radius: 4px;
-            font-size: 0.58rem; font-weight: 800;
-            background: rgba(15,23,42,0.88);
-            color: #fde68a;
-            white-space: nowrap;
+            font-size: 0.56rem; font-weight: 800;
+            background: rgba(10,16,28,0.9); color: #fde68a;
         }
-
-        /* 영화 정보 */
         .rank-info { min-width: 0; }
         .rank-title {
-            font-size: 0.96rem; font-weight: 800;
-            line-height: 1.35; margin-bottom: 3px;
+            font-size: 0.92rem; font-weight: 800;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            margin-bottom: 3px;
         }
         .rank-sub {
-            font-size: 0.76rem; color: var(--text-hint);
+            font-size: 0.74rem; color: var(--text-hint);
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
             margin-bottom: 4px;
         }
         .rank-year-chip {
-            display: inline-block;
-            font-size: 0.7rem; color: var(--text-hint);
+            display: inline-block; font-size: 0.68rem; color: var(--text-hint);
             padding: 2px 7px; border-radius: 999px;
             background: rgba(255,255,255,0.06);
         }
+        .rank-metric { text-align: right; flex-shrink: 0; }
+        .rank-metric-label { font-size: 0.66rem; color: var(--text-hint); margin-bottom: 3px; }
+        .rank-metric-value { font-size: 0.9rem; font-weight: 900; color: white; letter-spacing: -0.02em; }
 
-        /* 지표 */
-        .rank-metric {
-            text-align: right; flex-shrink: 0;
-        }
-        .rank-metric-label {
-            font-size: 0.68rem; color: var(--text-hint); margin-bottom: 3px;
-        }
-        .rank-metric-value {
-            font-size: 0.92rem; font-weight: 900;
-            letter-spacing: -0.02em; color: white;
-        }
+        /* 전환: body.list-view일 때 */
+        body.list-view .movie-grid { display: none; }
+        body.list-view .rank-list { display: block; }
 
         /* 빈 결과 */
         .section-empty {
-            padding: 32px; text-align: center;
-            color: var(--text-hint); font-size: 0.88rem;
+            padding: 28px; text-align: center;
+            color: var(--text-hint); font-size: 0.86rem;
         }
 
         /* ── 반응형 ── */
+        @media (max-width: 1024px) {
+            .movie-grid { grid-template-columns: repeat(4, 1fr); }
+        }
         @media (max-width: 768px) {
             .navbar { padding: 0 16px; }
-            .page { padding: 20px 14px 56px; }
-            .hero { padding: 28px 22px; }
-            .chart-section-header { padding: 16px 16px 12px; flex-wrap: wrap; }
-            .rank-row {
-                grid-template-columns: 40px 50px 1fr;
-                gap: 10px; padding: 10px 16px;
-            }
+            .page { padding: 18px 14px 60px; }
+            .hero { padding: 26px 22px; }
+            .chart-section-header { padding: 14px 16px 12px; flex-wrap: wrap; }
+            .movie-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px; }
+            .card-rank { font-size: 1.4rem; }
+            .rank-row { grid-template-columns: 38px 48px 1fr; padding: 9px 14px; }
             .rank-metric { display: none; }
-            .rank-row:nth-child(1) .rank-no { font-size: 1.3rem; }
-            .rank-row:nth-child(2) .rank-no,
-            .rank-row:nth-child(3) .rank-no { font-size: 1.2rem; }
-            .rank-no { font-size: 1.1rem; }
+            .toolbar { flex-direction: column; align-items: flex-start; }
+        }
+        @media (max-width: 480px) {
+            .movie-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
 <body>
+
 <nav class="navbar">
     <a class="navbar-logo" th:href="@{/charts}">
         <span class="logo-mark">
@@ -302,7 +401,7 @@
     </a>
     <div class="navbar-right">
         <a class="user-badge" th:href="@{/mypage}">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
             </svg>
             <span th:text="${loginUserNickname}">nickname</span>
@@ -312,88 +411,127 @@
 </nav>
 
 <main class="page">
+
     <!-- Hero -->
     <section class="hero">
-        <div class="hero-badge">CHART RANKINGS</div>
+        <div class="hero-eyebrow">CHART RANKINGS</div>
         <h1>랭킹 차트</h1>
-        <p>매출·관객·효율·시대·장르·인물 6개 카테고리,
-           총 <span th:text="${totalCount}">12</span>가지 알고리즘으로 한국 박스오피스를 다각도로 분석합니다.</p>
+        <p>매출·관객·효율·평점·시대·장르·인물 — 총
+            <span th:text="${totalCount}">16</span>가지 알고리즘으로 영화를 다각도로 분석합니다.</p>
     </section>
 
-    <!-- 카테고리 탭 -->
-    <nav class="tabs">
-        <a class="tab"
-           th:classappend="${selectedCategory == null} ? ' active' : ''"
-           th:href="@{/ranking}">
-            전체
-            <span class="tab-count" th:text="${totalCount}">12</span>
-        </a>
-        <a class="tab"
-           th:each="cat : ${categories}"
-           th:classappend="${cat == selectedCategory} ? ' active' : ''"
-           th:href="@{/ranking(category=${cat.name()})}"
-           th:text="${cat.label()}">카테고리</a>
-    </nav>
+    <!-- 카테고리 탭 + 뷰 토글 -->
+    <div class="toolbar">
+        <nav class="tabs">
+            <a class="tab"
+               th:classappend="${selectedCategory == null} ? ' active' : ''"
+               th:href="@{/ranking}">
+                전체
+                <span class="tab-count" th:text="${totalCount}">16</span>
+            </a>
+            <a class="tab"
+               th:each="cat : ${categories}"
+               th:classappend="${cat == selectedCategory} ? ' active' : ''"
+               th:href="@{/ranking(category=${cat.name()})}"
+               th:text="${cat.label()}">카테고리</a>
+        </nav>
+
+        <div class="view-toggle">
+            <button class="view-btn active" id="btn-grid" onclick="setView('grid')" title="그리드 뷰">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            </button>
+            <button class="view-btn" id="btn-list" onclick="setView('list')" title="리스트 뷰">
+                <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
+        </div>
+    </div>
 
     <!-- 차트 섹션 목록 -->
     <div th:each="section : ${sections}" class="chart-section">
 
         <!-- 섹션 헤더 -->
         <div class="chart-section-header">
-            <div class="chart-section-left">
+            <div class="section-left">
                 <span class="section-icon">
+                    <!-- 아이콘 분기 -->
                     <svg th:if="${section.entry().icon() == 'chart-bar'}" viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="4" width="4" height="17"/></svg>
                     <svg th:if="${section.entry().icon() == 'users'}" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <svg th:if="${section.entry().icon() == 'user'}" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     <svg th:if="${section.entry().icon() == 'trending-up'}" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
                     <svg th:if="${section.entry().icon() == 'eye'}" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
-                    <svg th:if="${section.entry().icon() == 'seat'}" viewBox="0 0 24 24"><path d="M4 6V4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M20 10v10H4V10"/><path d="M2 10h20"/><path d="M7 21v-5m10 5v-5"/></svg>
-                    <svg th:if="${section.entry().icon() == 'film'}" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+                    <svg th:if="${section.entry().icon() == 'film'}" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
                     <svg th:if="${section.entry().icon() == 'zap'}" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                     <svg th:if="${section.entry().icon() == 'clock'}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     <svg th:if="${section.entry().icon() == 'star'}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    <svg th:if="${section.entry().icon() == 'calendar'}" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <svg th:if="${section.entry().icon() == 'calendar'}" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     <svg th:if="${section.entry().icon() == 'tag'}" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                    <svg th:if="${section.entry().icon() == 'video'}" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                    <svg th:if="${section.entry().icon() == 'video'}" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                    <svg th:if="${section.entry().icon() == 'globe'}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    <svg th:if="${section.entry().icon() == 'heart'}" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    <svg th:if="${section.entry().icon() == 'seat'}" viewBox="0 0 24 24"><path d="M4 6V4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M20 10v10H4V10"/><path d="M2 10h20"/><path d="M7 21v-5m10 5v-5"/></svg>
                 </span>
-                <div class="section-title-wrap">
+                <div class="section-texts">
                     <div class="section-title" th:text="${section.entry().title()}">차트 이름</div>
                     <div class="section-desc" th:text="${section.entry().description()}">차트 설명</div>
                 </div>
             </div>
-            <div class="chart-section-right">
-                <span class="category-badge" th:text="${section.entry().category().label()}">카테고리</span>
-                <a class="see-all-btn" th:href="@{|/ranking/${section.entry().code()}|}">
+            <div class="section-right">
+                <span class="cat-badge" th:text="${section.entry().category().label()}">카테고리</span>
+                <a class="see-all" th:href="@{|/ranking/${section.entry().code()}|}">
                     전체 보기
                     <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </a>
             </div>
         </div>
 
-        <!-- 순위 리스트 -->
+        <!-- 그리드 뷰 (기본) -->
+        <div class="movie-grid" th:if="${!#lists.isEmpty(section.rows())}">
+            <a class="movie-card"
+               th:each="row : ${section.rows()}"
+               th:href="@{|/movies/${row.movieCode()}|}">
+                <div class="card-poster">
+                    <img th:if="${!#strings.isEmpty(row.posterImageUrl())}"
+                         th:src="${row.posterImageUrl()}"
+                         th:alt="${row.movieName()}"
+                         loading="lazy">
+                    <div class="card-poster-fallback"
+                         th:if="${#strings.isEmpty(row.posterImageUrl())}"
+                         th:text="${row.movieName()}">영화</div>
+                    <span class="card-badge"
+                          th:if="${row.badgeLabel() != null}"
+                          th:text="${row.badgeLabel()}">뱃지</span>
+                    <div class="card-hover">
+                        <div class="card-hover-metric"
+                             th:text="${row.metricLabel() + ' ' + (row.metricValue() != null ? row.metricValue() : '')}">지표</div>
+                    </div>
+                    <div class="card-rank" th:text="${row.rankNo()}">1</div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title" th:text="${row.movieName()}">영화 제목</div>
+                    <div class="card-year"
+                         th:text="${row.productionYear() != null ? row.productionYear() : (row.openDate() != null ? #temporals.format(row.openDate(), 'yyyy') : '')}">2024</div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 리스트 뷰 -->
         <div class="rank-list" th:if="${!#lists.isEmpty(section.rows())}">
             <a class="rank-row"
                th:each="row : ${section.rows()}"
                th:href="@{|/movies/${row.movieCode()}|}">
-
-                <!-- 순위 번호 -->
                 <div class="rank-no" th:text="${row.rankNo()}">1</div>
-
-                <!-- 포스터 -->
                 <div class="rank-poster-wrap">
                     <img class="rank-poster"
                          th:if="${!#strings.isEmpty(row.posterImageUrl())}"
                          th:src="${row.posterImageUrl()}"
-                         th:alt="${row.movieName()}">
+                         th:alt="${row.movieName()}" loading="lazy">
                     <div class="rank-poster-fallback"
-                         th:if="${#strings.isEmpty(row.posterImageUrl())}">
-                        <span th:text="${row.movieName()}">영화</span>
-                    </div>
+                         th:unless="${!#strings.isEmpty(row.posterImageUrl())}"
+                         th:text="${row.movieName()}">영화</div>
                     <span class="rank-badge-overlay"
                           th:if="${row.badgeLabel() != null}"
                           th:text="${row.badgeLabel()}">뱃지</span>
                 </div>
-
-                <!-- 영화 정보 -->
                 <div class="rank-info">
                     <div class="rank-title" th:text="${row.movieName()}">영화 제목</div>
                     <div class="rank-sub"
@@ -406,8 +544,6 @@
                           th:if="${row.productionYear() == null and row.openDate() != null}"
                           th:text="${#temporals.format(row.openDate(), 'yyyy')}">2024</span>
                 </div>
-
-                <!-- 지표 -->
                 <div class="rank-metric">
                     <div class="rank-metric-label" th:text="${row.metricLabel()}">지표</div>
                     <div class="rank-metric-value" th:text="${row.metricValue()}">—</div>
@@ -419,6 +555,22 @@
             표시할 데이터가 없습니다.
         </div>
     </div>
+
 </main>
+
+<script>
+    function setView(mode) {
+        document.body.classList.toggle('list-view', mode === 'list');
+        document.getElementById('btn-grid').classList.toggle('active', mode === 'grid');
+        document.getElementById('btn-list').classList.toggle('active', mode === 'list');
+        try { localStorage.setItem('cinematch_ranking_view', mode); } catch(e) {}
+    }
+    (function () {
+        try {
+            const saved = localStorage.getItem('cinematch_ranking_view');
+            if (saved === 'list') setView('list');
+        } catch(e) {}
+    })();
+</script>
 </body>
 </html>

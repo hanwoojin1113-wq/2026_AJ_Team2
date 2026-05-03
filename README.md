@@ -1,8 +1,101 @@
-## 04-30 변경사항
+## 04-30 변경사항 (2차 — 차트 알고리즘 확장 & 랭킹 UI 개편)
 
-/Trending Api를 통해 영화를 불러오려면 TMDB API키 Insert하고 Maven으로 프로젝트 실행해야함/
+### 새 차트 알고리즘 4개 추가
 
-/다른 유저의 인생영화 추천은, 유저 A와 유저 B의 활동데이터가 어느정도 유사해야 노출되게됨. 활동데이터 비슷하게 더미데이터 구축해야 확인가능, 현재는 인생영화만 보여줌/
+기존 11개 차트에서 **15개**로 확장했습니다.
+
+#### 1. 평점 명작 (`high-rated`) — `HighRatedChart.java`
+
+- **카테고리**: `RATING` (신규 카테고리)
+- **기준**: TMDB `vote_average` 내림차순, `vote_count >= 200` 필터
+- **특징**: 박스오피스 흥행과 무관하게 관객 투표로 검증된 작품만 선별. 평점 8.5 이상이면 `★ 명작`, 8.0 이상이면 `★ 수작` 뱃지 표시
+- **파일**: `src/main/java/com/cinematch/chart/algorithms/HighRatedChart.java`
+
+#### 2. 세계 흥행 순위 (`global-hit`) — `GlobalHitChart.java`
+
+- **카테고리**: `BOXOFFICE`
+- **기준**: TMDB `revenue`(달러 기준) 내림차순, revenue > 0 필터
+- **특징**: 국내 박스오피스 데이터와 다른 시각으로 전 세계가 선택한 흥행작 제공. 10억 달러 이상 작품에 `10억$+` 뱃지 표시
+- **파일**: `src/main/java/com/cinematch/chart/algorithms/GlobalHitChart.java`
+
+#### 3. 주연 배우 대표작 (`actor`) — `ActorChart.java`
+
+- **카테고리**: `PEOPLE`
+- **기준**: `movie_actor.display_order <= 3` 기준 주연 배우가 2편 이상 흥행작에 출연한 경우만 포함. 배우별 누적 관객 합계 내림차순
+- **특징**: 기존 `DirectorChart`와 동일한 집계 패턴을 배우에 적용. 같은 배우의 여러 작품이 나올 수 있으며 배우명을 뱃지로 표시
+- **파일**: `src/main/java/com/cinematch/chart/algorithms/ActorChart.java`
+
+#### 4. 유저 추천 영화 (`most-liked`) — `UserLikedChart.java`
+
+- **카테고리**: `COMMUNITY` (신규 카테고리)
+- **기준**: 서비스 내 `user_movie_like.liked = TRUE` 집계 내림차순
+- **특징**: KOBIS / TMDB 외부 데이터가 아닌, 이 서비스 사용자들이 직접 좋아요를 누른 영화를 보여주는 커뮤니티 기반 차트. 데이터가 쌓일수록 신뢰도가 높아짐
+- **파일**: `src/main/java/com/cinematch/chart/algorithms/UserLikedChart.java`
+
+---
+
+### ChartCategory 확장
+
+- **파일**: `src/main/java/com/cinematch/chart/ChartCategory.java`
+- `RATING("평점")` 추가 — 평점 명작 차트를 위한 신규 카테고리
+- `COMMUNITY("커뮤니티")` 추가 — 유저 활동 기반 차트를 위한 신규 카테고리
+- 카테고리 탭 자동으로 포함됨 (`ChartController`가 `ChartCategory.values()`를 동적으로 읽음)
+
+---
+
+### 랭킹 UI 전면 개편 — 키노라이츠 스타일 포스터 그리드
+
+기존 리스트 형태의 차트 UI를 **포스터 그리드 중심**으로 전면 재설계했습니다.
+
+#### `ranking.html` 변경사항
+
+- **파일**: `src/main/resources/templates/ranking.html`
+
+| 항목 | 변경 전 | 변경 후 |
+|------|---------|---------|
+| 기본 레이아웃 | 순위번호 + 작은 포스터 + 텍스트 리스트 | 포스터 그리드 (5열, 2:3 비율) |
+| 순위 번호 | 왼쪽 고정 숫자 | 포스터 하단 오버레이 (금/은/동 색상) |
+| 뱃지 | 포스터 위 소형 표시 | 포스터 좌상단 오버레이 |
+| 지표 표시 | 오른쪽 열에 항상 노출 | 호버 시 포스터 위에 오버레이로 등장 |
+| 모바일 | 리스트 축소 | 3열 그리드 (480px 이하 2열) |
+| 뷰 전환 | 없음 | 그리드 ↔ 리스트 토글 버튼 추가 (선택 값 `localStorage` 유지) |
+| 새 아이콘 지원 | 없음 | `globe`, `heart`, `user` SVG 아이콘 추가 |
+| 반응형 컬럼 | 고정 | 1280px→5열 / 1024px→4열 / 768px→3열 / 480px→2열 |
+
+호버 상호작용:
+- 포스터에 마우스를 올리면 `translateY(-4px)` + 그림자가 생기며 떠오름
+- 지표(예: `누적 관객 1,500만 명`) 정보가 포스터 위 반투명 오버레이로 표시
+
+#### `ranking-detail.html` 변경사항
+
+- **파일**: `src/main/resources/templates/ranking-detail.html`
+
+| 항목 | 변경 전 | 변경 후 |
+|------|---------|---------|
+| 레이아웃 | 카드형 리스트 (순위+포스터+정보+지표) | 포스터 그리드 (6열) |
+| 뷰 전환 | 없음 | 그리드 ↔ 리스트 토글 (상단 우측) |
+| 결과 수 표시 | 없음 | "총 N개 작품" 카운트 표시 |
+| 빈 결과 메시지 | 단순 문구 | "TMDB 동기화 후 채워집니다" 안내 추가 |
+| 반응형 컬럼 | 고정 | 1280px→6열 / 1024px→5열 / 768px→3열 |
+
+---
+
+### 변경 파일 목록
+
+| 파일 | 유형 | 설명 |
+|------|------|------|
+| `chart/ChartCategory.java` | 수정 | RATING, COMMUNITY 카테고리 추가 |
+| `chart/algorithms/HighRatedChart.java` | 신규 | 평점 명작 차트 |
+| `chart/algorithms/GlobalHitChart.java` | 신규 | 세계 흥행 순위 차트 |
+| `chart/algorithms/ActorChart.java` | 신규 | 주연 배우 대표작 차트 |
+| `chart/algorithms/UserLikedChart.java` | 신규 | 유저 추천 영화 차트 |
+| `templates/ranking.html` | 수정 | 전면 재설계 — 키노라이츠 스타일 그리드 |
+| `templates/ranking-detail.html` | 수정 | 전면 재설계 — 포스터 그리드 + 리스트 토글 |
+
+---
+
+## 04-30 변경사항 (1차)
+
 - TMDB Trending API를 연동해 `실시간 인기 작품` 카테고리를 추가
   - TMDB `trending/movie/week` 기준 상위 10개 작품을 가져옴.
   - 가져온 영화는 서비스 DB에 중복 없이 편입하고, chart 최상단 독립 카테고리로 노출
