@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${movie.movieTitle} + ' 게시물 | CineMatch'">영화 게시물 | CineMatch</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1e2330;
+            --surface-2: #262c3b;
+            --border: rgba(255,255,255,0.08);
+            --text: #f8fafc;
+            --sub: #94a3b8;
+            --accent: #60a5fa;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Pretendard, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top right, rgba(59,130,246,0.18), transparent 24%),
+                linear-gradient(180deg, #0b1020 0%, #0f1117 48%, #111827 100%);
+            color: var(--text);
+        }
+        .nav {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:18px 24px;
+            border-bottom:1px solid rgba(148,163,184,.12);
+            background:rgba(6,11,20,.86);
+            position:sticky;
+            top:0;
+            backdrop-filter:blur(16px);
+            z-index:20;
+        }
+        .nav a { color:#fff; text-decoration:none; font-weight:800; }
+        .nav-right { display:flex; gap:12px; align-items:center; }
+        .pill {
+            padding:10px 14px;
+            border-radius:999px;
+            background:rgba(255,255,255,.08);
+        }
+        .logout { background:#fff; color:#0f172a !important; }
+        .post-create-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            text-decoration: none;
+            transition: background 0.2s;
+            margin-right: 8px;
+        }
+        .post-create-btn:hover { background: rgba(255,255,255,0.2); }
+        .notif-wrap { position: relative; }
+        .notif-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.08);
+            color: white;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .notif-btn:hover { background: rgba(255,255,255,0.15); }
+        .notif-badge {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 3px;
+            border-radius: 999px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .notif-badge:empty { display: none; }
+        .notif-panel {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            width: 360px;
+            max-height: 480px;
+            border-radius: 16px;
+            background: #111827;
+            border: 1px solid rgba(148,163,184,0.15);
+            box-shadow: 0 24px 60px rgba(2,6,23,0.55);
+            z-index: 9999;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .notif-panel[hidden] { display: none; }
+        .notif-panel-header {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            padding:16px 20px 12px;
+            border-bottom:1px solid rgba(148,163,184,0.1);
+            font-weight:800;
+            font-size:0.95rem;
+        }
+        .notif-read-all-btn {
+            border:none;
+            background:none;
+            color:#60A5FA;
+            font-size:0.78rem;
+            font-weight:700;
+            cursor:pointer;
+            padding:4px 8px;
+            border-radius:6px;
+            font-family:inherit;
+        }
+        .notif-list { overflow-y:auto; flex:1; }
+        .notif-item {
+            display:flex;
+            align-items:center;
+            gap:12px;
+            padding:14px 20px;
+            border-bottom:1px solid rgba(148,163,184,0.07);
+            text-decoration:none;
+            color:inherit;
+        }
+        .notif-item.unread { background: rgba(0,72,255,0.07); }
+        .notif-avatar {
+            width:40px;
+            height:40px;
+            border-radius:50%;
+            background: rgba(255,255,255,0.12);
+            overflow:hidden;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-weight:900;
+        }
+        .notif-avatar img { width:100%; height:100%; object-fit:cover; }
+        .notif-content { flex:1; min-width:0; }
+        .notif-text { font-size:0.83rem; line-height:1.45; color:#CBD5E1; }
+        .notif-text strong { color:white; }
+        .notif-time { margin-top:3px; font-size:0.73rem; color:#64748B; }
+        .notif-movie-thumb {
+            width:46px;
+            height:64px;
+            border-radius:6px;
+            object-fit:cover;
+            flex-shrink:0;
+            background: rgba(255,255,255,0.06);
+        }
+        .notif-empty { padding: 40px 20px; text-align: center; color: #64748B; font-size: 0.88rem; }
+        .page {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 28px 20px 64px;
+        }
+        .page-header {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 28px;
+            padding: 18px;
+            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(30,35,48,0.98), rgba(20,24,34,0.98));
+            border: 1px solid var(--border);
+        }
+        .header-poster,
+        .header-poster-fallback {
+            width: 84px;
+            height: 120px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.08);
+            overflow: hidden;
+            flex: 0 0 auto;
+        }
+        .header-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .header-poster-fallback {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#cbd5e1;
+            font-size:0.76rem;
+            text-align:center;
+            padding:10px;
+        }
+        .header-copy { min-width: 0; }
+        .page-title {
+            margin: 0 0 6px 0;
+            font-size: 1.9rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+        .page-back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #cbd5e1;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .page-back-link:hover { color: #fff; }
+        .feed {
+            max-width: 640px;
+            margin: 0 auto;
+        }
+        .empty-feed {
+            padding: 40px 20px;
+            text-align: center;
+            color: #94a3b8;
+            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(30,35,48,0.98), rgba(20,24,34,0.98));
+            border: 1px solid var(--border);
+        }
+        .post-card {
+            margin-bottom: 32px;
+            background: linear-gradient(180deg, rgba(30,35,48,0.98), rgba(20,24,34,0.98));
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(2,6,23,0.28);
+        }
+        .post-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 20px 22px 18px;
+        }
+        .author-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: inherit;
+            text-decoration: none;
+            min-width: 0;
+        }
+        .author-link:hover .author-name {
+            color: #dbeafe;
+            text-decoration: underline;
+        }
+        .author-avatar,
+        .author-avatar-fallback {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex: 0 0 auto;
+            background: rgba(255,255,255,0.08);
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.12);
+        }
+        .author-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .author-avatar-fallback {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#cbd5e1;
+        }
+        .author-avatar-fallback svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+        .author-name { font-weight: 800; }
+        .post-date {
+            margin-top: 4px;
+            color: var(--sub);
+            font-size: 0.82rem;
+        }
+        .follow-btn {
+            min-width: 92px;
+            height: 38px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(255,255,255,.92);
+            color: #0f172a;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            transition: background 0.18s, box-shadow 0.18s, transform 0.1s;
+        }
+        .follow-btn.following {
+            background: rgba(255,255,255,.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,.12);
+        }
+        .follow-btn:hover:not(.following) {
+            background: #fff;
+            box-shadow: 0 4px 14px rgba(255,255,255,0.18);
+        }
+        .follow-btn.following:hover { background: rgba(255,255,255,0.14); }
+        .follow-btn:active { transform: scale(0.96); }
+        .post-carousel {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            background: #0f1117;
+            overflow: hidden;
+        }
+        .carousel-track {
+            display: flex;
+            height: 100%;
+            transition: transform 0.3s ease;
+        }
+        .carousel-slide {
+            flex: 0 0 100%;
+            height: 100%;
+        }
+        .carousel-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            filter: blur(14px);
+            transform: scale(1.04);
+            opacity: 0.72;
+            transition: filter 0.32s ease, transform 0.32s ease, opacity 0.32s ease;
+        }
+        .carousel-img.is-loaded {
+            filter: blur(0);
+            transform: scale(1);
+            opacity: 1;
+        }
+        .carousel-prev, .carousel-next {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            line-height: 1;
+            z-index: 2;
+        }
+        .carousel-prev { left: 10px; }
+        .carousel-next { right: 10px; }
+        .carousel-dots {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            z-index: 2;
+        }
+        .carousel-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.4);
+            transition: background 0.2s, width 0.2s;
+            cursor: pointer;
+        }
+        .carousel-dot.active {
+            background: #fff;
+            width: 18px;
+            border-radius: 4px;
+        }
+        .post-image-empty {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            min-height: 360px;
+            color: var(--sub);
+            background: #111827;
+        }
+        .post-body {
+            display: grid;
+            gap: 18px;
+            padding: 20px 24px;
+        }
+        .post-content {
+            margin: 0;
+            line-height: 1.7;
+            font-size: 0.96rem;
+            color: #e2e8f0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .post-actions {
+            display: flex;
+            gap: 10px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255,255,255,0.07);
+        }
+        .icon-btn {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04);
+            color: #94a3b8;
+            padding: 0;
+        }
+        .icon-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.4;
+        }
+        .like-btn {
+            width: auto;
+            min-width: 56px;
+            padding: 0 12px;
+            gap: 4px;
+            cursor: pointer;
+            opacity: 1;
+            transition: color 0.15s, background 0.15s, border-color 0.15s;
+        }
+        .like-btn:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
+        .like-btn.liked { color: #f87171; }
+        .like-count { font-size: 0.78rem; margin-left: 4px; }
+        .movie-tag-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px;
+            border-radius: 16px;
+            background: #1e2330;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: inherit;
+            text-decoration: none;
+            transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
+        }
+        .movie-tag-card:hover {
+            border-color: rgba(96,165,250,0.6);
+            background: linear-gradient(180deg, rgba(37,99,235,0.16), rgba(30,35,48,0.96));
+            box-shadow: 0 16px 30px rgba(2,6,23,0.28);
+            transform: translateY(-2px);
+        }
+        .movie-tag-poster {
+            width: 48px;
+            height: 72px;
+            border-radius: 10px;
+            object-fit: cover;
+            flex: 0 0 auto;
+            background: rgba(255,255,255,0.06);
+        }
+        .movie-tag-poster-fallback {
+            width: 48px;
+            height: 72px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.06);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color: #475569;
+            flex: 0 0 auto;
+        }
+        .movie-tag-poster-fallback svg {
+            width: 20px;
+            height: 20px;
+        }
+        .movie-tag-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--sub);
+            font-size: 0.76rem;
+            margin-bottom: 4px;
+        }
+        .movie-tag-label svg {
+            width: 12px;
+            height: 12px;
+            color: #94a3b8;
+            flex: 0 0 auto;
+        }
+        .movie-tag-title {
+            font-weight: 800;
+            line-height: 1.5;
+        }
+        @media (max-width: 768px) {
+            .page { padding: 24px 16px 48px; }
+            .nav { padding: 14px 16px; }
+            .nav-right { gap: 8px; }
+            .page-header { align-items: flex-start; }
+            .post-header { padding: 18px; }
+            .post-body { padding: 18px; }
+        }
+    </style>
+</head>
+<body>
+<nav class="nav">
+    <a th:href="@{/charts}">CineMatch</a>
+    <div class="nav-right">
+        <a th:if="${loginUserId != null}" th:href="@{/posts/create}" class="post-create-btn" aria-label="게시물 작성">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+        </a>
+        <div class="notif-wrap" th:if="${loginUserId != null}">
+            <button class="notif-btn" id="notifBtn" aria-label="알림">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span class="notif-badge" id="notifBadge"></span>
+            </button>
+            <div class="notif-panel" id="notifPanel" hidden>
+                <div class="notif-panel-header">
+                    <span>알림</span>
+                    <button class="notif-read-all-btn" id="notifReadAll">전체 읽음</button>
+                </div>
+                <div class="notif-list" id="notifList">
+                    <div class="notif-empty">아직 알림이 없습니다</div>
+                </div>
+            </div>
+        </div>
+        <a class="pill" th:if="${loginUserId != null}" th:href="@{/people}">People</a>
+        <a class="pill" th:if="${loginUserId != null}" th:href="@{/mypage}" th:text="${loginUserNickname != null ? loginUserNickname : loginUserId}">My Page</a>
+        <a class="pill logout" th:if="${loginUserId != null}" th:href="@{/logout}">로그아웃</a>
+        <a class="pill" th:if="${loginUserId == null}" th:href="@{/login}">로그인</a>
+    </div>
+</nav>
+
+<main class="page">
+    <header class="page-header">
+        <div class="header-poster" th:if="${movie.posterUrl != null and !#strings.isEmpty(movie.posterUrl)}">
+            <img th:src="${movie.posterUrl}" th:alt="${movie.movieTitle}">
+        </div>
+        <div class="header-poster-fallback" th:if="${movie.posterUrl == null or #strings.isEmpty(movie.posterUrl)}">
+            포스터 없음
+        </div>
+        <div class="header-copy">
+            <h1 class="page-title" th:text="${movie.movieTitle}">영화 제목</h1>
+            <a class="page-back-link" th:href="@{|/movies/${movie.movieCode}|}">← 영화 상세로 돌아가기</a>
+        </div>
+    </header>
+
+    <div class="feed" th:if="${posts != null and !posts.isEmpty()}">
+        <article class="post-card" th:each="post : ${posts}" th:id="|post-${post.postId}|">
+            <header class="post-header">
+                <a class="author-link" th:href="@{|/users/${post.loginId}|}">
+                    <div class="author-avatar" th:if="${post.profileImageUrl != null and !#strings.isEmpty(post.profileImageUrl)}">
+                        <img th:src="${post.profileImageUrl}" th:alt="${post.nickname}">
+                    </div>
+                    <div class="author-avatar-fallback" th:if="${post.profileImageUrl == null or #strings.isEmpty(post.profileImageUrl)}">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 12.2c2.6 0 4.6-2 4.6-4.5S14.6 3.2 12 3.2 7.4 5.2 7.4 7.7s2 4.5 4.6 4.5Zm0 2.3c-4.1 0-7.5 2.4-8.3 5.8-.1.5.2.9.7.9h15.2c.5 0 .8-.4.7-.9-.8-3.4-4.2-5.8-8.3-5.8Z"/>
+                        </svg>
+                    </div>
+                    <div class="author-copy">
+                        <div class="author-name" th:text="${post.nickname}">nickname</div>
+                        <div class="post-date" th:attr="data-created-at=${post.createdAt}" th:text="${post.createdAtLabel}">2026.05.03</div>
+                    </div>
+                </a>
+                <button th:if="${loginUserId != null and !post.isMyPost}"
+                        class="follow-btn"
+                        type="button"
+                        data-follow-toggle
+                        th:classappend="${post.isFollowing} ? ' following' : ''"
+                        th:attr="data-login-id=${post.loginId},data-following=${post.isFollowing}">
+                    <span th:text="${post.isFollowing ? '팔로잉' : '팔로우'}">팔로우</span>
+                </button>
+            </header>
+
+            <div class="post-carousel" th:if="${post.images != null and !post.images.isEmpty()}" data-carousel>
+                <div class="carousel-track">
+                    <div class="carousel-slide" th:each="img : ${post.images}">
+                        <img class="carousel-img" th:src="${img}" alt="게시물 이미지" loading="lazy">
+                    </div>
+                </div>
+                <div class="carousel-dots" th:if="${post.images.size() > 1}">
+                    <span class="carousel-dot active"
+                          th:each="img, stat : ${post.images}"
+                          th:classappend="${stat.index == 0} ? ' active' : ''"
+                          th:attr="data-index=${stat.index}"></span>
+                </div>
+                <button class="carousel-prev" th:if="${post.images.size() > 1}" type="button" aria-label="이전">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <button class="carousel-next" th:if="${post.images.size() > 1}" type="button" aria-label="다음">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
+            <div class="post-image-empty" th:if="${post.images == null or post.images.isEmpty()}">
+                업로드된 이미지가 없습니다.
+            </div>
+
+            <div class="post-body">
+                <p class="post-content" th:if="${post.content != null and !#strings.isEmpty(post.content)}" th:text="${post.content}">게시물 설명</p>
+
+                <div class="post-actions">
+                    <button class="icon-btn like-btn" type="button"
+                            th:classappend="${post.likedByMe} ? ' liked' : ''"
+                            th:attr="data-post-id=${post.postId},data-liked=${post.likedByMe}"
+                            th:disabled="${loginUserId == null}"
+                            aria-label="좋아요">
+                        <svg width="18" height="18" viewBox="0 0 24 24"
+                             th:attr="fill=${post.likedByMe ? 'currentColor' : 'none'}"
+                             stroke="currentColor" stroke-width="2">
+                            <path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/>
+                        </svg>
+                        <span class="like-count" th:text="${post.likeCount}">0</span>
+                    </button>
+                    <button class="icon-btn" type="button" disabled aria-label="댓글">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" type="button" disabled aria-label="북마크">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <a class="movie-tag-card" th:href="@{|/movies/${movie.movieCode}|}">
+                    <img class="movie-tag-poster"
+                         th:if="${movie.posterUrl != null and !#strings.isEmpty(movie.posterUrl)}"
+                         th:src="${movie.posterUrl}"
+                         th:alt="${movie.movieTitle}">
+                    <div class="movie-tag-poster-fallback"
+                         th:if="${movie.posterUrl == null or #strings.isEmpty(movie.posterUrl)}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                            <line x1="7" y1="2" x2="7" y2="22"></line>
+                            <line x1="17" y1="2" x2="17" y2="22"></line>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <line x1="2" y1="7" x2="22" y2="7"></line>
+                            <line x1="2" y1="17" x2="22" y2="17"></line>
+                        </svg>
+                    </div>
+                    <div class="movie-tag-copy">
+                        <div class="movie-tag-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                                <line x1="7" y1="2" x2="7" y2="22"></line>
+                                <line x1="17" y1="2" x2="17" y2="22"></line>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                <line x1="2" y1="7" x2="22" y2="7"></line>
+                                <line x1="2" y1="17" x2="22" y2="17"></line>
+                            </svg>
+                            <span>태그한 영화</span>
+                        </div>
+                        <div class="movie-tag-title" th:text="${movie.movieTitle}">영화 제목</div>
+                    </div>
+                </a>
+            </div>
+        </article>
+    </div>
+
+    <div class="empty-feed" th:if="${posts == null or posts.isEmpty()}">
+        이 영화에 아직 게시물이 없습니다.
+    </div>
+</main>
+
+<script>
+    (function () {
+        const btn = document.getElementById('notifBtn');
+        const panel = document.getElementById('notifPanel');
+        const badge = document.getElementById('notifBadge');
+        const list = document.getElementById('notifList');
+        const readAllBtn = document.getElementById('notifReadAll');
+
+        if (!btn || !panel || !badge || !list) return;
+
+        function timeAgo(value) {
+            if (!value) return '';
+            const seconds = Math.floor((Date.now() - new Date(value)) / 1000);
+            if (seconds < 60) return '방금 전';
+            if (seconds < 3600) return Math.floor(seconds / 60) + '분 전';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + '시간 전';
+            return Math.floor(seconds / 86400) + '일 전';
+        }
+
+        function renderItems(items) {
+            if (!items || !items.length) {
+                list.innerHTML = '<div class="notif-empty">아직 알림이 없습니다</div>';
+                return;
+            }
+            list.innerHTML = items.map((item) => {
+                const avatar = item.actorProfileImageUrl
+                    ? `<img src="${item.actorProfileImageUrl}" alt="">`
+                    : (item.actorNickname || '?')[0];
+                const thumbnail = item.moviePosterUrl
+                    ? `<img class="notif-movie-thumb" src="${item.moviePosterUrl}" alt="">`
+                    : '';
+                const text = item.notifText
+                    || (item.type === 'FOLLOW'
+                        ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우했습니다`
+                        : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>를 인생영화로 추가했습니다`);
+                return `<a class="notif-item${!item.isRead ? ' unread' : ''}" href="${item.linkUrl || '#'}"><div class="notif-avatar">${avatar}</div><div class="notif-content"><div class="notif-text">${text}</div><div class="notif-time">${timeAgo(item.createdAt)}</div></div>${thumbnail}</a>`;
+            }).join('');
+        }
+
+        function updateBadge(count) {
+            badge.textContent = count > 0 ? (count > 99 ? '99+' : count) : '';
+        }
+
+        fetch('/api/notifications')
+            .then((response) => response.ok ? response.json() : null)
+            .then((data) => { if (data) updateBadge(data.unreadCount); })
+            .catch(() => {});
+
+        btn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const open = panel.hidden;
+            panel.hidden = !open;
+            if (!open) return;
+            fetch('/api/notifications')
+                .then((response) => response.ok ? response.json() : null)
+                .then((data) => {
+                    if (!data) return;
+                    updateBadge(data.unreadCount);
+                    renderItems(data.items);
+                })
+                .catch(() => {});
+        });
+
+        readAllBtn?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            fetch('/api/notifications/read-all', { method: 'POST' })
+                .then(() => {
+                    updateBadge(0);
+                    document.querySelectorAll('.notif-item.unread').forEach((element) => element.classList.remove('unread'));
+                })
+                .catch(() => {});
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!panel.hidden && !panel.contains(event.target) && event.target !== btn) {
+                panel.hidden = true;
+            }
+        });
+    })();
+
+    document.addEventListener('click', async (event) => {
+        const followButton = event.target.closest('[data-follow-toggle]');
+        if (!followButton) return;
+
+        const loginId = followButton.dataset.loginId;
+        const following = followButton.dataset.following === 'true';
+        const endpoint = following ? '/api/people/unfollow' : '/api/people/follow';
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams({ loginId })
+        });
+
+        if (!response.ok) {
+            alert('팔로우 상태를 변경하지 못했습니다.');
+            return;
+        }
+
+        const payload = await response.json();
+        const isFollowing = !!payload.followingByCurrentUser;
+        document.querySelectorAll(`[data-follow-toggle][data-login-id="${payload.loginId}"]`).forEach((button) => {
+            button.dataset.following = String(isFollowing);
+            button.classList.toggle('following', isFollowing);
+            const label = button.querySelector('span');
+            if (label) {
+                label.textContent = isFollowing ? '팔로잉' : '팔로우';
+            }
+        });
+    });
+
+    document.addEventListener('click', async (event) => {
+        const likeButton = event.target.closest('.like-btn[data-post-id]');
+        if (!likeButton || likeButton.disabled) return;
+
+        const postId = likeButton.dataset.postId;
+        const response = await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+        if (!response.ok) return;
+
+        const data = await response.json();
+        likeButton.classList.toggle('liked', data.liked);
+        likeButton.dataset.liked = String(data.liked);
+        const svg = likeButton.querySelector('svg');
+        if (svg) svg.setAttribute('fill', data.liked ? 'currentColor' : 'none');
+        const count = likeButton.querySelector('.like-count');
+        if (count) count.textContent = data.likeCount;
+    });
+
+    (function () {
+        document.querySelectorAll('.post-date[data-created-at]').forEach((dateNode) => {
+            const createdAt = dateNode.dataset.createdAt;
+            if (!createdAt) return;
+            const seconds = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000));
+            if (seconds < 60) dateNode.textContent = '방금 전';
+            else if (seconds < 3600) dateNode.textContent = `${Math.floor(seconds / 60)}분 전`;
+            else if (seconds < 86400) dateNode.textContent = `${Math.floor(seconds / 3600)}시간 전`;
+            else dateNode.textContent = `${Math.floor(seconds / 86400)}일 전`;
+        });
+
+        document.querySelectorAll('.carousel-img').forEach((img) => {
+            const markLoaded = () => img.classList.add('is-loaded');
+            if (img.complete) markLoaded();
+            else img.addEventListener('load', markLoaded, { once: true });
+        });
+    })();
+
+    (function () {
+        document.querySelectorAll('[data-carousel]').forEach((carousel) => {
+            const track = carousel.querySelector('.carousel-track');
+            const dots = carousel.querySelectorAll('.carousel-dot');
+            const prevBtn = carousel.querySelector('.carousel-prev');
+            const nextBtn = carousel.querySelector('.carousel-next');
+            if (!track) return;
+
+            let current = 0;
+            const total = track.children.length;
+
+            function updateArrows() {
+                if (prevBtn) prevBtn.style.display = current === 0 ? 'none' : 'flex';
+                if (nextBtn) nextBtn.style.display = current === total - 1 ? 'none' : 'flex';
+            }
+
+            function goTo(index) {
+                current = Math.max(0, Math.min(index, total - 1));
+                track.style.transform = `translateX(-${current * 100}%)`;
+                dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
+                updateArrows();
+            }
+
+            updateArrows();
+
+            prevBtn?.addEventListener('click', () => goTo(current - 1));
+            nextBtn?.addEventListener('click', () => goTo(current + 1));
+            dots.forEach((dot) => dot.addEventListener('click', () => goTo(Number(dot.dataset.index))));
+
+            let startX = 0;
+            track.addEventListener('touchstart', (event) => { startX = event.touches[0].clientX; }, { passive: true });
+            track.addEventListener('touchend', (event) => {
+                const diff = startX - event.changedTouches[0].clientX;
+                if (Math.abs(diff) > 40) goTo(diff > 0 ? current + 1 : current - 1);
+            });
+        });
+    })();
+
+    if (location.hash) {
+        const target = document.querySelector(location.hash);
+        if (target) {
+            setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        }
+    }
+</script>
+</body>
+</html>

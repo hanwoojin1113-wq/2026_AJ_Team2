@@ -80,6 +80,20 @@
             background: #fff;
             color: #0f172a !important;
         }
+        .post-create-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            text-decoration: none;
+            transition: background 0.2s;
+            margin-right: 8px;
+        }
+        .post-create-btn:hover { background: rgba(255,255,255,0.2); }
         .notif-wrap { position: relative; }
         .notif-btn {
             position: relative;
@@ -930,6 +944,12 @@
 <nav class="nav">
     <a th:href="@{/charts}">CineMatch</a>
     <div class="nav-right">
+        <a th:href="@{/posts/create}" class="post-create-btn" aria-label="게시물 작성">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+        </a>
         <div class="notif-wrap">
             <button class="notif-btn" id="notifBtn" aria-label="알림">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1497,9 +1517,10 @@
             const initial = (item.actorNickname || '?')[0];
             const avatar = item.actorProfileImageUrl ? `<img src="${item.actorProfileImageUrl}" alt="${item.actorNickname || ''}">` : initial;
             const thumb = item.moviePosterUrl ? `<img class="notif-movie-thumb" src="${item.moviePosterUrl}" alt="${item.movieName || ''}">` : '';
-            const text = item.type === 'FOLLOW'
-                ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우하기 시작했습니다`
-                : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>을(를) 인생영화로 추가했습니다`;
+            const text = item.notifText
+                || (item.type === 'FOLLOW'
+                    ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우하기 시작했습니다`
+                    : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>을(를) 인생영화로 추가했습니다`);
             return `<a class="notif-item${!item.isRead ? ' unread' : ''}" href="${item.linkUrl || '#'}">
                 <div class="notif-avatar">${avatar}</div>
                 <div class="notif-content"><div class="notif-text">${text}</div><div class="notif-time">${timeAgo(item.createdAt)}</div></div>

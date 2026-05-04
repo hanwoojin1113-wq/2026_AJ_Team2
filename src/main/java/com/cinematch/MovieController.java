@@ -680,6 +680,25 @@ public class MovieController {
                 rs.getString("audit_no"),
                 rs.getString("watch_grade_name")
         ), movieCode));
+        List<Map<String, Object>> moviePosts = List.of();
+        if (movieId != null) {
+            try {
+                moviePosts = jdbcTemplate.queryForList("""
+                        SELECT
+                            sp.id AS postId,
+                            spi.image_url AS imageUrl
+                        FROM social_post sp
+                        JOIN social_post_image spi ON spi.post_id = sp.id AND spi.display_order = 0
+                        WHERE sp.movie_id = ?
+                          AND sp.is_deleted = FALSE
+                        ORDER BY sp.created_at DESC
+                        LIMIT 12
+                        """, movieId);
+            } catch (Exception e) {
+                moviePosts = List.of();
+            }
+        }
+        model.addAttribute("moviePosts", moviePosts);
         return "movie-detail";
     }
 
