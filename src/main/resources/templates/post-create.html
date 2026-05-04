@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineMatch | 게시물 작성</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1e2330;
+            --surface-2: #262c3b;
+            --border: rgba(255,255,255,0.08);
+            --text: #f8fafc;
+            --sub: #94a3b8;
+            --accent: #60a5fa;
+            --accent-strong: #3b82f6;
+            --danger: #f87171;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Pretendard, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top right, rgba(59,130,246,0.18), transparent 24%),
+                linear-gradient(180deg, #0b1020 0%, #0f1117 48%, #111827 100%);
+            color: var(--text);
+        }
+        .nav {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:18px 24px;
+            border-bottom:1px solid rgba(148,163,184,.12);
+            background:rgba(6,11,20,.86);
+            position:sticky;
+            top:0;
+            backdrop-filter:blur(16px);
+            z-index:20;
+        }
+        .nav a { color:#fff; text-decoration:none; font-weight:800; }
+        .nav-right { display:flex; gap:12px; align-items:center; }
+        .pill {
+            padding:10px 14px;
+            border-radius:999px;
+            background:rgba(255,255,255,.08);
+        }
+        .logout { background:#fff; color:#0f172a !important; }
+        .post-create-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            text-decoration: none;
+            transition: background 0.2s;
+            margin-right: 8px;
+        }
+        .post-create-btn:hover { background: rgba(255,255,255,0.2); }
+        .notif-wrap { position: relative; }
+        .notif-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.08);
+            color: white;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .notif-btn:hover { background: rgba(255,255,255,0.15); }
+        .notif-badge {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 3px;
+            border-radius: 999px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .notif-badge:empty { display: none; }
+        .notif-panel {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            width: 360px;
+            max-height: 480px;
+            border-radius: 16px;
+            background: #111827;
+            border: 1px solid rgba(148,163,184,0.15);
+            box-shadow: 0 24px 60px rgba(2,6,23,0.55);
+            z-index: 9999;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .notif-panel[hidden] { display: none; }
+        .notif-panel-header {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            padding:16px 20px 12px;
+            border-bottom:1px solid rgba(148,163,184,0.1);
+            font-weight:800;
+            font-size:0.95rem;
+        }
+        .notif-read-all-btn {
+            border:none;
+            background:none;
+            color:#60A5FA;
+            font-size:0.78rem;
+            font-weight:700;
+            cursor:pointer;
+            padding:4px 8px;
+            border-radius:6px;
+            font-family:inherit;
+        }
+        .notif-list { overflow-y:auto; flex:1; }
+        .notif-item {
+            display:flex;
+            align-items:center;
+            gap:12px;
+            padding:14px 20px;
+            border-bottom:1px solid rgba(148,163,184,0.07);
+            text-decoration:none;
+            color:inherit;
+        }
+        .notif-item.unread { background: rgba(0,72,255,0.07); }
+        .notif-avatar {
+            width:40px;
+            height:40px;
+            border-radius:50%;
+            background: rgba(255,255,255,0.12);
+            overflow:hidden;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-weight:900;
+        }
+        .notif-avatar img { width:100%; height:100%; object-fit:cover; }
+        .notif-content { flex:1; min-width:0; }
+        .notif-text { font-size:0.83rem; line-height:1.45; color:#CBD5E1; }
+        .notif-text strong { color:white; }
+        .notif-time { margin-top:3px; font-size:0.73rem; color:#64748B; }
+        .notif-movie-thumb {
+            width:46px;
+            height:64px;
+            border-radius:6px;
+            object-fit:cover;
+            flex-shrink:0;
+            background: rgba(255,255,255,0.06);
+        }
+        .notif-empty { padding: 40px 20px; text-align: center; color: #64748B; font-size: 0.88rem; }
+        .page {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 36px 20px 64px;
+        }
+        .page-header {
+            margin-bottom: 24px;
+        }
+        .page-title {
+            margin: 0 0 10px 0;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+        .page-copy {
+            margin: 0;
+            color: var(--sub);
+            line-height: 1.6;
+        }
+        .error-banner {
+            margin: 0 0 18px 0;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(248,113,113,0.12);
+            border: 1px solid rgba(248,113,113,0.28);
+            color: #fecaca;
+            font-size: 0.95rem;
+        }
+        .composer-card {
+            display: grid;
+            gap: 24px;
+            padding: 24px;
+            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(30,35,48,0.98), rgba(20,24,34,0.98));
+            border: 1px solid var(--border);
+            box-shadow: 0 24px 60px rgba(2,6,23,0.28);
+        }
+        .field {
+            display: grid;
+            gap: 10px;
+        }
+        .field-label {
+            font-size: 0.92rem;
+            font-weight: 700;
+        }
+        .field-copy {
+            margin: -4px 0 0 0;
+            color: var(--sub);
+            font-size: 0.82rem;
+        }
+        .file-picker {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 46px;
+            padding: 0 16px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.16);
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            cursor: pointer;
+            font-weight: 700;
+            width: fit-content;
+        }
+        .upload-dropzone {
+            display: grid;
+            gap: 14px;
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px dashed rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.03);
+            transition: border-color 0.18s, background 0.18s, transform 0.18s;
+        }
+        .upload-dropzone.dragover {
+            border-color: rgba(96,165,250,0.72);
+            background: rgba(96,165,250,0.08);
+            transform: translateY(-1px);
+        }
+        .upload-drop-copy {
+            color: var(--sub);
+            font-size: 0.82rem;
+        }
+        .upload-ratio-guide {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: rgba(96,165,250,0.06);
+            border: 1px solid rgba(96,165,250,0.14);
+        }
+        .ratio-preview {
+            flex: 0 0 auto;
+            width: 52px;
+            height: 52px;
+            border-radius: 10px;
+            background: rgba(96,165,250,0.12);
+            border: 2px solid rgba(96,165,250,0.36);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--accent);
+        }
+        .ratio-guide-copy {
+            font-size: 0.8rem;
+            color: var(--sub);
+            line-height: 1.6;
+        }
+        .ratio-guide-copy strong {
+            color: var(--text);
+            display: block;
+            margin-bottom: 2px;
+        }
+        .image-warning {
+            display: none;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: rgba(248,113,113,0.12);
+            border: 1px solid rgba(248,113,113,0.28);
+            color: #fecaca;
+            font-size: 0.84rem;
+        }
+        .image-warning.active { display: block; }
+        .file-input { display: none; }
+        .image-preview {
+            display: none;
+            width: 100%;
+            max-width: 380px;
+            aspect-ratio: 1 / 1;
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+        }
+        .image-preview.active { display: block; }
+        .image-preview-note {
+            display: none;
+            font-size: 0.76rem;
+            color: var(--sub);
+            margin: 8px 0 6px;
+        }
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+        }
+        textarea,
+        .movie-search-input {
+            width: 100%;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(15,17,23,0.72);
+            color: var(--text);
+            font: inherit;
+            outline: none;
+        }
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+            padding: 16px;
+            line-height: 1.6;
+        }
+        .movie-search-input {
+            height: 50px;
+            padding: 0 16px;
+        }
+        .movie-search-wrap {
+            position: relative;
+        }
+        .movie-search-input {
+            padding-right: 52px;
+        }
+        .movie-search-clear {
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            color: #cbd5e1;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            line-height: 1;
+            padding: 0;
+        }
+        .movie-search-clear.visible { display: inline-flex; }
+        .movie-search-results {
+            display: none;
+            margin-top: 12px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            background: rgba(15,17,23,0.94);
+            overflow: hidden;
+        }
+        .movie-search-results.active { display: block; }
+        .movie-search-empty {
+            padding: 16px;
+            color: var(--sub);
+            font-size: 0.86rem;
+        }
+        .movie-search-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            padding: 12px 14px;
+            border: none;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.15s;
+        }
+        .movie-search-item:last-child { border-bottom: none; }
+        .movie-search-item:hover { background: rgba(255,255,255,0.06); }
+        .movie-search-item:active { background: rgba(96,165,250,0.12); }
+        .movie-search-poster,
+        .movie-search-fallback {
+            width: 52px;
+            height: 74px;
+            border-radius: 10px;
+            flex: 0 0 auto;
+            overflow: hidden;
+            background: rgba(255,255,255,0.07);
+        }
+        .movie-search-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .movie-search-fallback {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            font-size: 0.72rem;
+            color: var(--sub);
+        }
+        .movie-search-title {
+            font-weight: 700;
+            color: var(--text);
+        }
+        .selected-movie {
+            display: none;
+            position: relative;
+            align-items: center;
+            gap: 14px;
+            padding: 14px;
+            border-radius: 18px;
+            background: rgba(59,130,246,0.16);
+            border: 1px solid rgba(96,165,250,0.24);
+        }
+        .selected-movie.active { display: flex; }
+        .selected-badge {
+            position: absolute;
+            top: -10px;
+            left: 14px;
+            padding: 2px 10px;
+            border-radius: 999px;
+            background: rgba(96,165,250,0.9);
+            color: #0f172a;
+            font-size: 0.7rem;
+            font-weight: 800;
+        }
+        .selected-movie-poster,
+        .selected-movie-fallback {
+            width: 58px;
+            height: 82px;
+            border-radius: 12px;
+            overflow: hidden;
+            flex: 0 0 auto;
+            background: rgba(255,255,255,0.07);
+        }
+        .selected-movie-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .selected-movie-fallback {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:8px;
+            color:var(--sub);
+            font-size:0.74rem;
+            text-align:center;
+        }
+        .selected-movie-copy {
+            min-width: 0;
+            flex: 1;
+        }
+        .selected-movie-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .selected-movie-sub {
+            color: var(--sub);
+            font-size: 0.82rem;
+        }
+        .selected-movie-clear {
+            border: none;
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1rem;
+            flex: 0 0 auto;
+        }
+        .submit-row {
+            display: flex;
+            justify-content: flex-end;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            margin-top: 4px;
+        }
+        .submit-btn {
+            border: none;
+            min-width: 180px;
+            height: 52px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+            color: #fff;
+            font: inherit;
+            font-weight: 800;
+            font-size: 1rem;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            box-shadow: 0 14px 30px rgba(37,99,235,0.28);
+            transition: opacity 0.18s, transform 0.12s, box-shadow 0.18s;
+        }
+        .submit-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+            box-shadow: none;
+            background: linear-gradient(135deg, #475569, #64748b);
+        }
+        .submit-btn:hover:not(:disabled) {
+            opacity: 0.88;
+            transform: translateY(-1px);
+            box-shadow: 0 18px 36px rgba(37,99,235,0.36);
+        }
+        .submit-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        @media (max-width: 768px) {
+            .page { padding: 24px 16px 48px; }
+            .composer-card { padding: 18px; }
+            .page-title { font-size: 1.6rem; }
+            .nav { padding: 14px 16px; }
+            .nav-right { gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+<nav class="nav">
+    <a th:href="@{/charts}">CineMatch</a>
+    <div class="nav-right">
+        <div class="notif-wrap">
+            <button class="notif-btn" id="notifBtn" aria-label="알림">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span class="notif-badge" id="notifBadge"></span>
+            </button>
+            <div class="notif-panel" id="notifPanel" hidden>
+                <div class="notif-panel-header">
+                    <span>알림</span>
+                    <button class="notif-read-all-btn" id="notifReadAll">전체 읽음</button>
+                </div>
+                <div class="notif-list" id="notifList">
+                    <div class="notif-empty">아직 알림이 없습니다</div>
+                </div>
+            </div>
+        </div>
+        <a class="pill" th:href="@{/people}">People</a>
+        <a class="pill" th:href="@{/mypage}" th:text="${loginUserNickname != null ? loginUserNickname : loginUserId}">My Page</a>
+        <a class="pill logout" th:href="@{/logout}">로그아웃</a>
+    </div>
+</nav>
+
+<main class="page">
+    <header class="page-header">
+        <h1 class="page-title">게시물 작성</h1>
+        <p class="page-copy">영화와 함께 사진 한 장, 그리고 짧은 감상을 남겨보세요.</p>
+    </header>
+
+    <div class="error-banner" th:if="${param.error != null}">
+        게시물을 저장하지 못했습니다. 이미지와 영화 선택 상태를 다시 확인해주세요.
+    </div>
+
+    <form class="composer-card" th:action="@{/posts}" method="post" enctype="multipart/form-data" id="postCreateForm">
+        <div class="field">
+            <label class="field-label" for="imageInput">사진 첨부</label>
+            <p class="field-copy">jpg, jpeg, png, gif, webp 형식만 업로드할 수 있습니다.</p>
+            <div class="upload-dropzone" id="imageDropzone">
+                <label class="file-picker" for="imageInput">이미지 선택</label>
+                <input class="file-input" id="imageInput" type="file" name="image" accept="image/*" required>
+                <div class="upload-ratio-guide">
+                    <div class="ratio-preview ratio-1x1">
+                        <span>1:1</span>
+                    </div>
+                    <div class="ratio-guide-copy">
+                        <strong>정사각형(1:1) 비율을 권장합니다.</strong><br>
+                        세로가 긴 이미지(4:5)도 잘 어울립니다.<br>
+                        가로로 지나치게 넓은 이미지는 잘릴 수 있습니다.
+                    </div>
+                </div>
+                <div class="upload-drop-copy">여기로 이미지를 끌어다 놓아도 첨부할 수 있습니다.</div>
+                <div class="image-warning" id="imageWarning">10MB 이하 이미지만 업로드할 수 있습니다.</div>
+                <p class="image-preview-note" id="imagePreviewNote">실제 게시물에서는 이 비율로 표시됩니다.</p>
+                <div class="image-preview" id="imagePreview">
+                    <img id="imagePreviewImg" alt="선택한 이미지 미리보기">
+                </div>
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="field-label" for="contentInput">설명</label>
+            <textarea id="contentInput" name="content" placeholder="이 영화와 함께 남기고 싶은 이야기를 적어보세요."></textarea>
+        </div>
+
+        <div class="field">
+            <label class="field-label" for="movieSearchInput">영화 선택</label>
+            <p class="field-copy">게시물에 연결할 영화를 검색해서 선택해주세요.</p>
+            <div class="movie-search-wrap">
+                <input class="movie-search-input" id="movieSearchInput" type="text" placeholder="영화 제목을 입력하세요">
+                <button class="movie-search-clear" id="movieSearchClear" type="button" aria-label="검색어 지우기">×</button>
+            </div>
+            <input type="hidden" name="movieId" id="selectedMovieId" required>
+
+            <div class="selected-movie" id="selectedMovie">
+                <div class="selected-badge">✓ 선택됨</div>
+                <div class="selected-movie-poster" id="selectedMoviePoster"></div>
+                <div class="selected-movie-copy">
+                    <div class="selected-movie-title" id="selectedMovieTitle">선택된 영화</div>
+                    <div class="selected-movie-sub">이 영화와 함께 게시물이 저장됩니다.</div>
+                </div>
+                <button class="selected-movie-clear" type="button" id="clearSelectedMovie" aria-label="선택 취소">×</button>
+            </div>
+
+            <div class="movie-search-results" id="movieSearchResults"></div>
+        </div>
+
+        <div class="submit-row">
+            <button class="submit-btn" id="submitBtn" type="submit" disabled>게시하기</button>
+        </div>
+    </form>
+</main>
+
+<script>
+    (function () {
+        const btn = document.getElementById('notifBtn');
+        const panel = document.getElementById('notifPanel');
+        const badge = document.getElementById('notifBadge');
+        const list = document.getElementById('notifList');
+        const readAllBtn = document.getElementById('notifReadAll');
+
+        function timeAgo(value) {
+            if (!value) return '';
+            const seconds = Math.floor((Date.now() - new Date(value)) / 1000);
+            if (seconds < 60) return '방금 전';
+            if (seconds < 3600) return Math.floor(seconds / 60) + '분 전';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + '시간 전';
+            return Math.floor(seconds / 86400) + '일 전';
+        }
+
+        function renderItems(items) {
+            if (!items || !items.length) {
+                list.innerHTML = '<div class="notif-empty">아직 알림이 없습니다</div>';
+                return;
+            }
+            list.innerHTML = items.map((item) => {
+                const avatar = item.actorProfileImageUrl
+                    ? `<img src="${item.actorProfileImageUrl}" alt="">`
+                    : (item.actorNickname || '?')[0];
+                const thumbnail = item.moviePosterUrl
+                    ? `<img class="notif-movie-thumb" src="${item.moviePosterUrl}" alt="">`
+                    : '';
+                const text = item.type === 'FOLLOW'
+                    ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우하기 시작했습니다`
+                    : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>을 인생영화에 추가했습니다`;
+                return `<a class="notif-item${!item.isRead ? ' unread' : ''}" href="${item.linkUrl || '#'}"><div class="notif-avatar">${avatar}</div><div class="notif-content"><div class="notif-text">${text}</div><div class="notif-time">${timeAgo(item.createdAt)}</div></div>${thumbnail}</a>`;
+            }).join('');
+        }
+
+        function updateBadge(count) {
+            badge.textContent = count > 0 ? (count > 99 ? '99+' : count) : '';
+        }
+
+        fetch('/api/notifications')
+            .then((response) => response.ok ? response.json() : null)
+            .then((data) => {
+                if (data) updateBadge(data.unreadCount);
+            })
+            .catch(() => {});
+
+        btn?.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const open = panel.hidden;
+            panel.hidden = !open;
+            if (!open) return;
+            fetch('/api/notifications')
+                .then((response) => response.ok ? response.json() : null)
+                .then((data) => {
+                    if (!data) return;
+                    updateBadge(data.unreadCount);
+                    renderItems(data.items);
+                })
+                .catch(() => {});
+        });
+
+        readAllBtn?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            fetch('/api/notifications/read-all', { method: 'POST' })
+                .then(() => {
+                    updateBadge(0);
+                    document.querySelectorAll('.notif-item.unread').forEach((element) => element.classList.remove('unread'));
+                })
+                .catch(() => {});
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!panel.hidden && !panel.contains(event.target) && event.target !== btn) {
+                panel.hidden = true;
+            }
+        });
+    })();
+
+    const imageInput = document.getElementById('imageInput');
+    const imageDropzone = document.getElementById('imageDropzone');
+    const imageWarning = document.getElementById('imageWarning');
+    const imagePreviewNote = document.getElementById('imagePreviewNote');
+    const imagePreview = document.getElementById('imagePreview');
+    const imagePreviewImg = document.getElementById('imagePreviewImg');
+    const movieSearchInput = document.getElementById('movieSearchInput');
+    const movieSearchClear = document.getElementById('movieSearchClear');
+    const movieSearchResults = document.getElementById('movieSearchResults');
+    const selectedMovie = document.getElementById('selectedMovie');
+    const selectedMoviePoster = document.getElementById('selectedMoviePoster');
+    const selectedMovieTitle = document.getElementById('selectedMovieTitle');
+    const selectedMovieId = document.getElementById('selectedMovieId');
+    const clearSelectedMovie = document.getElementById('clearSelectedMovie');
+    const postCreateForm = document.getElementById('postCreateForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    let debounceTimer = null;
+
+    function updateSubmitState() {
+        const hasImage = !!(imageInput.files && imageInput.files[0]);
+        const hasMovie = !!selectedMovieId.value;
+        submitBtn.disabled = !(hasImage && hasMovie);
+    }
+
+    function updateSearchClearVisibility() {
+        movieSearchClear.classList.toggle('visible', movieSearchInput.value.trim().length > 0);
+    }
+
+    function resetImageState() {
+        imagePreview.classList.remove('active');
+        imagePreviewImg.removeAttribute('src');
+        imagePreviewNote.style.display = 'none';
+        imageWarning.classList.remove('active');
+    }
+
+    function handleImageFile(file) {
+        if (!file) {
+            resetImageState();
+            updateSubmitState();
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            imageInput.value = '';
+            resetImageState();
+            imageWarning.classList.add('active');
+            updateSubmitState();
+            alert('10MB 이하 이미지만 업로드할 수 있습니다.');
+            return;
+        }
+        imageWarning.classList.remove('active');
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            imagePreviewImg.src = event.target?.result;
+            imagePreview.classList.add('active');
+            imagePreviewNote.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+        updateSubmitState();
+    }
+
+    imageInput.addEventListener('change', () => {
+        const [file] = imageInput.files || [];
+        handleImageFile(file);
+    });
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+        imageDropzone.addEventListener(eventName, (event) => {
+            event.preventDefault();
+            imageDropzone.classList.add('dragover');
+        });
+    });
+
+    ['dragleave', 'dragend', 'drop'].forEach((eventName) => {
+        imageDropzone.addEventListener(eventName, (event) => {
+            event.preventDefault();
+            imageDropzone.classList.remove('dragover');
+        });
+    });
+
+    imageDropzone.addEventListener('drop', (event) => {
+        const [file] = event.dataTransfer?.files || [];
+        if (!file) {
+            return;
+        }
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        imageInput.files = transfer.files;
+        handleImageFile(file);
+    });
+
+    function clearResults() {
+        movieSearchResults.innerHTML = '';
+        movieSearchResults.classList.remove('active');
+    }
+
+    function renderSearchResults(items) {
+        if (!items.length) {
+            movieSearchResults.innerHTML = '<div class="movie-search-empty">검색 결과가 없습니다.</div>';
+            movieSearchResults.classList.add('active');
+            return;
+        }
+
+        movieSearchResults.innerHTML = items.map((item) => {
+            const poster = item.posterUrl
+                ? `<div class="movie-search-poster"><img src="${item.posterUrl}" alt="${item.title}"></div>`
+                : `<div class="movie-search-fallback">포스터 없음</div>`;
+            return `<button class="movie-search-item" type="button" data-movie-id="${item.movieId}" data-movie-title="${item.title}" data-movie-poster="${item.posterUrl || ''}">${poster}<div class="movie-search-copy"><div class="movie-search-title">${item.title}</div></div></button>`;
+        }).join('');
+        movieSearchResults.classList.add('active');
+    }
+
+    function setSelectedMovie(movieId, title, posterUrl) {
+        selectedMovieId.value = movieId;
+        selectedMovieTitle.textContent = title;
+        if (posterUrl) {
+            selectedMoviePoster.className = 'selected-movie-poster';
+            selectedMoviePoster.innerHTML = `<img src="${posterUrl}" alt="${title}">`;
+        } else {
+            selectedMoviePoster.className = 'selected-movie-fallback';
+            selectedMoviePoster.textContent = '포스터 없음';
+        }
+        selectedMovie.classList.add('active');
+        clearResults();
+        movieSearchInput.value = title;
+        updateSearchClearVisibility();
+        updateSubmitState();
+    }
+
+    function clearSelected() {
+        selectedMovieId.value = '';
+        selectedMovie.classList.remove('active');
+        selectedMoviePoster.innerHTML = '';
+        selectedMoviePoster.className = 'selected-movie-poster';
+        selectedMovieTitle.textContent = '선택된 영화';
+        updateSubmitState();
+    }
+
+    movieSearchInput.addEventListener('input', () => {
+        const query = movieSearchInput.value.trim();
+        updateSearchClearVisibility();
+        window.clearTimeout(debounceTimer);
+        if (query.length < 1) {
+            clearResults();
+            return;
+        }
+        debounceTimer = window.setTimeout(() => {
+            fetch(`/api/movies/search?query=${encodeURIComponent(query)}`)
+                .then((response) => response.ok ? response.json() : [])
+                .then((items) => renderSearchResults(items))
+                .catch(() => {
+                    movieSearchResults.innerHTML = '<div class="movie-search-empty">검색 중 오류가 발생했습니다.</div>';
+                    movieSearchResults.classList.add('active');
+                });
+        }, 300);
+    });
+
+    movieSearchResults.addEventListener('click', (event) => {
+        const button = event.target.closest('.movie-search-item');
+        if (!button) return;
+        setSelectedMovie(button.dataset.movieId, button.dataset.movieTitle, button.dataset.moviePoster);
+    });
+
+    clearSelectedMovie.addEventListener('click', clearSelected);
+    movieSearchClear.addEventListener('click', () => {
+        movieSearchInput.value = '';
+        updateSearchClearVisibility();
+        clearResults();
+        movieSearchInput.focus();
+    });
+
+    postCreateForm.addEventListener('submit', (event) => {
+        const [file] = imageInput.files || [];
+        if (!selectedMovieId.value) {
+            event.preventDefault();
+            movieSearchInput.focus();
+            alert('게시물에 연결할 영화를 선택해주세요.');
+            return;
+        }
+        if (!file) {
+            event.preventDefault();
+            alert('게시물 이미지를 첨부해주세요.');
+            return;
+        }
+        submitBtn.disabled = true;
+        submitBtn.textContent = '게시 중...';
+    });
+
+    updateSearchClearVisibility();
+    updateSubmitState();
+</script>
+</body>
+</html>
