@@ -934,7 +934,105 @@
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
 
+        /* ─── LEFT SIDEBAR ─── */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 68px;
+            bottom: 0;
+            width: 72px;
+            z-index: 90;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 0;
+            gap: 4px;
+            background: rgba(7,11,20,0.82);
+            backdrop-filter: blur(16px);
+            border-right: 1px solid rgba(148,163,184,0.10);
+        }
+
+        .sb-item {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            color: var(--text-hint);
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font: inherit;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .sb-item:hover, .sb-item.active {
+            background: rgba(255,255,255,0.08);
+            color: var(--text);
+        }
+
+        .sb-item svg {
+            width: 22px;
+            height: 22px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .sb-label {
+            font-size: 0.6rem;
+            font-weight: 700;
+            margin-top: 3px;
+            letter-spacing: 0.02em;
+        }
+
+        .sb-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            min-width: 14px;
+            height: 14px;
+            padding: 0 3px;
+            border-radius: 999px;
+            background: #EF4444;
+            color: white;
+            font-size: 0.58rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sb-badge:empty { display: none; }
+
+        .sb-notif-panel {
+            position: fixed;
+            left: 76px;
+            top: auto;
+            width: 340px;
+            max-height: 480px;
+            border-radius: 16px;
+            background: #111827;
+            border: 1px solid rgba(148,163,184,0.15);
+            box-shadow: 0 24px 60px rgba(2,6,23,0.55);
+            z-index: 9999;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sb-notif-panel[hidden] { display: none; }
+
+        .page { padding-left: 90px; }
+
         @media (max-width: 768px) {
+            .sidebar { display: none; }
             .navbar { padding: 0 16px; }
             .page { padding: 22px 16px 56px; }
             .hero { padding: 28px 22px; }
@@ -1001,6 +1099,32 @@
         <a class="logout-btn" th:href="@{/logout}">로그아웃</a>
     </div>
 </nav>
+
+<aside class="sidebar">
+    <a class="sb-item active" th:href="@{/charts}" aria-label="홈">
+        <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><polyline points="9 21 9 12 15 12 15 21"/></svg>
+        <span class="sb-label">홈</span>
+    </a>
+    <button class="sb-item" id="sbNotifBtn" aria-label="알림">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="sb-badge" id="sbNotifBadge"></span>
+        <span class="sb-label">알림</span>
+    </button>
+    <a class="sb-item" th:href="@{/mypage}" aria-label="프로필">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <span class="sb-label">프로필</span>
+    </a>
+
+    <div class="sb-notif-panel" id="sbNotifPanel" hidden>
+        <div class="notif-panel-header">
+            <span>알림</span>
+            <button class="notif-read-all-btn" id="sbNotifReadAll">전체 읽음</button>
+        </div>
+        <div class="notif-list" id="sbNotifList">
+            <div class="notif-empty">새 알림이 없습니다</div>
+        </div>
+    </div>
+</aside>
 
 <main class="page">
     <section class="hero">
@@ -1711,8 +1835,12 @@
         }).join('');
     }
 
+    const sbBadge = document.getElementById('sbNotifBadge');
+
     function updateBadge(count) {
-        badge.textContent = count > 0 ? (count > 99 ? '99+' : count) : '';
+        const txt = count > 0 ? (count > 99 ? '99+' : count) : '';
+        badge.textContent = txt;
+        if (sbBadge) sbBadge.textContent = txt;
     }
 
     fetch('/api/notifications')
@@ -1742,6 +1870,62 @@
     document.addEventListener('click', function (e) {
         if (!panel.hidden && !panel.contains(e.target) && e.target !== btn) panel.hidden = true;
     });
+
+    // ─── Sidebar notification panel ───
+    const sbBtn = document.getElementById('sbNotifBtn');
+    const sbPanel = document.getElementById('sbNotifPanel');
+    const sbList = document.getElementById('sbNotifList');
+    const sbReadAll = document.getElementById('sbNotifReadAll');
+
+    if (sbBtn && sbPanel) {
+        function renderSbItems(items) {
+            if (!items || items.length === 0) {
+                sbList.innerHTML = '<div class="notif-empty">새 알림이 없습니다</div>';
+                return;
+            }
+            sbList.innerHTML = items.map(item => {
+                const initial = (item.actorNickname || '?')[0];
+                const avatar = item.actorProfileImageUrl
+                    ? `<img src="${item.actorProfileImageUrl}" alt="${item.actorNickname || ''}">`
+                    : initial;
+                const text = item.notifText
+                    || (item.type === 'FOLLOW'
+                        ? `<strong>${item.actorNickname}</strong>님이 팔로우했습니다`
+                        : `<strong>${item.actorNickname}</strong>님의 활동`);
+                const unreadClass = !item.isRead ? ' unread' : '';
+                return `<a class="notif-item${unreadClass}" href="${item.linkUrl || '#'}">
+                    <div class="notif-avatar">${avatar}</div>
+                    <div class="notif-content"><div class="notif-text">${text}</div><div class="notif-time">${timeAgo(item.createdAt)}</div></div>
+                </a>`;
+            }).join('');
+        }
+
+        sbBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const opening = sbPanel.hidden;
+            sbPanel.hidden = !opening;
+            panel.hidden = true;
+            if (!opening) return;
+            const rect = sbBtn.getBoundingClientRect();
+            sbPanel.style.top = rect.top + 'px';
+            fetch('/api/notifications')
+                .then(r => r.ok ? r.json() : null)
+                .then(data => { if (!data) return; updateBadge(data.unreadCount); renderSbItems(data.items); })
+                .catch(() => {});
+        });
+
+        sbReadAll.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            fetch('/api/notifications/read-all', { method: 'POST' })
+                .then(() => { updateBadge(0); document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread')); })
+                .catch(() => {});
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!sbPanel.hidden && !sbPanel.contains(e.target) && e.target !== sbBtn) sbPanel.hidden = true;
+        });
+    }
 })();
 </script>
 </body>

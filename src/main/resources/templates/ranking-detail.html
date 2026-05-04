@@ -216,28 +216,43 @@
             z-index: 2;
         }
 
-        /* 호버 */
-        .card-hover {
-            position: absolute; inset: 0;
-            background: rgba(0,0,0,0);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            gap: 6px;
-            opacity: 0;
-            transition: opacity 0.18s ease, background 0.18s ease;
+        /* 플로팅 호버 프리뷰 */
+        .hover-preview {
+            position: fixed; z-index: 2000; width: 220px;
+            border-radius: 14px; overflow: hidden;
+            box-shadow: 0 28px 64px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.08);
+            pointer-events: none; opacity: 0; transform: scale(0.88);
+            transition: opacity 0.18s ease, transform 0.18s ease;
+            background: #0a1425;
         }
-        .movie-card:hover .card-hover {
-            opacity: 1;
-            background: rgba(0,0,0,0.4);
-        }
-        .card-hover-metric {
-            font-size: 0.72rem; font-weight: 700;
-            color: white;
-            background: rgba(0,0,0,0.6);
-            border-radius: 5px;
-            padding: 4px 8px;
-            text-align: center;
-            max-width: 90%;
-        }
+        .hover-preview.visible { opacity: 1; transform: scale(1); pointer-events: auto; }
+        .hp-poster-wrap { position: relative; aspect-ratio: 2/3; background: #111; }
+        .hp-poster-wrap img { width: 100%; height: 100%; display: block; object-fit: cover; }
+        .hp-fallback { width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(0,72,255,0.3),rgba(14,165,233,0.2));color:rgba(255,255,255,0.7);font-size:0.8rem;font-weight:700;text-align:center;padding:12px; }
+        .hp-rank { position:absolute;bottom:0;left:0;right:0;padding:40px 10px 7px;background:linear-gradient(to top,rgba(0,0,0,0.85),transparent);font-size:2.4rem;font-weight:900;letter-spacing:-0.05em;color:white;line-height:1; }
+        .hp-badge { position:absolute;top:8px;left:8px;padding:2px 7px;border-radius:5px;font-size:0.62rem;font-weight:800;background:rgba(10,16,28,0.9);color:#fde68a; }
+        .hp-body { padding: 12px 12px 14px; }
+        .hp-title { font-size:0.9rem;font-weight:800;line-height:1.35;color:#F8FAFC;margin-bottom:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical; }
+        .hp-meta { font-size:0.72rem;color:#94A3B8;margin-bottom:8px; }
+        .hp-metric { font-size:0.72rem;color:#7DD3FC;margin-bottom:10px;background:rgba(56,189,248,0.1);padding:3px 7px;border-radius:5px;display:inline-block; }
+        .hp-actions { display:flex;gap:6px;align-items:center; }
+        .hp-btn { flex:1;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.13s,transform 0.1s;font-size:0; }
+        .hp-btn:hover { background:rgba(255,255,255,0.16);transform:scale(1.06); }
+        .hp-btn svg { width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none; }
+        .hp-btn.active[data-action="like"]       { background:rgba(244,63,94,0.55);border-color:#F43F5E; }
+        .hp-btn.active[data-action="dislike"]    { background:rgba(100,116,139,0.55);border-color:#64748B; }
+        .hp-btn.active[data-action="later"]      { background:rgba(245,158,11,0.55);border-color:#F59E0B; }
+        .hp-btn.active[data-action="collection"] { background:rgba(139,92,246,0.55);border-color:#8B5CF6; }
+        .hp-detail-btn { display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:white;color:#0F172A;text-decoration:none;flex-shrink:0; }
+        .hp-detail-btn svg { width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round; }
+        /* 리스트뷰 액션버튼 */
+        .cact-btn { width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,0.18);background:rgba(15,23,42,0.75);color:white;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background 0.14s,transform 0.1s; }
+        .cact-btn:hover { transform:scale(1.12); }
+        .cact-btn svg { width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;pointer-events:none; }
+        .cact-btn.active[data-action="like"]       { background:rgba(244,63,94,0.65);border-color:#F43F5E; }
+        .cact-btn.active[data-action="dislike"]    { background:rgba(100,116,139,0.65);border-color:#64748B; }
+        .cact-btn.active[data-action="later"]      { background:rgba(245,158,11,0.65);border-color:#F59E0B; }
+        .cact-btn.active[data-action="collection"] { background:rgba(139,92,246,0.65);border-color:#8B5CF6; }
 
         /* 카드 정보 */
         .card-info { padding: 0 2px; }
@@ -463,6 +478,13 @@
     <div class="movie-grid" th:if="${!#lists.isEmpty(rows)}">
         <a class="movie-card"
            th:each="row : ${rows}"
+           th:href="@{|/movies/${row.movieCode()}|}"
+           th:attr="data-code=${row.movieCode()},
+                    data-poster=${row.posterImageUrl()},
+                    data-title=${row.movieName()},
+                    data-year=${row.productionYear()},
+                    data-rank=${row.rankNo()},
+                    data-metric=${row.metricLabel() + ': ' + (row.metricValue() != null ? row.metricValue() : '-')}">
             <div class="card-poster">
                 <img th:if="${!#strings.isEmpty(row.posterImageUrl())}"
                      th:src="${row.posterImageUrl()}"
@@ -474,10 +496,6 @@
                 <span class="card-badge"
                       th:if="${row.badgeLabel() != null}"
                       th:text="${row.badgeLabel()}">뱃지</span>
-                <div class="card-hover">
-                    <div class="card-hover-metric"
-                         th:text="${row.metricLabel() + ': ' + (row.metricValue() != null ? row.metricValue() : '-')}">지표</div>
-                </div>
                 <div class="card-rank" th:text="${row.rankNo()}">1</div>
             </div>
             <div class="card-info">
@@ -550,6 +568,9 @@
         </div>
     </section>
 </main>
+
+<div class="hover-preview" id="hoverPreview"></div>
+
 <script>
 (function () {
     const btn = document.getElementById('notifBtn'), panel = document.getElementById('notifPanel'),
@@ -583,6 +604,90 @@ function setView(mode) {
         const saved = localStorage.getItem('cinematch_ranking_detail_view');
         if (saved === 'list') setView('list');
     } catch(e) {}
+})();
+
+/* ── 플로팅 호버 프리뷰 ── */
+(function () {
+    const preview = document.getElementById('hoverPreview');
+    const PW = 220;
+    let timer = null;
+    const actionState = {};
+    const ICONS = {
+        like:       '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
+        dislike:    '<svg viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/></svg>',
+        later:      '<svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
+        collection: '<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
+    };
+    const TITLES = { like:'좋아요', dislike:'별로에요', later:'나중에 볼게요', collection:'컬렉션에 추가' };
+    function rankColor(r) { return r==1?'#fbbf24':r==2?'#cbd5e1':r==3?'#d97706':'white'; }
+
+    function buildPreview(card) {
+        const code=card.dataset.code||'', poster=card.dataset.poster||'', title=card.dataset.title||'',
+              year=card.dataset.year||'', rank=card.dataset.rank||'', metric=card.dataset.metric||'';
+        const badge=card.querySelector('.card-badge');
+        const state=actionState[code]||{};
+        const posterHtml = poster ? `<img src="${poster}" alt="${title}" style="width:100%;aspect-ratio:2/3;display:block;object-fit:cover;">`
+                                  : `<div class="hp-fallback">${title}</div>`;
+        const actionsHtml = ['like','dislike','later','collection'].map(act => {
+            const on=(act==='like'&&state.liked)||(act==='dislike'&&state.disliked)||(act==='later'&&state.later)||(act==='collection'&&state.collected);
+            return `<button class="hp-btn${on?' active':''}" data-code="${code}" data-action="${act}" title="${TITLES[act]}" onclick="doActionPreview(event,this)">${ICONS[act]}</button>`;
+        }).join('');
+        preview.innerHTML = `
+            <div class="hp-poster-wrap">
+                ${posterHtml}
+                ${badge?`<div class="hp-badge">${badge.textContent}</div>`:''}
+                <div class="hp-rank" style="color:${rankColor(rank)}">${rank}</div>
+            </div>
+            <div class="hp-body">
+                <div class="hp-title">${title}</div>
+                <div class="hp-meta">${year}</div>
+                ${metric?`<div class="hp-metric">${metric}</div>`:''}
+                <div class="hp-actions">${actionsHtml}
+                    <a class="hp-detail-btn" href="/movies/${code}" title="상세보기"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+                </div>
+            </div>`;
+    }
+
+    function positionPreview(card) {
+        const rect=card.getBoundingClientRect(), vw=window.innerWidth, vh=window.innerHeight;
+        const ph=PW*1.5+120;
+        let left=rect.right+8;
+        if (left+PW>vw-8) left=rect.left-PW-8;
+        if (left<8) left=Math.max(8,Math.min(rect.left+rect.width/2-PW/2,vw-PW-8));
+        let top=rect.top+rect.height/2-ph/2;
+        top=Math.max(8,Math.min(top,vh-ph-8));
+        preview.style.left=left+'px'; preview.style.top=top+'px'; preview.style.width=PW+'px';
+    }
+
+    function show(card) { if(!card.dataset.code)return; buildPreview(card); positionPreview(card); preview.classList.add('visible'); }
+    function hide() { preview.classList.remove('visible'); }
+
+    document.addEventListener('mouseover', function(e) {
+        const card=e.target.closest('.movie-card[data-code]');
+        if (card) { clearTimeout(timer); timer=setTimeout(function(){show(card);},260); return; }
+        if (!e.target.closest('#hoverPreview')) { clearTimeout(timer); timer=setTimeout(hide,120); }
+    });
+    preview.addEventListener('mouseenter',function(){clearTimeout(timer);});
+    preview.addEventListener('mouseleave',function(){timer=setTimeout(hide,80);});
+
+    window.doActionPreview = function(e, btn) {
+        e.preventDefault(); e.stopPropagation();
+        const code=btn.dataset.code, action=btn.dataset.action;
+        if (!code||!action) return;
+        fetch('/api/movies/'+code+'/'+action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'}})
+            .then(r=>{if(r.status===401){window.location.href='/login';return null;}return r.ok?r.json():null;})
+            .then(data=>{
+                if(!data)return;
+                actionState[code]={liked:data.liked,disliked:data.disliked,later:data.later,collected:data.collected};
+                preview.querySelectorAll('.hp-btn[data-code="'+code+'"]').forEach(b=>{
+                    const act=b.dataset.action;
+                    b.classList.toggle('active',(act==='like'&&data.liked)||(act==='dislike'&&data.disliked)||(act==='later'&&data.later)||(act==='collection'&&data.collected));
+                });
+            }).catch(()=>{});
+    };
+
+    function doAction(e,btn){e.preventDefault();e.stopPropagation();const code=btn.dataset.code,action=btn.dataset.action;if(!code||!action)return;fetch('/api/movies/'+code+'/'+action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>{if(r.status===401){window.location.href='/login';return null;}return r.ok?r.json():null;}).then(data=>{if(!data)return;document.querySelectorAll('.cact-btn[data-code="'+code+'"]').forEach(b=>{const act=b.dataset.action;b.classList.toggle('active',(act==='like'&&data.liked)||(act==='dislike'&&data.disliked)||(act==='later'&&data.later)||(act==='collection'&&data.collected));});}).catch(()=>{});}
+    window.doAction=doAction;
 })();
 </script>
 </body>

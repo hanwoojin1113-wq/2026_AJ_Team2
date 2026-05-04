@@ -84,6 +84,7 @@ public class MovieController {
     );
 
     private static final List<String> HOME_CHART_CODES = List.of("top-sales", "million-club", "flash-hit");
+    private static final List<String> ONBOARDING_TAGS = List.of("funny", "tense", "dark", "emotional", "romantic");
 
     private final JdbcTemplate jdbcTemplate;
     private final RecommendationRefreshStateService recommendationRefreshStateService;
@@ -152,7 +153,7 @@ public class MovieController {
 
     @PostMapping("/signup")
     public String signup(@RequestParam String id, @RequestParam String pw, @RequestParam String nickname,
-                         @RequestParam String gender, @RequestParam Integer age) {
+                         @RequestParam String gender, @RequestParam Integer age, HttpSession session) {
         if (nickname == null || nickname.isBlank()
                 || (!gender.equals("MALE") && !gender.equals("FEMALE"))
                 || age == null || age < 1 || age > 120) {
@@ -174,7 +175,51 @@ public class MovieController {
                 VALUES (?, ?, ?, ?, ?)
                 """, id, pw, nickname.trim(), gender, age);
 
-        return "redirect:/login";
+        session.setAttribute(LOGIN_SESSION_KEY, id);
+        session.setAttribute(LOGIN_NICKNAME_SESSION_KEY, nickname.trim());
+        return "redirect:/onboarding";
+    }
+
+    @GetMapping("/onboarding")
+    public String onboardingPage(Model model, HttpSession session) {
+        if (!isLoggedIn(session)) {
+            return "redirect:/login";
+        }
+        List<OnboardingTagGroup> onboardingGroups = ONBOARDING_TAGS.stream()
+                .map(tagName -> new OnboardingTagGroup(tagName, labelForTag(tagName), fetchMoviesByTag("MOOD", tagName, 5)))
+                .filter(g -> !g.movies().isEmpty())
+                .toList();
+        addCurrentUserAttributes(model, session);
+        model.addAttribute("onboardingGroups", onboardingGroups);
+        return "onboarding";
+    }
+
+    @PostMapping("/onboarding")
+    @Transactional
+    public String onboardingSubmit(@RequestParam(required = false) List<String> movieCodes, HttpSession session) {
+        if (!isLoggedIn(session)) {
+            return "redirect:/login";
+        }
+        if (movieCodes != null && !movieCodes.isEmpty()) {
+            initializeActivityTables();
+            Long userId = getCurrentUserId(session);
+            for (String code : movieCodes) {
+                try {
+                    Long movieId = findMovieId(code);
+                    Boolean existing = jdbcTemplate.query("""
+                            SELECT liked FROM user_movie_like WHERE user_id = ? AND movie_id = ?
+                            """, rs -> rs.next() ? rs.getBoolean("liked") : null, userId, movieId);
+                    if (existing == null) {
+                        jdbcTemplate.update("""
+                                INSERT INTO user_movie_like (user_id, movie_id, liked) VALUES (?, ?, TRUE)
+                                """, userId, movieId);
+                    }
+                } catch (ResponseStatusException ignored) {
+                }
+            }
+            recommendationRefreshStateService.markDirty(getCurrentUserId(session));
+        }
+        return "redirect:/charts";
     }
 
     @GetMapping("/logout")
@@ -458,6 +503,7 @@ public class MovieController {
         model.addAttribute("lifeLimitReached", lifeMovieCount >= LIFE_MOVIE_LIMIT);
         model.addAttribute("lifeSelectionSlots", Math.max(0, LIFE_MOVIE_LIMIT - lifeMovieCount));
         model.addAttribute("lifePickerCandidates", fetchLifeMovieSearchResults(userId));
+        model.addAttribute("tasteChart", fetchUserGenreChart(userId));
         return "my-page";
     }
 
@@ -1801,6 +1847,53 @@ public class MovieController {
         return genreName != null && SEARCH_EXCLUDED_GENRES.contains(genreName.trim());
     }
 
+    private List<TasteChartEntry> fetchUserGenreChart(Long userId) {
+        List<Object[]> rows = jdbcTemplate.query("""
+                SELECT g.name AS genre_name, COUNT(*) AS cnt
+                FROM user_movie_like uml
+                JOIN movie m ON m.id = uml.movie_id
+                JOIN movie_genre mg ON mg.movie_id = m.id
+                JOIN genre g ON g.id = mg.genre_id
+                WHERE uml.user_id = ? AND uml.liked = TRUE
+                GROUP BY g.name
+                ORDER BY cnt DESC
+                LIMIT 5
+                """, (rs, rowNum) -> new Object[]{rs.getString("genre_name"), rs.getInt("cnt")}, userId);
+        if (rows.isEmpty()) return List.of();
+        int maxCnt = (int) rows.get(0)[1];
+        if (maxCnt == 0) return List.of();
+        return rows.stream()
+                .map(row -> new TasteChartEntry((String) row[0], (int) row[1], (int) ((int) row[1] * 100.0 / maxCnt)))
+                .toList();
+    }
+
+    private List<MoviePosterView> fetchMoviesByTag(String tagType, String tagName, int limit) {
+        return jdbcTemplate.query("""
+                SELECT
+                    m.ranking,
+                    m.movie_cd,
+                    COALESCE(m.title, m.movie_name) AS movie_name,
+                    COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
+                    m.poster_image_url
+                FROM movie m
+                JOIN movie_tag mt ON mt.movie_id = m.id
+                JOIN tag t ON t.id = mt.tag_id
+                WHERE t.tag_type = ?
+                  AND t.tag_name = ?
+                  AND m.poster_image_url IS NOT NULL
+                ORDER BY
+                    CASE WHEN m.ranking IS NULL THEN 1 ELSE 0 END,
+                    m.ranking ASC
+                LIMIT ?
+                """, (rs, rowNum) -> new MoviePosterView(
+                rs.getInt("ranking"),
+                rs.getString("movie_cd"),
+                rs.getString("movie_name"),
+                rs.getString("movie_name_en"),
+                rs.getString("poster_image_url")
+        ), tagType, tagName, limit);
+    }
+
     private String searchExcludedGenreClause() {
         return """
                   AND NOT EXISTS (
@@ -1974,5 +2067,14 @@ public class MovieController {
     }
 
     private record LoginUser(String loginId, String nickname) {
+    }
+
+    public record TasteChartEntry(String genre, int count, int pct) {
+        public int bubbleSize() {
+            return Math.max(68, 140 * pct / 100);
+        }
+    }
+
+    public record OnboardingTagGroup(String tagName, String tagLabel, List<MoviePosterView> movies) {
     }
 }
