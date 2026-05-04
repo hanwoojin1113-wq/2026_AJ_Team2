@@ -39,8 +39,8 @@ public class NotificationController {
         for (Map<String, Object> row : raw) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", row.get("ID"));
-            String type = (String) row.get("NOTIFICATION_TYPE");
-            item.put("type", type);
+            String notifType = (String) row.get("NOTIFICATION_TYPE");
+            item.put("type", notifType);
             item.put("actorNickname", row.get("ACTOR_NICKNAME"));
             item.put("actorLoginId", row.get("ACTOR_LOGIN_ID"));
             item.put("actorProfileImageUrl", row.get("ACTOR_PROFILE_IMAGE_URL"));
@@ -51,15 +51,47 @@ public class NotificationController {
             Object createdAt = row.get("CREATED_AT");
             item.put("createdAt", createdAt != null ? createdAt.toString() : null);
 
-            String linkUrl = null;
-            if ("FOLLOW".equals(type)) {
-                String loginId = (String) row.get("ACTOR_LOGIN_ID");
-                if (loginId != null) linkUrl = "/users/" + loginId;
-            } else if ("LIFE_MOVIE".equals(type)) {
-                String movieCode = (String) row.get("MOVIE_CODE");
-                if (movieCode != null) linkUrl = "/movies/" + movieCode;
+            Long postId = row.get("POST_ID") instanceof Number number ? number.longValue() : null;
+            Long reviewId = row.get("REVIEW_ID") instanceof Number number ? number.longValue() : null;
+            String movieCd = (String) row.get("MOVIE_CD");
+            String actorLoginId = (String) row.get("ACTOR_LOGIN_ID");
+            String actor = row.get("ACTOR_NICKNAME") instanceof String nickname && !nickname.isBlank()
+                    ? nickname
+                    : "누군가";
+
+            String linkUrl;
+            switch (notifType != null ? notifType : "") {
+                case "NEW_POST" ->
+                        linkUrl = (movieCd != null && postId != null)
+                                ? "/movies/" + movieCd + "/posts#post-" + postId
+                                : "#";
+                case "POST_LIKE" ->
+                        linkUrl = postId != null ? "/posts/" + postId : "#";
+                case "REVIEW_LIKE" ->
+                        linkUrl = movieCd != null ? "/movies/" + movieCd : "#";
+                case "FOLLOW" ->
+                        linkUrl = actorLoginId != null ? "/users/" + actorLoginId : "#";
+                default ->
+                        linkUrl = movieCd != null ? "/movies/" + movieCd : "#";
             }
             item.put("linkUrl", linkUrl);
+
+            String text;
+            switch (notifType != null ? notifType : "") {
+                case "NEW_POST" ->
+                        text = actor + "님이 새 게시물을 올렸습니다.";
+                case "POST_LIKE" ->
+                        text = actor + "님이 내 게시물에 좋아요를 눌렀습니다.";
+                case "REVIEW_LIKE" ->
+                        text = actor + "님이 내 리뷰에 좋아요를 남겼습니다.";
+                case "FOLLOW" ->
+                        text = actor + "님이 팔로우하기 시작했습니다.";
+                case "LIFE_MOVIE" ->
+                        text = actor + "님이 인생영화를 추가했습니다.";
+                default ->
+                        text = actor + "님이 활동했습니다.";
+            }
+            item.put("notifText", text);
             items.add(item);
         }
 

@@ -27,6 +27,18 @@ public class NotificationService {
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """);
+        jdbcTemplate.execute("""
+                ALTER TABLE user_notification
+                ADD COLUMN IF NOT EXISTS post_id BIGINT
+                """);
+        jdbcTemplate.execute("""
+                ALTER TABLE user_notification
+                ADD COLUMN IF NOT EXISTS review_id BIGINT
+                """);
+        jdbcTemplate.execute("""
+                ALTER TABLE user_notification
+                ADD COLUMN IF NOT EXISTS movie_cd VARCHAR(20)
+                """);
     }
 
     public void createFollowNotification(Long actorUserId, Long recipientUserId) {
@@ -39,15 +51,60 @@ public class NotificationService {
 
     public void createLifeMovieNotifications(Long actorUserId, Long movieId) {
         initializeTable();
+        String movieCode = findMovieCodeByMovieId(movieId);
         List<Long> followerIds = jdbcTemplate.queryForList("""
                 SELECT follower_user_id FROM user_follow WHERE following_user_id = ?
                 """, Long.class, actorUserId);
         for (Long followerId : followerIds) {
             jdbcTemplate.update("""
-                    INSERT INTO user_notification (recipient_user_id, actor_user_id, notification_type, movie_id)
-                    VALUES (?, ?, 'LIFE_MOVIE', ?)
-                    """, followerId, actorUserId, movieId);
+                    INSERT INTO user_notification
+                        (recipient_user_id, actor_user_id, notification_type, movie_id, movie_cd)
+                    VALUES (?, ?, 'LIFE_MOVIE', ?, ?)
+                    """, followerId, actorUserId, movieId, movieCode);
         }
+    }
+
+    public void createNewPostNotifications(Long actorUserId, Long postId, String movieCode) {
+        initializeTable();
+        List<Long> followerIds = jdbcTemplate.queryForList("""
+                SELECT follower_user_id
+                FROM user_follow
+                WHERE following_user_id = ?
+                """, Long.class, actorUserId);
+        for (Long followerId : followerIds) {
+            if (actorUserId.equals(followerId)) {
+                continue;
+            }
+            jdbcTemplate.update("""
+                    INSERT INTO user_notification
+                        (recipient_user_id, actor_user_id, notification_type, post_id, movie_cd)
+                    VALUES (?, ?, 'NEW_POST', ?, ?)
+                    """, followerId, actorUserId, postId, movieCode);
+        }
+    }
+
+    public void createPostLikeNotification(Long actorUserId, Long postId, Long postOwnerId, String movieCode) {
+        initializeTable();
+        if (actorUserId == null || postOwnerId == null || actorUserId.equals(postOwnerId)) {
+            return;
+        }
+        jdbcTemplate.update("""
+                INSERT INTO user_notification
+                    (recipient_user_id, actor_user_id, notification_type, post_id, movie_cd)
+                VALUES (?, ?, 'POST_LIKE', ?, ?)
+                """, postOwnerId, actorUserId, postId, movieCode);
+    }
+
+    public void createReviewLikeNotification(Long actorUserId, Long reviewId, Long reviewOwnerId, String movieCode) {
+        initializeTable();
+        if (actorUserId == null || reviewOwnerId == null || actorUserId.equals(reviewOwnerId)) {
+            return;
+        }
+        jdbcTemplate.update("""
+                INSERT INTO user_notification
+                    (recipient_user_id, actor_user_id, notification_type, review_id, movie_cd)
+                VALUES (?, ?, 'REVIEW_LIKE', ?, ?)
+                """, reviewOwnerId, actorUserId, reviewId, movieCode);
     }
 
     public int countUnread(Long userId) {
@@ -67,6 +124,9 @@ public class NotificationService {
                     n.notification_type,
                     n.is_read,
                     n.created_at,
+                    n.post_id,
+                    n.review_id,
+                    n.movie_cd,
                     actor.nickname      AS actor_nickname,
                     actor.login_id      AS actor_login_id,
                     actor.profile_image_url AS actor_profile_image_url,
@@ -75,7 +135,9 @@ public class NotificationService {
                     m.poster_image_url  AS movie_poster_url
                 FROM user_notification n
                 LEFT JOIN "USER" actor ON actor.id = n.actor_user_id
-                LEFT JOIN movie m ON m.id = n.movie_id
+                LEFT JOIN movie m
+                       ON (n.movie_cd IS NOT NULL AND m.movie_cd = n.movie_cd)
+                       OR (n.movie_cd IS NULL AND m.id = n.movie_id)
                 WHERE n.recipient_user_id = ?
                 ORDER BY n.created_at DESC
                 LIMIT ?
@@ -88,5 +150,16 @@ public class NotificationService {
                 UPDATE user_notification SET is_read = TRUE
                 WHERE recipient_user_id = ?
                 """, userId);
+    }
+
+    private String findMovieCodeByMovieId(Long movieId) {
+        if (movieId == null) {
+            return null;
+        }
+        return jdbcTemplate.query("""
+                SELECT movie_cd
+                FROM movie
+                WHERE id = ?
+                """, rs -> rs.next() ? rs.getString("movie_cd") : null, movieId);
     }
 }
