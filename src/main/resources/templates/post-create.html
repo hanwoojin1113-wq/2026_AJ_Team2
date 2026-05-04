@@ -46,20 +46,6 @@
             background:rgba(255,255,255,.08);
         }
         .logout { background:#fff; color:#0f172a !important; }
-        .post-create-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            text-decoration: none;
-            transition: background 0.2s;
-            margin-right: 8px;
-        }
-        .post-create-btn:hover { background: rgba(255,255,255,0.2); }
         .notif-wrap { position: relative; }
         .notif-btn {
             position: relative;
@@ -170,9 +156,7 @@
             margin: 0 auto;
             padding: 36px 20px 64px;
         }
-        .page-header {
-            margin-bottom: 24px;
-        }
+        .page-header { margin-bottom: 24px; }
         .page-title {
             margin: 0 0 10px 0;
             font-size: 2rem;
@@ -202,10 +186,7 @@
             border: 1px solid var(--border);
             box-shadow: 0 24px 60px rgba(2,6,23,0.28);
         }
-        .field {
-            display: grid;
-            gap: 10px;
-        }
+        .field { display: grid; gap: 10px; }
         .field-label {
             font-size: 0.92rem;
             font-weight: 700;
@@ -291,28 +272,43 @@
         }
         .image-warning.active { display: block; }
         .file-input { display: none; }
-        .image-preview {
-            display: none;
-            width: 100%;
-            max-width: 380px;
-            aspect-ratio: 1 / 1;
-            border-radius: 18px;
-            overflow: hidden;
-            border: 1px solid var(--border);
-            background: rgba(255,255,255,0.03);
-        }
-        .image-preview.active { display: block; }
         .image-preview-note {
             display: none;
             font-size: 0.76rem;
             color: var(--sub);
             margin: 8px 0 6px;
         }
+        .image-preview-grid {
+            display: none;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            width: 100%;
+        }
+        .image-preview-grid.active { display: grid; }
+        .image-preview {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+        }
         .image-preview img {
             width: 100%;
             height: 100%;
-            display: block;
             object-fit: cover;
+            display: block;
+        }
+        .image-preview-primary {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.84);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 800;
         }
         textarea,
         .movie-search-input {
@@ -333,13 +329,9 @@
         .movie-search-input {
             height: 50px;
             padding: 0 16px;
-        }
-        .movie-search-wrap {
-            position: relative;
-        }
-        .movie-search-input {
             padding-right: 52px;
         }
+        .movie-search-wrap { position: relative; }
         .movie-search-clear {
             position: absolute;
             top: 50%;
@@ -518,15 +510,14 @@
             transform: translateY(-1px);
             box-shadow: 0 18px 36px rgba(37,99,235,0.36);
         }
-        .submit-btn:active:not(:disabled) {
-            transform: translateY(0);
-        }
+        .submit-btn:active:not(:disabled) { transform: translateY(0); }
         @media (max-width: 768px) {
             .page { padding: 24px 16px 48px; }
             .composer-card { padding: 18px; }
             .page-title { font-size: 1.6rem; }
             .nav { padding: 14px 16px; }
             .nav-right { gap: 8px; }
+            .image-preview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
     </style>
 </head>
@@ -561,22 +552,22 @@
 <main class="page">
     <header class="page-header">
         <h1 class="page-title">게시물 작성</h1>
-        <p class="page-copy">영화와 함께 사진 한 장, 그리고 짧은 감상을 남겨보세요.</p>
+        <p class="page-copy">영화와 어울리는 사진과 함께 감상을 기록해보세요.</p>
     </header>
 
     <div class="error-banner" th:if="${param.error != null}">
-        게시물을 저장하지 못했습니다. 이미지와 영화 선택 상태를 다시 확인해주세요.
+        게시물을 저장하지 못했습니다. 이미지 개수와 영화 선택 상태를 다시 확인해주세요.
     </div>
 
     <form class="composer-card" th:action="@{/posts}" method="post" enctype="multipart/form-data" id="postCreateForm">
         <div class="field">
             <label class="field-label" for="imageInput">사진 첨부</label>
-            <p class="field-copy">jpg, jpeg, png, gif, webp 형식만 업로드할 수 있습니다.</p>
+            <p class="field-copy">최대 5장까지 업로드할 수 있습니다. 첫 번째 사진이 대표 이미지가 됩니다.</p>
             <div class="upload-dropzone" id="imageDropzone">
                 <label class="file-picker" for="imageInput">이미지 선택</label>
-                <input class="file-input" id="imageInput" type="file" name="image" accept="image/*" required>
+                <input class="file-input" id="imageInput" type="file" name="images" multiple accept="image/*">
                 <div class="upload-ratio-guide">
-                    <div class="ratio-preview ratio-1x1">
+                    <div class="ratio-preview">
                         <span>1:1</span>
                     </div>
                     <div class="ratio-guide-copy">
@@ -586,17 +577,15 @@
                     </div>
                 </div>
                 <div class="upload-drop-copy">여기로 이미지를 끌어다 놓아도 첨부할 수 있습니다.</div>
-                <div class="image-warning" id="imageWarning">10MB 이하 이미지만 업로드할 수 있습니다.</div>
-                <p class="image-preview-note" id="imagePreviewNote">실제 게시물에서는 이 비율로 표시됩니다.</p>
-                <div class="image-preview" id="imagePreview">
-                    <img id="imagePreviewImg" alt="선택한 이미지 미리보기">
-                </div>
+                <div class="image-warning" id="imageWarning">10MB 이하 이미지와 최대 5장까지만 업로드할 수 있습니다.</div>
+                <p class="image-preview-note" id="imagePreviewNote">첫 번째 사진이 대표 이미지로 사용됩니다.</p>
+                <div class="image-preview-grid" id="imagePreviewGrid"></div>
             </div>
         </div>
 
         <div class="field">
             <label class="field-label" for="contentInput">설명</label>
-            <textarea id="contentInput" name="content" placeholder="이 영화와 함께 남기고 싶은 이야기를 적어보세요."></textarea>
+            <textarea id="contentInput" name="content" placeholder="이 영화와 함께 남기고 싶은 감상을 적어보세요."></textarea>
         </div>
 
         <div class="field">
@@ -613,7 +602,7 @@
                 <div class="selected-movie-poster" id="selectedMoviePoster"></div>
                 <div class="selected-movie-copy">
                     <div class="selected-movie-title" id="selectedMovieTitle">선택된 영화</div>
-                    <div class="selected-movie-sub">이 영화와 함께 게시물이 저장됩니다.</div>
+                    <div class="selected-movie-sub">이 영화와 함께 게시물이 등록됩니다.</div>
                 </div>
                 <button class="selected-movie-clear" type="button" id="clearSelectedMovie" aria-label="선택 취소">×</button>
             </div>
@@ -656,9 +645,10 @@
                 const thumbnail = item.moviePosterUrl
                     ? `<img class="notif-movie-thumb" src="${item.moviePosterUrl}" alt="">`
                     : '';
-                const text = item.type === 'FOLLOW'
-                    ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우하기 시작했습니다`
-                    : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>을 인생영화에 추가했습니다`;
+                const text = item.notifText
+                    || (item.type === 'FOLLOW'
+                        ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우했습니다`
+                        : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>를 인생영화로 추가했습니다`);
                 return `<a class="notif-item${!item.isRead ? ' unread' : ''}" href="${item.linkUrl || '#'}"><div class="notif-avatar">${avatar}</div><div class="notif-content"><div class="notif-text">${text}</div><div class="notif-time">${timeAgo(item.createdAt)}</div></div>${thumbnail}</a>`;
             }).join('');
         }
@@ -669,9 +659,7 @@
 
         fetch('/api/notifications')
             .then((response) => response.ok ? response.json() : null)
-            .then((data) => {
-                if (data) updateBadge(data.unreadCount);
-            })
+            .then((data) => { if (data) updateBadge(data.unreadCount); })
             .catch(() => {});
 
         btn?.addEventListener('click', (event) => {
@@ -701,7 +689,7 @@
         });
 
         document.addEventListener('click', (event) => {
-            if (!panel.hidden && !panel.contains(event.target) && event.target !== btn) {
+            if (panel && !panel.hidden && !panel.contains(event.target) && event.target !== btn) {
                 panel.hidden = true;
             }
         });
@@ -711,8 +699,7 @@
     const imageDropzone = document.getElementById('imageDropzone');
     const imageWarning = document.getElementById('imageWarning');
     const imagePreviewNote = document.getElementById('imagePreviewNote');
-    const imagePreview = document.getElementById('imagePreview');
-    const imagePreviewImg = document.getElementById('imagePreviewImg');
+    const imagePreviewGrid = document.getElementById('imagePreviewGrid');
     const movieSearchInput = document.getElementById('movieSearchInput');
     const movieSearchClear = document.getElementById('movieSearchClear');
     const movieSearchResults = document.getElementById('movieSearchResults');
@@ -727,50 +714,84 @@
     let debounceTimer = null;
 
     function updateSubmitState() {
-        const hasImage = !!(imageInput.files && imageInput.files[0]);
+        const hasImages = !!(imageInput.files && imageInput.files.length > 0);
         const hasMovie = !!selectedMovieId.value;
-        submitBtn.disabled = !(hasImage && hasMovie);
+        submitBtn.disabled = !(hasImages && hasMovie);
     }
 
     function updateSearchClearVisibility() {
         movieSearchClear.classList.toggle('visible', movieSearchInput.value.trim().length > 0);
     }
 
-    function resetImageState() {
-        imagePreview.classList.remove('active');
-        imagePreviewImg.removeAttribute('src');
-        imagePreviewNote.style.display = 'none';
-        imageWarning.classList.remove('active');
+    function renderImagePreviews(files) {
+        imagePreviewGrid.innerHTML = '';
+        if (!files.length) {
+            imagePreviewGrid.classList.remove('active');
+            imagePreviewNote.style.display = 'none';
+            return;
+        }
+
+        files.forEach((file, index) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'image-preview';
+            if (index === 0) {
+                const badge = document.createElement('div');
+                badge.className = 'image-preview-primary';
+                badge.textContent = '대표';
+                wrapper.appendChild(badge);
+            }
+
+            const img = document.createElement('img');
+            img.alt = `선택한 이미지 ${index + 1}`;
+            wrapper.appendChild(img);
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                img.src = String(event.target?.result ?? '');
+            };
+            reader.readAsDataURL(file);
+            imagePreviewGrid.appendChild(wrapper);
+        });
+
+        imagePreviewGrid.classList.add('active');
+        imagePreviewNote.style.display = 'block';
     }
 
-    function handleImageFile(file) {
-        if (!file) {
-            resetImageState();
-            updateSubmitState();
-            return;
-        }
-        if (file.size > 10 * 1024 * 1024) {
-            imageInput.value = '';
-            resetImageState();
-            imageWarning.classList.add('active');
-            updateSubmitState();
-            alert('10MB 이하 이미지만 업로드할 수 있습니다.');
-            return;
-        }
-        imageWarning.classList.remove('active');
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            imagePreviewImg.src = event.target?.result;
-            imagePreview.classList.add('active');
-            imagePreviewNote.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
+    function setFiles(files) {
+        const dataTransfer = new DataTransfer();
+        files.forEach((file) => dataTransfer.items.add(file));
+        imageInput.files = dataTransfer.files;
+        renderImagePreviews(files);
         updateSubmitState();
     }
 
+    function normalizeFiles(fileList) {
+        const files = Array.from(fileList || []).filter((file) => file && file.size > 0);
+        if (!files.length) {
+            imageWarning.classList.remove('active');
+            return [];
+        }
+
+        let normalized = files;
+        if (normalized.length > 5) {
+            alert('이미지는 최대 5장까지 업로드할 수 있습니다. 앞의 5장만 사용됩니다.');
+            normalized = normalized.slice(0, 5);
+        }
+
+        const oversized = normalized.find((file) => file.size > 10 * 1024 * 1024);
+        if (oversized) {
+            imageWarning.classList.add('active');
+            alert('10MB 이하 이미지와 최대 5장까지만 업로드할 수 있습니다.');
+            normalized = normalized.filter((file) => file.size <= 10 * 1024 * 1024);
+        } else {
+            imageWarning.classList.remove('active');
+        }
+
+        return normalized;
+    }
+
     imageInput.addEventListener('change', () => {
-        const [file] = imageInput.files || [];
-        handleImageFile(file);
+        setFiles(normalizeFiles(imageInput.files));
     });
 
     ['dragenter', 'dragover'].forEach((eventName) => {
@@ -788,19 +809,22 @@
     });
 
     imageDropzone.addEventListener('drop', (event) => {
-        const [file] = event.dataTransfer?.files || [];
-        if (!file) {
-            return;
-        }
-        const transfer = new DataTransfer();
-        transfer.items.add(file);
-        imageInput.files = transfer.files;
-        handleImageFile(file);
+        const files = normalizeFiles(event.dataTransfer?.files || []);
+        setFiles(files);
     });
 
     function clearResults() {
         movieSearchResults.innerHTML = '';
         movieSearchResults.classList.remove('active');
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     function renderSearchResults(items) {
@@ -812,9 +836,9 @@
 
         movieSearchResults.innerHTML = items.map((item) => {
             const poster = item.posterUrl
-                ? `<div class="movie-search-poster"><img src="${item.posterUrl}" alt="${item.title}"></div>`
+                ? `<div class="movie-search-poster"><img src="${item.posterUrl}" alt="${escapeHtml(item.title)}"></div>`
                 : `<div class="movie-search-fallback">포스터 없음</div>`;
-            return `<button class="movie-search-item" type="button" data-movie-id="${item.movieId}" data-movie-title="${item.title}" data-movie-poster="${item.posterUrl || ''}">${poster}<div class="movie-search-copy"><div class="movie-search-title">${item.title}</div></div></button>`;
+            return `<button class="movie-search-item" type="button" data-movie-id="${item.movieId}" data-movie-title="${escapeHtml(item.title)}" data-movie-poster="${item.posterUrl || ''}">${poster}<div class="movie-search-copy"><div class="movie-search-title">${escapeHtml(item.title)}</div></div></button>`;
         }).join('');
         movieSearchResults.classList.add('active');
     }
@@ -824,7 +848,7 @@
         selectedMovieTitle.textContent = title;
         if (posterUrl) {
             selectedMoviePoster.className = 'selected-movie-poster';
-            selectedMoviePoster.innerHTML = `<img src="${posterUrl}" alt="${title}">`;
+            selectedMoviePoster.innerHTML = `<img src="${posterUrl}" alt="${escapeHtml(title)}">`;
         } else {
             selectedMoviePoster.className = 'selected-movie-fallback';
             selectedMoviePoster.textContent = '포스터 없음';
@@ -879,14 +903,13 @@
     });
 
     postCreateForm.addEventListener('submit', (event) => {
-        const [file] = imageInput.files || [];
         if (!selectedMovieId.value) {
             event.preventDefault();
             movieSearchInput.focus();
             alert('게시물에 연결할 영화를 선택해주세요.');
             return;
         }
-        if (!file) {
+        if (!imageInput.files || imageInput.files.length < 1) {
             event.preventDefault();
             alert('게시물 이미지를 첨부해주세요.');
             return;

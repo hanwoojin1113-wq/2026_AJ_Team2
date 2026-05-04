@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${post.movieTitle} + ' 게시물 | CineMatch'">게시물 상세 | CineMatch</title>
+    <title th:text="${movie.movieTitle} + ' 게시물 | CineMatch'">영화 게시물 | CineMatch</title>
     <style>
         :root {
             --bg: #0f1117;
@@ -164,17 +164,79 @@
         }
         .notif-empty { padding: 40px 20px; text-align: center; color: #64748B; font-size: 0.88rem; }
         .page {
-            max-width: 640px;
+            max-width: 960px;
             margin: 0 auto;
             padding: 28px 20px 64px;
         }
+        .page-header {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 28px;
+            padding: 18px;
+            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(30,35,48,0.98), rgba(20,24,34,0.98));
+            border: 1px solid var(--border);
+        }
+        .header-poster,
+        .header-poster-fallback {
+            width: 84px;
+            height: 120px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.08);
+            overflow: hidden;
+            flex: 0 0 auto;
+        }
+        .header-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .header-poster-fallback {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#cbd5e1;
+            font-size:0.76rem;
+            text-align:center;
+            padding:10px;
+        }
+        .header-copy { min-width: 0; }
+        .page-title {
+            margin: 0 0 6px 0;
+            font-size: 1.9rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+        .page-back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #cbd5e1;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .page-back-link:hover { color: #fff; }
+        .feed {
+            max-width: 640px;
+            margin: 0 auto;
+        }
+        .empty-feed {
+            padding: 40px 20px;
+            text-align: center;
+            color: #94a3b8;
+            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(30,35,48,0.98), rgba(20,24,34,0.98));
+            border: 1px solid var(--border);
+        }
         .post-card {
+            margin-bottom: 32px;
             background: linear-gradient(180deg, rgba(30,35,48,0.98), rgba(20,24,34,0.98));
             border: 1px solid var(--border);
             border-radius: 24px;
             overflow: hidden;
             box-shadow: 0 24px 60px rgba(2,6,23,0.28);
-            transition: box-shadow 0.2s ease;
         }
         .post-header {
             display: flex;
@@ -222,13 +284,7 @@
             height: 24px;
             fill: currentColor;
         }
-        .author-copy { min-width: 0; }
-        .author-name {
-            font-weight: 800;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+        .author-name { font-weight: 800; }
         .post-date {
             margin-top: 4px;
             color: var(--sub);
@@ -382,9 +438,7 @@
             opacity: 1;
             transition: color 0.15s, background 0.15s, border-color 0.15s;
         }
-        .like-btn:hover:not(:disabled) {
-            background: rgba(255,255,255,0.08);
-        }
+        .like-btn:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
         .like-btn.liked { color: #f87171; }
         .like-count { font-size: 0.78rem; margin-left: 4px; }
         .movie-tag-card {
@@ -428,7 +482,6 @@
             width: 20px;
             height: 20px;
         }
-        .movie-tag-copy { min-width: 0; }
         .movie-tag-label {
             display: flex;
             align-items: center;
@@ -451,19 +504,9 @@
             .page { padding: 24px 16px 48px; }
             .nav { padding: 14px 16px; }
             .nav-right { gap: 8px; }
+            .page-header { align-items: flex-start; }
             .post-header { padding: 18px; }
             .post-body { padding: 18px; }
-        }
-        @media (max-width: 480px) {
-            .page { padding: 0 0 40px; }
-            .post-card { border-radius: 0; border-left: none; border-right: none; }
-            .post-header { padding: 16px; }
-            .post-body { padding: 18px 16px; }
-            .movie-tag-poster,
-            .movie-tag-poster-fallback {
-                width: 40px;
-                height: 60px;
-            }
         }
     </style>
 </head>
@@ -503,102 +546,104 @@
 </nav>
 
 <main class="page">
-    <article class="post-card">
-        <header class="post-header">
-            <a class="author-link" th:href="@{|/users/${post.loginId}|}">
-                <div class="author-avatar" th:if="${post.profileImageUrl != null and !#strings.isEmpty(post.profileImageUrl)}">
-                    <img th:src="${post.profileImageUrl}" th:alt="${post.nickname}">
-                </div>
-                <div class="author-avatar-fallback" th:if="${post.profileImageUrl == null or #strings.isEmpty(post.profileImageUrl)}">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M12 12.2c2.6 0 4.6-2 4.6-4.5S14.6 3.2 12 3.2 7.4 5.2 7.4 7.7s2 4.5 4.6 4.5Zm0 2.3c-4.1 0-7.5 2.4-8.3 5.8-.1.5.2.9.7.9h15.2c.5 0 .8-.4.7-.9-.8-3.4-4.2-5.8-8.3-5.8Z"/>
-                    </svg>
-                </div>
-                <div class="author-copy">
-                    <div class="author-name" th:text="${post.nickname}">nickname</div>
-                    <div class="post-date" th:attr="data-created-at=${post.createdAt}" th:text="${post.createdAtLabel}">2026.05.03</div>
-                </div>
-            </a>
-            <button th:if="${loginUserId != null and !isMyPost}"
-                    class="follow-btn"
-                    type="button"
-                    data-follow-toggle
-                    th:classappend="${isFollowing} ? ' following' : ''"
-                    th:attr="data-login-id=${post.loginId},data-following=${isFollowing}">
-                <span th:text="${isFollowing ? '팔로잉' : '팔로우'}">팔로우</span>
-            </button>
-        </header>
-
-        <div class="post-carousel" id="postCarousel" th:if="${post.images != null and !post.images.isEmpty()}">
-            <div class="carousel-track" id="carouselTrack">
-                <div class="carousel-slide" th:each="img : ${post.images}">
-                    <img class="carousel-img" th:src="${img}" alt="게시물 이미지" loading="lazy">
-                </div>
-            </div>
-            <div class="carousel-dots" id="carouselDots" th:if="${post.images.size() > 1}">
-                <span class="carousel-dot active"
-                      th:each="img, stat : ${post.images}"
-                      th:classappend="${stat.index == 0} ? ' active' : ''"
-                      th:attr="data-index=${stat.index}"></span>
-            </div>
-            <button class="carousel-prev" id="carouselPrev" th:if="${post.images.size() > 1}" type="button" aria-label="이전">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-            <button class="carousel-next" id="carouselNext" th:if="${post.images.size() > 1}" type="button" aria-label="다음">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
+    <header class="page-header">
+        <div class="header-poster" th:if="${movie.posterUrl != null and !#strings.isEmpty(movie.posterUrl)}">
+            <img th:src="${movie.posterUrl}" th:alt="${movie.movieTitle}">
         </div>
-        <div class="post-image-empty" th:if="${post.images == null or post.images.isEmpty()}">
-            업로드된 이미지가 없습니다.
+        <div class="header-poster-fallback" th:if="${movie.posterUrl == null or #strings.isEmpty(movie.posterUrl)}">
+            포스터 없음
         </div>
+        <div class="header-copy">
+            <h1 class="page-title" th:text="${movie.movieTitle}">영화 제목</h1>
+            <a class="page-back-link" th:href="@{|/movies/${movie.movieCode}|}">← 영화 상세로 돌아가기</a>
+        </div>
+    </header>
 
-        <div class="post-body">
-            <p class="post-content" th:if="${post.content != null and !#strings.isEmpty(post.content)}" th:text="${post.content}">게시물 설명</p>
+    <div class="feed" th:if="${posts != null and !posts.isEmpty()}">
+        <article class="post-card" th:each="post : ${posts}" th:id="|post-${post.postId}|">
+            <header class="post-header">
+                <a class="author-link" th:href="@{|/users/${post.loginId}|}">
+                    <div class="author-avatar" th:if="${post.profileImageUrl != null and !#strings.isEmpty(post.profileImageUrl)}">
+                        <img th:src="${post.profileImageUrl}" th:alt="${post.nickname}">
+                    </div>
+                    <div class="author-avatar-fallback" th:if="${post.profileImageUrl == null or #strings.isEmpty(post.profileImageUrl)}">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 12.2c2.6 0 4.6-2 4.6-4.5S14.6 3.2 12 3.2 7.4 5.2 7.4 7.7s2 4.5 4.6 4.5Zm0 2.3c-4.1 0-7.5 2.4-8.3 5.8-.1.5.2.9.7.9h15.2c.5 0 .8-.4.7-.9-.8-3.4-4.2-5.8-8.3-5.8Z"/>
+                        </svg>
+                    </div>
+                    <div class="author-copy">
+                        <div class="author-name" th:text="${post.nickname}">nickname</div>
+                        <div class="post-date" th:attr="data-created-at=${post.createdAt}" th:text="${post.createdAtLabel}">2026.05.03</div>
+                    </div>
+                </a>
+                <button th:if="${loginUserId != null and !post.isMyPost}"
+                        class="follow-btn"
+                        type="button"
+                        data-follow-toggle
+                        th:classappend="${post.isFollowing} ? ' following' : ''"
+                        th:attr="data-login-id=${post.loginId},data-following=${post.isFollowing}">
+                    <span th:text="${post.isFollowing ? '팔로잉' : '팔로우'}">팔로우</span>
+                </button>
+            </header>
 
-            <div class="post-actions">
-                <button class="icon-btn like-btn" type="button"
-                        id="postLikeBtn"
-                        th:classappend="${post.likedByMe} ? ' liked' : ''"
-                        th:attr="data-post-id=${post.postId},data-liked=${post.likedByMe}"
-                        th:disabled="${loginUserId == null}"
-                        aria-label="좋아요">
-                    <svg width="18" height="18" viewBox="0 0 24 24"
-                         th:attr="fill=${post.likedByMe ? 'currentColor' : 'none'}"
-                         stroke="currentColor" stroke-width="2">
-                        <path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/>
-                    </svg>
-                    <span class="like-count" th:text="${post.likeCount}">0</span>
+            <div class="post-carousel" th:if="${post.images != null and !post.images.isEmpty()}" data-carousel>
+                <div class="carousel-track">
+                    <div class="carousel-slide" th:each="img : ${post.images}">
+                        <img class="carousel-img" th:src="${img}" alt="게시물 이미지" loading="lazy">
+                    </div>
+                </div>
+                <div class="carousel-dots" th:if="${post.images.size() > 1}">
+                    <span class="carousel-dot active"
+                          th:each="img, stat : ${post.images}"
+                          th:classappend="${stat.index == 0} ? ' active' : ''"
+                          th:attr="data-index=${stat.index}"></span>
+                </div>
+                <button class="carousel-prev" th:if="${post.images.size() > 1}" type="button" aria-label="이전">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
-                <button class="icon-btn" type="button" disabled aria-label="댓글">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                    </svg>
-                </button>
-                <button class="icon-btn" type="button" disabled aria-label="북마크">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                    </svg>
+                <button class="carousel-next" th:if="${post.images.size() > 1}" type="button" aria-label="다음">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
             </div>
+            <div class="post-image-empty" th:if="${post.images == null or post.images.isEmpty()}">
+                업로드된 이미지가 없습니다.
+            </div>
 
-            <a class="movie-tag-card" th:href="@{|/movies/${post.movieCode}|}">
-                <img class="movie-tag-poster"
-                     th:if="${post.moviePosterUrl != null and !#strings.isEmpty(post.moviePosterUrl)}"
-                     th:src="${post.moviePosterUrl}"
-                     th:alt="${post.movieTitle}">
-                <div class="movie-tag-poster-fallback"
-                     th:if="${post.moviePosterUrl == null or #strings.isEmpty(post.moviePosterUrl)}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
-                        <line x1="7" y1="2" x2="7" y2="22"></line>
-                        <line x1="17" y1="2" x2="17" y2="22"></line>
-                        <line x1="2" y1="12" x2="22" y2="12"></line>
-                        <line x1="2" y1="7" x2="22" y2="7"></line>
-                        <line x1="2" y1="17" x2="22" y2="17"></line>
-                    </svg>
+            <div class="post-body">
+                <p class="post-content" th:if="${post.content != null and !#strings.isEmpty(post.content)}" th:text="${post.content}">게시물 설명</p>
+
+                <div class="post-actions">
+                    <button class="icon-btn like-btn" type="button"
+                            th:classappend="${post.likedByMe} ? ' liked' : ''"
+                            th:attr="data-post-id=${post.postId},data-liked=${post.likedByMe}"
+                            th:disabled="${loginUserId == null}"
+                            aria-label="좋아요">
+                        <svg width="18" height="18" viewBox="0 0 24 24"
+                             th:attr="fill=${post.likedByMe ? 'currentColor' : 'none'}"
+                             stroke="currentColor" stroke-width="2">
+                            <path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/>
+                        </svg>
+                        <span class="like-count" th:text="${post.likeCount}">0</span>
+                    </button>
+                    <button class="icon-btn" type="button" disabled aria-label="댓글">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" type="button" disabled aria-label="북마크">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                        </svg>
+                    </button>
                 </div>
-                <div class="movie-tag-copy">
-                    <div class="movie-tag-label">
+
+                <a class="movie-tag-card" th:href="@{|/movies/${movie.movieCode}|}">
+                    <img class="movie-tag-poster"
+                         th:if="${movie.posterUrl != null and !#strings.isEmpty(movie.posterUrl)}"
+                         th:src="${movie.posterUrl}"
+                         th:alt="${movie.movieTitle}">
+                    <div class="movie-tag-poster-fallback"
+                         th:if="${movie.posterUrl == null or #strings.isEmpty(movie.posterUrl)}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
                             <line x1="7" y1="2" x2="7" y2="22"></line>
@@ -607,13 +652,29 @@
                             <line x1="2" y1="7" x2="22" y2="7"></line>
                             <line x1="2" y1="17" x2="22" y2="17"></line>
                         </svg>
-                        <span>태그한 영화</span>
                     </div>
-                    <div class="movie-tag-title" th:text="${post.movieTitle}">영화 제목</div>
-                </div>
-            </a>
-        </div>
-    </article>
+                    <div class="movie-tag-copy">
+                        <div class="movie-tag-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                                <line x1="7" y1="2" x2="7" y2="22"></line>
+                                <line x1="17" y1="2" x2="17" y2="22"></line>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                <line x1="2" y1="7" x2="22" y2="7"></line>
+                                <line x1="2" y1="17" x2="22" y2="17"></line>
+                            </svg>
+                            <span>태그한 영화</span>
+                        </div>
+                        <div class="movie-tag-title" th:text="${movie.movieTitle}">영화 제목</div>
+                    </div>
+                </a>
+            </div>
+        </article>
+    </div>
+
+    <div class="empty-feed" th:if="${posts == null or posts.isEmpty()}">
+        이 영화에 아직 게시물이 없습니다.
+    </div>
 </main>
 
 <script>
@@ -720,89 +781,99 @@
 
         const payload = await response.json();
         const isFollowing = !!payload.followingByCurrentUser;
-        followButton.dataset.following = String(isFollowing);
-        followButton.classList.toggle('following', isFollowing);
-        const label = followButton.querySelector('span');
-        if (label) {
-            label.textContent = isFollowing ? '팔로잉' : '팔로우';
-        }
+        document.querySelectorAll(`[data-follow-toggle][data-login-id="${payload.loginId}"]`).forEach((button) => {
+            button.dataset.following = String(isFollowing);
+            button.classList.toggle('following', isFollowing);
+            const label = button.querySelector('span');
+            if (label) {
+                label.textContent = isFollowing ? '팔로잉' : '팔로우';
+            }
+        });
     });
 
-    document.getElementById('postLikeBtn')?.addEventListener('click', async function () {
-        const postId = this.dataset.postId;
+    document.addEventListener('click', async (event) => {
+        const likeButton = event.target.closest('.like-btn[data-post-id]');
+        if (!likeButton || likeButton.disabled) return;
+
+        const postId = likeButton.dataset.postId;
         const response = await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
         if (response.status === 401) {
             window.location.href = '/login';
             return;
         }
         if (!response.ok) return;
+
         const data = await response.json();
-        this.classList.toggle('liked', data.liked);
-        this.dataset.liked = String(data.liked);
-        const svg = this.querySelector('svg');
+        likeButton.classList.toggle('liked', data.liked);
+        likeButton.dataset.liked = String(data.liked);
+        const svg = likeButton.querySelector('svg');
         if (svg) svg.setAttribute('fill', data.liked ? 'currentColor' : 'none');
-        const count = this.querySelector('.like-count');
+        const count = likeButton.querySelector('.like-count');
         if (count) count.textContent = data.likeCount;
     });
 
     (function () {
-        const dateNode = document.querySelector('.post-date[data-created-at]');
-        if (dateNode) {
+        document.querySelectorAll('.post-date[data-created-at]').forEach((dateNode) => {
             const createdAt = dateNode.dataset.createdAt;
-            if (createdAt) {
-                const seconds = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000));
-                if (seconds < 60) dateNode.textContent = '방금 전';
-                else if (seconds < 3600) dateNode.textContent = `${Math.floor(seconds / 60)}분 전`;
-                else if (seconds < 86400) dateNode.textContent = `${Math.floor(seconds / 3600)}시간 전`;
-                else dateNode.textContent = `${Math.floor(seconds / 86400)}일 전`;
-            }
-        }
+            if (!createdAt) return;
+            const seconds = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000));
+            if (seconds < 60) dateNode.textContent = '방금 전';
+            else if (seconds < 3600) dateNode.textContent = `${Math.floor(seconds / 60)}분 전`;
+            else if (seconds < 86400) dateNode.textContent = `${Math.floor(seconds / 3600)}시간 전`;
+            else dateNode.textContent = `${Math.floor(seconds / 86400)}일 전`;
+        });
 
         document.querySelectorAll('.carousel-img').forEach((img) => {
             const markLoaded = () => img.classList.add('is-loaded');
-            if (img.complete) {
-                markLoaded();
-            } else {
-                img.addEventListener('load', markLoaded, { once: true });
-            }
+            if (img.complete) markLoaded();
+            else img.addEventListener('load', markLoaded, { once: true });
         });
     })();
 
     (function () {
-        const track = document.getElementById('carouselTrack');
-        const dots = document.querySelectorAll('.carousel-dot');
-        const prevBtn = document.getElementById('carouselPrev');
-        const nextBtn = document.getElementById('carouselNext');
-        if (!track) return;
+        document.querySelectorAll('[data-carousel]').forEach((carousel) => {
+            const track = carousel.querySelector('.carousel-track');
+            const dots = carousel.querySelectorAll('.carousel-dot');
+            const prevBtn = carousel.querySelector('.carousel-prev');
+            const nextBtn = carousel.querySelector('.carousel-next');
+            if (!track) return;
 
-        let current = 0;
-        const total = track.children.length;
+            let current = 0;
+            const total = track.children.length;
 
-        function updateArrows() {
-            if (prevBtn) prevBtn.style.display = current === 0 ? 'none' : 'flex';
-            if (nextBtn) nextBtn.style.display = current === total - 1 ? 'none' : 'flex';
-        }
+            function updateArrows() {
+                if (prevBtn) prevBtn.style.display = current === 0 ? 'none' : 'flex';
+                if (nextBtn) nextBtn.style.display = current === total - 1 ? 'none' : 'flex';
+            }
 
-        function goTo(index) {
-            current = Math.max(0, Math.min(index, total - 1));
-            track.style.transform = `translateX(-${current * 100}%)`;
-            dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
+            function goTo(index) {
+                current = Math.max(0, Math.min(index, total - 1));
+                track.style.transform = `translateX(-${current * 100}%)`;
+                dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
+                updateArrows();
+            }
+
             updateArrows();
-        }
 
-        updateArrows();
+            prevBtn?.addEventListener('click', () => goTo(current - 1));
+            nextBtn?.addEventListener('click', () => goTo(current + 1));
+            dots.forEach((dot) => dot.addEventListener('click', () => goTo(Number(dot.dataset.index))));
 
-        prevBtn?.addEventListener('click', () => goTo(current - 1));
-        nextBtn?.addEventListener('click', () => goTo(current + 1));
-        dots.forEach((dot) => dot.addEventListener('click', () => goTo(Number(dot.dataset.index))));
-
-        let startX = 0;
-        track.addEventListener('touchstart', (event) => { startX = event.touches[0].clientX; }, { passive: true });
-        track.addEventListener('touchend', (event) => {
-            const diff = startX - event.changedTouches[0].clientX;
-            if (Math.abs(diff) > 40) goTo(diff > 0 ? current + 1 : current - 1);
+            let startX = 0;
+            track.addEventListener('touchstart', (event) => { startX = event.touches[0].clientX; }, { passive: true });
+            track.addEventListener('touchend', (event) => {
+                const diff = startX - event.changedTouches[0].clientX;
+                if (Math.abs(diff) > 40) goTo(diff > 0 ? current + 1 : current - 1);
+            });
         });
     })();
+
+    if (location.hash) {
+        const target = document.querySelector(location.hash);
+        if (target) {
+            setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        }
+    }
 </script>
 </body>
 </html>

@@ -181,6 +181,53 @@
         .star { border:none; background:transparent; color:rgba(148,163,184,.5); font-size:1.8rem; cursor:pointer; transition:transform .14s ease,color .14s ease; }
         .star:hover { transform:translateY(-1px); }
         .star.active { color:#fbbf24; }
+        .review-input-area {
+            display: grid;
+            gap: 10px;
+            margin-top: 12px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .review-textarea {
+            width: 100%;
+            min-height: 80px;
+            resize: vertical;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(15,17,23,0.72);
+            color: #f8fafc;
+            font: inherit;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .review-textarea:focus { border-color: rgba(96,165,250,0.5); }
+        .review-input-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .review-char-count {
+            font-size: 0.78rem;
+            color: #64748b;
+        }
+        .review-submit-btn {
+            padding: 8px 18px;
+            border-radius: 999px;
+            border: none;
+            background: rgba(255,255,255,0.92);
+            color: #0f172a;
+            font: inherit;
+            font-size: 0.86rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+        .review-submit-btn:hover { opacity: 0.85; }
+        .review-submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .stats,.sections { display:grid; gap:16px; margin-top:24px; }
         .stats { grid-template-columns:repeat(6,minmax(0,1fr)); }
         .sections { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -253,6 +300,101 @@
         }
         .movie-post-thumb:hover img {
             transform: scale(1.05);
+        }
+        .review-list-section {
+            margin-top: 32px;
+            padding: 24px;
+            background: #1e2330;
+            border-radius: 12px;
+        }
+        .review-list-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .review-list-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin: 0;
+        }
+        .review-list-count {
+            font-size: 13px;
+            color: #64748b;
+        }
+        .review-item {
+            display: grid;
+            gap: 10px;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .review-item:last-child { border-bottom: none; }
+        .review-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .review-meta-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .review-author-block {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .review-nickname {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        .review-stars {
+            display: flex;
+            gap: 2px;
+        }
+        .review-created-at {
+            font-size: 0.78rem;
+            color: #64748b;
+        }
+        .review-star {
+            font-size: 0.9rem;
+            color: #fbbf24;
+        }
+        .review-star.empty { color: rgba(148,163,184,0.4); }
+        .review-content {
+            font-size: 0.88rem;
+            line-height: 1.7;
+            color: #cbd5e1;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .review-like-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 0.82rem;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: color 0.15s, background 0.15s;
+        }
+        .review-like-btn:hover { background: rgba(255,255,255,0.05); }
+        .review-like-btn.liked { color: #f87171; }
+        .review-like-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        .review-like-btn svg { width: 16px; height: 16px; }
+        .review-empty {
+            text-align: center;
+            padding: 32px 0;
+            color: #475569;
+            font-size: 0.88rem;
         }
         .social-modal-backdrop { position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(2,6,23,.76); backdrop-filter:blur(12px); opacity:0; pointer-events:none; transition:opacity .18s ease; }
         .social-modal-backdrop.open { opacity:1; pointer-events:auto; }
@@ -403,7 +545,7 @@
         </div>
         <div class="movie-posts-grid">
             <a th:each="post : ${moviePosts}"
-               th:href="@{'/posts/' + ${post.postId}}"
+               th:href="@{|/movies/${movie.movieCode}/posts#post-${post.postId}|}"
                class="movie-post-thumb">
                 <img th:src="${post.imageUrl}"
                      th:alt="'게시물 이미지'"
@@ -672,7 +814,7 @@
         list.innerHTML = items.map(item => {
             const av = item.actorProfileImageUrl ? `<img src="${item.actorProfileImageUrl}" alt="">` : (item.actorNickname||'?')[0];
             const th = item.moviePosterUrl ? `<img class="notif-movie-thumb" src="${item.moviePosterUrl}" alt="">` : '';
-            const txt = item.type === 'FOLLOW' ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우하기 시작했습니다` : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>을(를) 인생영화로 추가했습니다`;
+            const txt = item.notifText || (item.type === 'FOLLOW' ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우하기 시작했습니다` : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>을(를) 인생영화로 추가했습니다`);
             return `<a class="notif-item${!item.isRead?' unread':''}" href="${item.linkUrl||'#'}"><div class="notif-avatar">${av}</div><div class="notif-content"><div class="notif-text">${txt}</div><div class="notif-time">${timeAgo(item.createdAt)}</div></div>${th}</a>`;
         }).join('');
     }
@@ -681,6 +823,187 @@
     btn.addEventListener('click', e => { e.stopPropagation(); const op = panel.hidden; panel.hidden = !op; if (!op) return; fetch('/api/notifications').then(r => r.ok ? r.json() : null).then(d => { if (!d) return; upd(d.unreadCount); renderItems(d.items); }).catch(()=>{}); });
     readAllBtn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); fetch('/api/notifications/read-all',{method:'POST'}).then(() => { upd(0); document.querySelectorAll('.notif-item.unread').forEach(el=>el.classList.remove('unread')); }).catch(()=>{}); });
     document.addEventListener('click', e => { if (!panel.hidden && !panel.contains(e.target) && e.target !== btn) panel.hidden = true; });
+})();
+</script>
+<script th:inline="javascript">
+(function () {
+    const reviewLoggedIn = /*[[${loginUserId != null}]]*/ false;
+    const ratingBox = document.getElementById('rating-box');
+    const ratingNote = document.getElementById('rating-note');
+
+    if (ratingBox && ratingNote && !document.getElementById('reviewInputArea')) {
+        const inputArea = document.createElement('div');
+        inputArea.className = 'review-input-area';
+        inputArea.id = 'reviewInputArea';
+        inputArea.innerHTML = `
+            <textarea class="review-textarea" id="reviewTextarea"
+                      placeholder="이 영화에 대한 리뷰를 남겨보세요. (최대 1000자)"
+                      maxlength="1000" rows="3"></textarea>
+            <div class="review-input-row">
+                <span class="review-char-count"><span id="reviewCharCount">0</span>/1000</span>
+                <button type="button" class="review-submit-btn" id="reviewSubmitBtn">리뷰 등록</button>
+            </div>
+        `;
+        ratingNote.insertAdjacentElement('afterend', inputArea);
+    }
+
+    const sections = document.querySelector('.sections');
+    if (sections && !document.getElementById('reviewListSection')) {
+        const reviewSection = document.createElement('section');
+        reviewSection.className = 'review-list-section';
+        reviewSection.id = 'reviewListSection';
+        reviewSection.innerHTML = `
+            <div class="review-list-header">
+                <h2 class="review-list-title">관람 리뷰</h2>
+                <span class="review-list-count" id="reviewListCount"></span>
+            </div>
+            <div class="review-list" id="reviewList">
+                <div class="review-empty" id="reviewEmpty">아직 등록된 리뷰가 없습니다.</div>
+            </div>
+        `;
+        const moviePostsSection = document.querySelector('.movie-posts-section');
+        if (moviePostsSection) {
+            moviePostsSection.insertAdjacentElement('afterend', reviewSection);
+        } else {
+            sections.insertAdjacentElement('beforebegin', reviewSection);
+        }
+    }
+
+    const reviewList = document.getElementById('reviewList');
+    const reviewListCount = document.getElementById('reviewListCount');
+    const reviewTextarea = document.getElementById('reviewTextarea');
+    const reviewSubmitBtn = document.getElementById('reviewSubmitBtn');
+    const reviewCharCount = document.getElementById('reviewCharCount');
+
+    if (!reviewList) {
+        return;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderStars(rating) {
+        if (!rating) return '';
+        return Array.from({ length: 5 }, (_, i) =>
+            `<span class="review-star${i < rating ? '' : ' empty'}">★</span>`
+        ).join('');
+    }
+
+    function renderReviews(items) {
+        if (!items || !items.length) {
+            reviewList.innerHTML = '<div class="review-empty" id="reviewEmpty">아직 등록된 리뷰가 없습니다.</div>';
+            if (reviewListCount) reviewListCount.textContent = '';
+            return;
+        }
+
+        if (reviewListCount) {
+            reviewListCount.textContent = `${items.length}개`;
+        }
+
+        reviewList.innerHTML = items.map(item => `
+            <div class="review-item">
+                <div class="review-meta">
+                    <div class="review-author-block">
+                        <span class="review-nickname">${escapeHtml(item.nickname)}</span>
+                        <div class="review-stars">${renderStars(item.rating)}</div>
+                    </div>
+                    <div class="review-meta-right">
+                        <span class="review-created-at">${escapeHtml(item.createdAt)}</span>
+                        <button class="review-like-btn${item.likedByMe ? ' liked' : ''}"
+                                data-review-id="${item.reviewId}"
+                                type="button"
+                                ${reviewLoggedIn ? '' : 'disabled'}>
+                            <svg viewBox="0 0 24 24" fill="${item.likedByMe ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                                <path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/>
+                            </svg>
+                            <span class="review-like-count">${item.likeCount}</span>
+                        </button>
+                    </div>
+                </div>
+                <p class="review-content">${escapeHtml(item.content)}</p>
+            </div>
+        `).join('');
+    }
+
+    async function loadReviews() {
+        try {
+            const response = await fetch(`/api/movies/${movieCode}/reviews`);
+            if (!response.ok) return;
+            const items = await response.json();
+            renderReviews(items);
+        } catch (_) {
+        }
+    }
+
+    reviewList.addEventListener('click', async (event) => {
+        const button = event.target.closest('.review-like-btn');
+        if (!button || !reviewLoggedIn) return;
+
+        const reviewId = button.dataset.reviewId;
+        const response = await fetch(`/api/reviews/${reviewId}/like`, { method: 'POST' });
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+        if (!response.ok) return;
+
+        const payload = await response.json();
+        const countEl = button.querySelector('.review-like-count');
+        const svg = button.querySelector('svg');
+        button.classList.toggle('liked', payload.liked);
+        if (countEl) countEl.textContent = payload.likeCount;
+        if (svg) svg.setAttribute('fill', payload.liked ? 'currentColor' : 'none');
+    });
+
+    if (reviewTextarea && reviewCharCount) {
+        reviewTextarea.addEventListener('input', () => {
+            reviewCharCount.textContent = String(reviewTextarea.value.length);
+        });
+    }
+
+    if (reviewSubmitBtn) {
+        reviewSubmitBtn.addEventListener('click', async () => {
+            const content = reviewTextarea?.value.trim() ?? '';
+            if (!content) {
+                alert('리뷰 내용을 입력해주세요.');
+                return;
+            }
+
+            reviewSubmitBtn.disabled = true;
+            try {
+                const response = await fetch(`/api/movies/${movieCode}/reviews`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ content })
+                });
+
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (response.ok) {
+                    if (reviewTextarea) reviewTextarea.value = '';
+                    if (reviewCharCount) reviewCharCount.textContent = '0';
+                    loadReviews();
+                    return;
+                }
+
+                const errorPayload = await response.json().catch(() => ({}));
+                alert(errorPayload.message || '리뷰를 저장하지 못했습니다.');
+            } finally {
+                reviewSubmitBtn.disabled = false;
+            }
+        });
+    }
+
+    loadReviews();
 })();
 </script>
 </body>

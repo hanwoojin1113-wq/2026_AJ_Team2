@@ -1694,9 +1694,10 @@
             const thumb = item.moviePosterUrl
                 ? `<img class="notif-movie-thumb" src="${item.moviePosterUrl}" alt="${item.movieName || ''}">`
                 : '';
-            const text = item.type === 'FOLLOW'
-                ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우하기 시작했습니다`
-                : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>을(를) 인생영화로 추가했습니다`;
+            const text = item.notifText
+                || (item.type === 'FOLLOW'
+                    ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우하기 시작했습니다`
+                    : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>을(를) 인생영화로 추가했습니다`);
             const href = item.linkUrl || '#';
             const unreadClass = !item.isRead ? ' unread' : '';
             return `<a class="notif-item${unreadClass}" href="${href}">
