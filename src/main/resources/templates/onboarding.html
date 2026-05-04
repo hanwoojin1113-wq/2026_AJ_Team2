@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>취향 선택 — CineMatch</title>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <style>
+        :root {
+            --blue: #0048FF;
+            --bg: #070B14;
+            --surface: #101828;
+            --text: #F8FAFC;
+            --text-sub: #CBD5E1;
+            --text-hint: #94A3B8;
+            --border: rgba(148,163,184,0.14);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Pretendard', 'Segoe UI', sans-serif;
+            background: linear-gradient(180deg, #06101f 0%, #070b14 45%, #0a1222 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            padding: 18px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(7,11,20,0.88);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+            font-weight: 900;
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .logo-mark {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #0048FF, #38BDF8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-mark svg { width: 16px; height: 16px; fill: white; }
+
+        .step-indicator {
+            font-size: 0.8rem;
+            color: var(--text-hint);
+            font-weight: 600;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 52px 24px 36px;
+        }
+
+        .hero-eyebrow {
+            display: inline-block;
+            padding: 5px 14px;
+            border-radius: 999px;
+            background: rgba(0,72,255,0.18);
+            color: #93C5FD;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .hero h1 {
+            font-size: clamp(1.6rem, 4vw, 2.4rem);
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            margin-bottom: 12px;
+        }
+
+        .hero p {
+            color: var(--text-sub);
+            font-size: 1rem;
+            line-height: 1.7;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px 80px;
+        }
+
+        .tag-section {
+            margin-bottom: 36px;
+        }
+
+        .tag-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .tag-label {
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .tag-count {
+            font-size: 0.8rem;
+            color: var(--text-hint);
+            font-weight: 600;
+        }
+
+        .movie-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+        }
+
+        .movie-card {
+            position: relative;
+            cursor: pointer;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: border-color 0.15s, transform 0.15s;
+            user-select: none;
+        }
+
+        .movie-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .movie-card.selected {
+            border-color: #38BDF8;
+        }
+
+        .movie-card.selected .movie-check {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .movie-poster-wrap {
+            aspect-ratio: 2 / 3;
+            background: rgba(255,255,255,0.06);
+            overflow: hidden;
+        }
+
+        .movie-poster-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            pointer-events: none;
+        }
+
+        .movie-info {
+            padding: 8px 10px;
+            background: rgba(10,16,28,0.96);
+        }
+
+        .movie-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            line-height: 1.35;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .movie-check {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #38BDF8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transform: scale(0.6);
+            transition: opacity 0.15s, transform 0.15s;
+        }
+
+        .movie-check svg {
+            width: 16px;
+            height: 16px;
+            stroke: #0f172a;
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .selected-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(56,189,248,0.16);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .movie-card.selected .selected-overlay {
+            opacity: 1;
+        }
+
+        .sticky-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 20;
+            padding: 16px 24px;
+            background: rgba(7,11,20,0.96);
+            backdrop-filter: blur(16px);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .selected-info {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+        }
+
+        .selected-info strong {
+            color: #38BDF8;
+            font-weight: 900;
+        }
+
+        .footer-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-skip {
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: none;
+            color: var(--text-hint);
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .btn-skip:hover { color: var(--text); border-color: rgba(148,163,184,0.3); }
+
+        .btn-submit {
+            padding: 12px 28px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #0048FF, #38BDF8);
+            color: white;
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+            box-shadow: 0 8px 24px rgba(0,72,255,0.32);
+        }
+
+        .btn-submit:hover { opacity: 0.92; }
+        .btn-submit:active { transform: scale(0.97); }
+
+        @media (max-width: 900px) {
+            .movie-row { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        @media (max-width: 640px) {
+            .movie-row { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+            .header { padding: 14px 16px; }
+            .hero { padding: 36px 16px 24px; }
+            .page { padding: 0 12px 80px; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <a class="logo" th:href="@{/charts}">
+        <div class="logo-mark">
+            <svg viewBox="0 0 16 16"><path d="M2 2h3v3H2zm0 4.5h3v3H2zm0 4.5h3v3H2zM6.5 2h3v3h-3zm0 4.5h3v3h-3zm0 4.5h3v3h-3zM11 2h3v3h-3zm0 4.5h3v3H11zm0 4.5h3v3H11z"/></svg>
+        </div>
+        CineMatch
+    </a>
+    <span class="step-indicator">2/2 단계 · 취향 선택</span>
+</header>
+
+<div class="hero">
+    <div class="hero-eyebrow">Cold Start 해소</div>
+    <h1>어떤 영화가 좋으세요?</h1>
+    <p>마음에 드는 영화를 클릭해서 선택하세요. 선택한 취향을 기반으로 맞춤 추천을 시작합니다.</p>
+</div>
+
+<form th:action="@{/onboarding}" method="post" id="onboarding-form">
+    <div class="page">
+        <div class="tag-section" th:each="group : ${onboardingGroups}">
+            <div class="tag-header">
+                <span class="tag-label" th:text="${group.tagLabel}">태그</span>
+                <span class="tag-count">5편 중 선택</span>
+            </div>
+            <div class="movie-row">
+                <div class="movie-card"
+                     th:each="movie : ${group.movies}"
+                     th:data-code="${movie.movieCode}"
+                     onclick="toggleCard(this)">
+                    <div class="movie-poster-wrap">
+                        <img th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}" loading="lazy">
+                    </div>
+                    <div class="movie-info">
+                        <div class="movie-title" th:text="${movie.movieName}">영화 제목</div>
+                    </div>
+                    <div class="movie-check">
+                        <svg viewBox="0 0 24 24">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <div class="selected-overlay"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="hidden-inputs"></div>
+
+    <div class="sticky-footer">
+        <div class="selected-info"><strong id="sel-count">0</strong>편 선택됨</div>
+        <div class="footer-actions">
+            <button type="button" class="btn-skip" onclick="submitSkip()">건너뛰기</button>
+            <button type="submit" class="btn-submit">선택 완료 →</button>
+        </div>
+    </div>
+</form>
+
+<script>
+    const hiddenInputs = document.getElementById('hidden-inputs');
+    const selCount = document.getElementById('sel-count');
+    let count = 0;
+
+    function toggleCard(card) {
+        const code = card.dataset.code;
+        card.classList.toggle('selected');
+        if (card.classList.contains('selected')) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'movieCodes';
+            input.value = code;
+            input.id = 'inp-' + code;
+            hiddenInputs.appendChild(input);
+            count++;
+        } else {
+            const existing = document.getElementById('inp-' + code);
+            if (existing) existing.remove();
+            count--;
+        }
+        selCount.textContent = count;
+    }
+
+    function submitSkip() {
+        document.getElementById('onboarding-form').submit();
+    }
+</script>
+</body>
+</html>

@@ -171,7 +171,6 @@
             border-radius: 20px;
             background: rgba(10,17,30,0.7);
             border: 1px solid rgba(148,163,184,0.09);
-            overflow: hidden;
         }
 
         .chart-section-header {
@@ -209,20 +208,55 @@
         .see-all svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 
         /* ═══════════════════════════════════════════
-           GRID VIEW (키노라이츠 스타일 — 기본값)
+           CAROUSEL VIEW (기본값 — 넷플릭스 스타일)
         ═══════════════════════════════════════════ */
-        .movie-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-            padding: 14px 18px 18px;
+        .carousel-outer { position: relative; }
+
+        /* overflow-x:clip 은 y축 강제 없음 → y는 visible 유지 */
+        .carousel-clip {
+            overflow-x: clip;
+            overflow-y: visible;
         }
 
+        .carousel-track {
+            display: flex;
+            gap: 10px;
+            padding: 44px 48px 20px; /* 위 44px = scale 여유 */
+            transition: transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94);
+            will-change: transform;
+        }
+
+        .carousel-btn {
+            position: absolute;
+            top: 50%; transform: translateY(-60%);
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(8,14,26,0.88);
+            color: white; cursor: pointer;
+            z-index: 5;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .carousel-btn:hover { background: rgba(0,72,255,0.65); border-color: rgba(0,72,255,0.5); }
+        .carousel-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+        .carousel-btn-prev { left: 8px; }
+        .carousel-btn-next { right: 8px; }
+
         .movie-card {
+            flex: 0 0 155px;
             display: flex; flex-direction: column;
             text-decoration: none; color: inherit;
             cursor: pointer;
+            position: relative; z-index: 1;
+            transition: transform 0.22s ease, z-index 0s 0.22s;
         }
+        .movie-card:hover {
+            transform: scale(1.38);
+            z-index: 20;
+            transition: transform 0.22s ease, z-index 0s;
+        }
+        .movie-card:hover .card-title { color: white; }
 
         .card-poster {
             position: relative;
@@ -232,92 +266,155 @@
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(148,163,184,0.1);
             margin-bottom: 7px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        .movie-card:hover .card-poster {
-            transform: translateY(-4px);
-            box-shadow: 0 16px 36px rgba(0,0,0,0.55);
-        }
-
-        .card-poster img {
-            width: 100%; height: 100%;
-            display: block; object-fit: cover;
-        }
-
+        .card-poster img { width: 100%; height: 100%; display: block; object-fit: cover; }
         .card-poster-fallback {
             width: 100%; height: 100%;
             display: flex; align-items: center; justify-content: center;
             text-align: center; padding: 8px;
             background: linear-gradient(135deg, rgba(0,72,255,0.22), rgba(14,165,233,0.18));
-            color: rgba(255,255,255,0.65);
-            font-size: 0.7rem; font-weight: 700; line-height: 1.35;
+            color: rgba(255,255,255,0.65); font-size: 0.7rem; font-weight: 700;
         }
-
-        /* 순위 번호 오버레이 — 포스터 하단 */
         .card-rank {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            padding: 28px 8px 6px;
-            background: linear-gradient(to top, rgba(0,0,0,0.78) 0%, transparent 100%);
+            position: absolute; bottom: 0; left: 0; right: 0;
+            padding: 28px 8px 5px;
+            background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 100%);
             font-size: 1.8rem; font-weight: 900; letter-spacing: -0.05em;
-            color: white;
-            line-height: 1;
+            color: white; line-height: 1; pointer-events: none;
         }
-        /* 1·2·3위 특별 색상 */
         .movie-card:nth-child(1) .card-rank { color: #fbbf24; }
         .movie-card:nth-child(2) .card-rank { color: #cbd5e1; }
         .movie-card:nth-child(3) .card-rank { color: #d97706; }
-
-        /* 뱃지 오버레이 */
         .card-badge {
             position: absolute; top: 6px; left: 6px;
             padding: 2px 6px; border-radius: 5px;
             font-size: 0.6rem; font-weight: 800;
-            background: rgba(10,16,28,0.9);
-            color: #fde68a;
-            white-space: nowrap;
-            z-index: 2;
+            background: rgba(10,16,28,0.9); color: #fde68a; z-index: 2;
         }
-
-        /* 호버 오버레이 */
-        .card-hover {
-            position: absolute; inset: 0;
-            background: rgba(0,0,0,0);
-            display: flex; flex-direction: column; justify-content: flex-end;
-            padding: 10px;
-            opacity: 0;
-            transition: opacity 0.18s ease, background 0.18s ease;
-            border-radius: 10px;
-        }
-        .movie-card:hover .card-hover {
-            opacity: 1;
-            background: rgba(0,0,0,0.45);
-        }
-        .card-hover-metric {
-            font-size: 0.68rem; font-weight: 700;
-            color: rgba(255,255,255,0.88);
-            background: rgba(0,0,0,0.55);
-            border-radius: 4px;
-            padding: 3px 6px;
-            display: inline-block;
-            align-self: flex-start;
-            margin-bottom: 24px; /* rank 번호 위 여백 */
-        }
-
-        /* 카드 텍스트 */
         .card-info { padding: 0 2px; }
         .card-title {
-            font-size: 0.8rem; font-weight: 700;
-            line-height: 1.35;
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            margin-bottom: 3px;
-            color: var(--text-sub);
+            font-size: 0.8rem; font-weight: 700; line-height: 1.35;
+            overflow: hidden; display: -webkit-box;
+            -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            margin-bottom: 3px; color: var(--text-sub);
         }
-        .movie-card:hover .card-title { color: white; }
         .card-year { font-size: 0.7rem; color: var(--text-hint); }
+
+        /* ── 카드 호버 오버레이 (인플레이스) ── */
+        .card-hover {
+            position: absolute; inset: 0; z-index: 2;
+            display: flex; flex-direction: column;
+            justify-content: space-between;
+            padding: 8px 8px 40px;
+            background: rgba(0,0,0,0);
+            opacity: 0;
+            transition: opacity 0.18s ease, background 0.18s ease;
+        }
+        .movie-card:hover .card-hover { opacity: 1; background: rgba(0,0,0,0.52); }
+        .card-hover-metric {
+            font-size: 0.66rem; font-weight: 700;
+            color: rgba(255,255,255,0.92); background: rgba(0,0,0,0.65);
+            border-radius: 4px; padding: 3px 6px;
+            align-self: flex-start; max-width: 100%;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .card-actions { display: flex; gap: 4px; justify-content: center; }
+        .cact-btn {
+            flex: 1; height: 28px; border-radius: 7px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(15,23,42,0.82); color: white;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.13s, transform 0.1s; font-size: 0;
+        }
+        .cact-btn:hover { background: rgba(255,255,255,0.18); transform: scale(1.1); }
+        .cact-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+        .cact-btn.active[data-action="like"]       { background: rgba(244,63,94,0.7); border-color: #F43F5E; }
+        .cact-btn.active[data-action="dislike"]    { background: rgba(100,116,139,0.7); border-color: #64748B; }
+        .cact-btn.active[data-action="later"]      { background: rgba(245,158,11,0.7); border-color: #F59E0B; }
+        .cact-btn.active[data-action="collection"] { background: rgba(139,92,246,0.7); border-color: #8B5CF6; }
+        /* (아래 hp-* 클래스는 사용 안 함, 제거) */
+        .hover-preview { display: none; } /* 비활성화 */
+        .hp-poster-wrap { position: relative; aspect-ratio: 2/3; background: #111; }
+        .hp-poster-wrap img { width: 100%; height: 100%; display: block; object-fit: cover; }
+        .hp-fallback {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, rgba(0,72,255,0.3), rgba(14,165,233,0.2));
+            color: rgba(255,255,255,0.7); font-size: 0.8rem; font-weight: 700;
+            text-align: center; padding: 12px;
+        }
+        .hp-rank {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            padding: 40px 10px 7px;
+            background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+            font-size: 2.4rem; font-weight: 900; letter-spacing: -0.05em;
+            color: white; line-height: 1;
+        }
+        .hp-badge {
+            position: absolute; top: 8px; left: 8px;
+            padding: 2px 7px; border-radius: 5px;
+            font-size: 0.62rem; font-weight: 800;
+            background: rgba(10,16,28,0.9); color: #fde68a;
+        }
+        .hp-body { padding: 12px 12px 14px; }
+        .hp-title {
+            font-size: 0.9rem; font-weight: 800; line-height: 1.35;
+            color: #F8FAFC; margin-bottom: 3px;
+            overflow: hidden; display: -webkit-box;
+            -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+        .hp-meta {
+            font-size: 0.72rem; color: #94A3B8; margin-bottom: 8px;
+        }
+        .hp-metric {
+            font-size: 0.72rem; color: #7DD3FC; margin-bottom: 10px;
+            background: rgba(56,189,248,0.1); padding: 3px 7px; border-radius: 5px;
+            display: inline-block;
+        }
+        .hp-actions {
+            display: flex; gap: 6px; align-items: center;
+        }
+        .hp-btn {
+            flex: 1;
+            height: 34px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.08);
+            color: white; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.13s, transform 0.1s;
+            font-size: 0; /* hide text, show svg */
+        }
+        .hp-btn:hover { background: rgba(255,255,255,0.16); transform: scale(1.06); }
+        .hp-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+        .hp-btn.active[data-action="like"]       { background: rgba(244,63,94,0.55); border-color: #F43F5E; }
+        .hp-btn.active[data-action="dislike"]    { background: rgba(100,116,139,0.55); border-color: #64748B; }
+        .hp-btn.active[data-action="later"]      { background: rgba(245,158,11,0.55); border-color: #F59E0B; }
+        .hp-btn.active[data-action="collection"] { background: rgba(139,92,246,0.55); border-color: #8B5CF6; }
+        .hp-detail-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 34px; height: 34px;
+            border-radius: 8px;
+            background: white; color: #0F172A;
+            text-decoration: none; flex-shrink: 0;
+        }
+        .hp-detail-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+        /* 액션버튼 (랭킹 리스트용) */
+        .cact-btn {
+            width: 30px; height: 30px; border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(15,23,42,0.75);
+            color: white; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: background 0.14s, transform 0.1s;
+        }
+        .cact-btn:hover { transform: scale(1.12); }
+        .cact-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; pointer-events: none; }
+        .cact-btn.active[data-action="like"]       { background: rgba(244,63,94,0.65); border-color: #F43F5E; }
+        .cact-btn.active[data-action="dislike"]    { background: rgba(100,116,139,0.65); border-color: #64748B; }
+        .cact-btn.active[data-action="later"]      { background: rgba(245,158,11,0.65); border-color: #F59E0B; }
+        .cact-btn.active[data-action="collection"] { background: rgba(139,92,246,0.65); border-color: #8B5CF6; }
 
         /* ═══════════════════════════════════════════
            LIST VIEW
@@ -383,33 +480,26 @@
         .rank-metric-label { font-size: 0.66rem; color: var(--text-hint); margin-bottom: 3px; }
         .rank-metric-value { font-size: 0.9rem; font-weight: 900; color: white; letter-spacing: -0.02em; }
 
-        /* 전환: body.list-view일 때 */
-        body.list-view .movie-grid { display: none; }
+        /* 뷰 전환 */
+        body.list-view .carousel-outer { display: none; }
         body.list-view .rank-list { display: block; }
 
-        /* 빈 결과 */
         .section-empty {
             padding: 28px; text-align: center;
             color: var(--text-hint); font-size: 0.86rem;
         }
 
-        /* ── 반응형 ── */
-        @media (max-width: 1024px) {
-            .movie-grid { grid-template-columns: repeat(4, 1fr); }
-        }
         @media (max-width: 768px) {
             .navbar { padding: 0 16px; }
             .page { padding: 18px 14px 60px; }
             .hero { padding: 26px 22px; }
             .chart-section-header { padding: 14px 16px 12px; flex-wrap: wrap; }
-            .movie-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px; }
+            .carousel-track { padding: 10px 40px 14px; }
+            .movie-card { flex: 0 0 130px; }
             .card-rank { font-size: 1.4rem; }
             .rank-row { grid-template-columns: 38px 48px 1fr; padding: 9px 14px; }
             .rank-metric { display: none; }
             .toolbar { flex-direction: column; align-items: flex-start; }
-        }
-        @media (max-width: 480px) {
-            .movie-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
@@ -525,34 +615,58 @@
             </div>
         </div>
 
-        <!-- 그리드 뷰 (기본) -->
-        <div class="movie-grid" th:if="${!#lists.isEmpty(section.rows())}">
-            <a class="movie-card"
-               th:each="row : ${section.rows()}"
-               th:href="@{|/movies/${row.movieCode()}|}">
-                <div class="card-poster">
-                    <img th:if="${!#strings.isEmpty(row.posterImageUrl())}"
-                         th:src="${row.posterImageUrl()}"
-                         th:alt="${row.movieName()}"
-                         loading="lazy">
-                    <div class="card-poster-fallback"
-                         th:if="${#strings.isEmpty(row.posterImageUrl())}"
-                         th:text="${row.movieName()}">영화</div>
-                    <span class="card-badge"
-                          th:if="${row.badgeLabel() != null}"
-                          th:text="${row.badgeLabel()}">뱃지</span>
-                    <div class="card-hover">
-                        <div class="card-hover-metric"
-                             th:text="${row.metricLabel() + ' ' + (row.metricValue() != null ? row.metricValue() : '')}">지표</div>
-                    </div>
-                    <div class="card-rank" th:text="${row.rankNo()}">1</div>
+        <!-- 캐러셀 뷰 (기본 — 인플레이스 스케일) -->
+        <div class="carousel-outer" th:if="${!#lists.isEmpty(section.rows())}">
+            <button class="carousel-btn carousel-btn-prev" onclick="scrollCar(this,-1)" aria-label="이전">
+                <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <div class="carousel-clip">
+                <div class="carousel-track">
+                    <a class="movie-card"
+                       th:each="row : ${section.rows()}"
+                       th:href="@{|/movies/${row.movieCode()}|}">
+                        <div class="card-poster">
+                            <img th:if="${!#strings.isEmpty(row.posterImageUrl())}"
+                                 th:src="${row.posterImageUrl()}"
+                                 th:alt="${row.movieName()}"
+                                 loading="lazy">
+                            <div class="card-poster-fallback"
+                                 th:if="${#strings.isEmpty(row.posterImageUrl())}"
+                                 th:text="${row.movieName()}">영화</div>
+                            <span class="card-badge"
+                                  th:if="${row.badgeLabel() != null}"
+                                  th:text="${row.badgeLabel()}">뱃지</span>
+                            <div class="card-hover">
+                                <div class="card-hover-metric"
+                                     th:text="${row.metricLabel() + ' ' + (row.metricValue() != null ? row.metricValue() : '')}">지표</div>
+                                <div class="card-actions">
+                                    <button class="cact-btn" th:attr="data-code=${row.movieCode()}" data-action="like" title="좋아요" onclick="doAction(event,this)">
+                                        <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                    </button>
+                                    <button class="cact-btn" th:attr="data-code=${row.movieCode()}" data-action="dislike" title="별로에요" onclick="doAction(event,this)">
+                                        <svg viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/></svg>
+                                    </button>
+                                    <button class="cact-btn" th:attr="data-code=${row.movieCode()}" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)">
+                                        <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                                    </button>
+                                    <button class="cact-btn" th:attr="data-code=${row.movieCode()}" data-action="collection" title="컬렉션" onclick="doAction(event,this)">
+                                        <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-rank" th:text="${row.rankNo()}">1</div>
+                        </div>
+                        <div class="card-info">
+                            <div class="card-title" th:text="${row.movieName()}">영화 제목</div>
+                            <div class="card-year"
+                                 th:text="${row.productionYear() != null ? row.productionYear() : (row.openDate() != null ? #temporals.format(row.openDate(), 'yyyy') : '')}">2024</div>
+                        </div>
+                    </a>
                 </div>
-                <div class="card-info">
-                    <div class="card-title" th:text="${row.movieName()}">영화 제목</div>
-                    <div class="card-year"
-                         th:text="${row.productionYear() != null ? row.productionYear() : (row.openDate() != null ? #temporals.format(row.openDate(), 'yyyy') : '')}">2024</div>
-                </div>
-            </a>
+            </div>
+            <button class="carousel-btn carousel-btn-next" onclick="scrollCar(this,1)" aria-label="다음">
+                <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
         </div>
 
         <!-- 리스트 뷰 -->
@@ -600,7 +714,9 @@
     </div>
 
 </main>
+
 <script>
+/* ── 알림 ── */
 (function () {
     const btn = document.getElementById('notifBtn'), panel = document.getElementById('notifPanel'),
           badge = document.getElementById('notifBadge'), list = document.getElementById('notifList'),
@@ -622,6 +738,7 @@
     document.addEventListener('click', e => { if (!panel.hidden && !panel.contains(e.target) && e.target !== btn) panel.hidden = true; });
 })();
 
+/* ── 뷰 토글 ── */
 function setView(mode) {
     document.body.classList.toggle('list-view', mode === 'list');
     document.getElementById('btn-grid').classList.toggle('active', mode === 'grid');
@@ -629,11 +746,38 @@ function setView(mode) {
     try { localStorage.setItem('cinematch_ranking_view', mode); } catch(e) {}
 }
 (function () {
-    try {
-        const saved = localStorage.getItem('cinematch_ranking_view');
-        if (saved === 'list') setView('list');
-    } catch(e) {}
+    try { const s = localStorage.getItem('cinematch_ranking_view'); if (s === 'list') setView('list'); } catch(e) {}
 })();
+
+/* ── 캐러셀 스크롤 ── */
+/* ── 캐러셀 스크롤 (translateX 방식) ── */
+function scrollCar(btn, dir) {
+    const clip  = btn.parentElement.querySelector('.carousel-clip');
+    const track = btn.parentElement.querySelector('.carousel-track');
+    if (!clip || !track) return;
+    const mat   = new DOMMatrix(getComputedStyle(track).transform);
+    const curX  = mat.m41;
+    const step  = clip.clientWidth * 0.75;
+    const minX  = -(track.scrollWidth - clip.clientWidth);
+    const newX  = Math.max(minX, Math.min(0, curX - dir * step));
+    track.style.transform = 'translateX(' + newX + 'px)';
+}
+
+/* ── 카드 액션버튼 ── */
+function doAction(e, btn) {
+    e.preventDefault(); e.stopPropagation();
+    const code = btn.dataset.code, action = btn.dataset.action;
+    if (!code || !action) return;
+    fetch('/api/movies/' + code + '/' + action, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => { if (r.status === 401) { window.location.href = '/login'; return null; } return r.ok ? r.json() : null; })
+        .then(data => {
+            if (!data) return;
+            document.querySelectorAll('.cact-btn[data-code="' + code + '"]').forEach(b => {
+                const act = b.dataset.action;
+                b.classList.toggle('active', (act==='like'&&data.liked)||(act==='dislike'&&data.disliked)||(act==='later'&&data.later)||(act==='collection'&&data.collected));
+            });
+        }).catch(() => {});
+}
 </script>
 </body>
 </html>

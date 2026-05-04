@@ -381,6 +381,104 @@
             fill: none;
         }
 
+        .taste-chart {
+            position: relative;
+            z-index: 1;
+            min-width: 300px;
+            padding: 18px 20px 16px;
+            border-radius: 22px;
+            background: rgba(9, 17, 30, 0.38);
+            border: 1px solid rgba(255, 255, 255, 0.13);
+            backdrop-filter: blur(10px);
+        }
+
+        .taste-chart-title {
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.55);
+            margin-bottom: 14px;
+        }
+
+        .taste-donut-wrap {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .taste-donut-svg {
+            flex-shrink: 0;
+            width: 148px;
+            height: 148px;
+            overflow: visible;
+        }
+
+        .taste-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .taste-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .taste-legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .taste-legend-name {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: rgba(255,255,255,0.82);
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .taste-legend-pct {
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: rgba(255,255,255,0.48);
+            flex-shrink: 0;
+        }
+
+        .taste-empty {
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.5);
+            line-height: 1.6;
+            padding: 8px 0 4px;
+        }
+
+        /* 요약 카드 색상 — 상세페이지 버튼 active 색 매핑 */
+        .summary-card.life   { background: linear-gradient(135deg, rgba(251,191,36,.22), rgba(245,158,11,.16)); border-color: rgba(251,191,36,.38); }
+        .summary-card.like   { background: linear-gradient(135deg, rgba(244,63,94,.22), rgba(190,24,93,.16)); border-color: rgba(244,63,94,.38); }
+        .summary-card.coll   { background: linear-gradient(135deg, rgba(139,92,246,.22), rgba(109,40,217,.16)); border-color: rgba(139,92,246,.38); }
+        .summary-card.later  { background: linear-gradient(135deg, rgba(245,158,11,.22), rgba(217,119,6,.16)); border-color: rgba(245,158,11,.38); }
+        .summary-card.bad    { background: linear-gradient(135deg, rgba(100,116,139,.22), rgba(71,85,105,.16)); border-color: rgba(100,116,139,.32); }
+        .summary-card.watch  { background: linear-gradient(135deg, rgba(56,189,248,.22), rgba(14,165,233,.16)); border-color: rgba(56,189,248,.38); }
+        .summary-card.done   { background: linear-gradient(135deg, rgba(37,99,235,.22), rgba(29,78,216,.16)); border-color: rgba(37,99,235,.38); }
+
+        /* 팔로워/팔로잉 — 히어로 내부 summary 위 */
+        .social-stats {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
         .summary {
             position: relative;
             z-index: 1;
@@ -931,8 +1029,8 @@
                 flex-direction: column;
             }
 
-            .hero-note {
-                width: 100%;
+            .taste-chart {
+                max-width: 100%;
             }
 
             .summary-card { min-width: calc(50% - 6px); }
@@ -998,42 +1096,50 @@
                     <p>My Collection</p>
                     <h1 th:text="${userProfile.nickname}">nickname</h1>
                     <span th:text="|ID ${userProfile.loginId} · 활동 기록과 관계를 한 번에 관리해보세요.|">ID user · 활동 기록과 관계를 한 번에 관리해보세요.</span>
-                    <div class="social-stats">
-                        <button class="social-link" type="button" data-social-open="followers">
-                            <span class="social-count" data-social-count="followers" th:text="${followerCount}">0</span>
-                            <span class="social-label">팔로워</span>
-                        </button>
-                        <button class="social-link" type="button" data-social-open="following">
-                            <span class="social-count" data-social-count="following" th:text="${followingCount}">0</span>
-                            <span class="social-label">팔로잉</span>
-                        </button>
-                    </div>
                 </div>
             </div>
 
-            <div class="hero-note">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 8v5l3 2"/>
-                    <circle cx="12" cy="12" r="9"/>
-                </svg>
-                <span>프로필 사진 편집 UI는 먼저 붙여두었고, 실제 업로드는 다음 단계에서 연결할 수 있게 열어뒀습니다.</span>
+            <div class="taste-chart">
+                <div class="taste-chart-title">취향 프로필</div>
+                <div class="taste-donut-wrap" th:if="${!#lists.isEmpty(tasteChart)}">
+                    <svg class="taste-donut-svg" id="tasteDonutSvg" viewBox="0 0 148 148" aria-hidden="true"></svg>
+                    <div class="taste-legend" id="tasteLegend">
+                        <span class="taste-chart-data"
+                              th:each="item : ${tasteChart}"
+                              th:attr="data-genre=${item.genre},data-count=${item.count},data-pct=${item.pct}"
+                              style="display:none"></span>
+                    </div>
+                </div>
+                <div class="taste-empty" th:if="${#lists.isEmpty(tasteChart)}">
+                    좋아요를 눌러 취향 데이터를 쌓아보세요.
+                </div>
             </div>
         </div>
+        <div class="social-stats">
+            <button class="social-link" type="button" data-social-open="followers">
+                <span class="social-count" data-social-count="followers" th:text="${followerCount}">0</span>
+                <span class="social-label">팔로워</span>
+            </button>
+            <button class="social-link" type="button" data-social-open="following">
+                <span class="social-count" data-social-count="following" th:text="${followingCount}">0</span>
+                <span class="social-label">팔로잉</span>
+            </button>
+        </div>
         <div class="summary">
-            <article class="summary-card"><div class="summary-label">&#51064;&#49373;&#50689;&#54868;</div><div class="summary-value" th:text="${lifeMovieCount}">0</div></article>
-            <article class="summary-card"><div class="summary-label">&#51339;&#50500;&#50836;</div><div class="summary-value" th:text="${likedMovieCount}">0</div></article>
-            <article class="summary-card"><div class="summary-label">&#52972;&#47113;&#49496;</div><div class="summary-value" th:text="${collectionMovieCount}">0</div></article>
-            <article class="summary-card"><div class="summary-label">&#45208;&#51473;&#50640; &#48380;&#47000;&#50836;</div><div class="summary-value" th:text="${laterMovieCount}">0</div></article>
-            <article class="summary-card"><div class="summary-label">&#48324;&#47196;&#50640;&#50836;</div><div class="summary-value" th:text="${dislikedMovieCount}">0</div></article>
-            <article class="summary-card"><div class="summary-label">&#48372;&#45716;&#51473;</div><div class="summary-value" th:text="${watchingMovieCount}">0</div></article>
-            <article class="summary-card"><div class="summary-label">&#48420;&#50612;&#50836;</div><div class="summary-value" th:text="${watchedMovieCount}">0</div></article>
+            <article class="summary-card life"><div class="summary-label">인생영화</div><div class="summary-value" th:text="${lifeMovieCount}">0</div></article>
+            <article class="summary-card like"><div class="summary-label">좋아요</div><div class="summary-value" th:text="${likedMovieCount}">0</div></article>
+            <article class="summary-card coll"><div class="summary-label">컬렉션</div><div class="summary-value" th:text="${collectionMovieCount}">0</div></article>
+            <article class="summary-card later"><div class="summary-label">나중에 보기</div><div class="summary-value" th:text="${laterMovieCount}">0</div></article>
+            <article class="summary-card bad"><div class="summary-label">별로에요</div><div class="summary-value" th:text="${dislikedMovieCount}">0</div></article>
+            <article class="summary-card watch"><div class="summary-label">보는중</div><div class="summary-value" th:text="${watchingMovieCount}">0</div></article>
+            <article class="summary-card done"><div class="summary-label">봤어요</div><div class="summary-value" th:text="${watchedMovieCount}">0</div></article>
         </div>
     </section>
 
     <section class="section">
         <div class="head">
             <div>
-                <h2>&#51064;&#49373;&#50689;&#54868;</h2>
+                <h2>인생영화</h2>
                 <p>Choose only from movies already saved in your collection. You can keep up to 10 titles.</p>
             </div>
             <div class="head-actions">
@@ -1540,6 +1646,92 @@
         fetch('/api/notifications/read-all', { method: 'POST' }).then(() => { updateBadge(0); document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread')); }).catch(() => {});
     });
     document.addEventListener('click', function (e) { if (!panel.hidden && !panel.contains(e.target) && e.target !== btn) panel.hidden = true; });
+})();
+</script>
+<script>
+(function () {
+    var nodes = document.querySelectorAll('.taste-chart-data');
+    if (!nodes.length) return;
+
+    var data = Array.prototype.map.call(nodes, function(el) {
+        return {
+            genre: el.getAttribute('data-genre'),
+            count: parseInt(el.getAttribute('data-count'), 10),
+            pct:   parseInt(el.getAttribute('data-pct'), 10)
+        };
+    });
+
+    var svg    = document.getElementById('tasteDonutSvg');
+    var legend = document.getElementById('tasteLegend');
+    if (!svg) return;
+
+    var COLORS = ['#F43F5E','#F59E0B','#10B981','#6366F1','#EC4899'];
+    var NS = 'http://www.w3.org/2000/svg';
+    var cx = 74, cy = 74, R = 56, SW = 24;
+    var C = 2 * Math.PI * R;
+    var total = data.reduce(function(s, d){ return s + d.count; }, 0);
+    if (total === 0) return;
+
+    // background ring
+    var bg = document.createElementNS(NS, 'circle');
+    bg.setAttribute('cx', cx); bg.setAttribute('cy', cy); bg.setAttribute('r', R);
+    bg.setAttribute('fill', 'none');
+    bg.setAttribute('stroke', 'rgba(255,255,255,0.07)');
+    bg.setAttribute('stroke-width', SW);
+    svg.appendChild(bg);
+
+    // slices
+    var cumFrac = 0;
+    data.forEach(function(item, i) {
+        var frac = item.count / total;
+        var dash = Math.max(0, frac * C - 1.5);
+        var gap  = C - dash;
+        var angle = -90 + cumFrac * 360;
+        var c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', R);
+        c.setAttribute('fill', 'none');
+        c.setAttribute('stroke', COLORS[i % COLORS.length]);
+        c.setAttribute('stroke-width', SW);
+        c.setAttribute('stroke-dasharray', dash + ' ' + gap);
+        c.setAttribute('transform', 'rotate(' + angle + ' ' + cx + ' ' + cy + ')');
+        c.setAttribute('stroke-linecap', 'butt');
+        svg.appendChild(c);
+        cumFrac += frac;
+    });
+
+    // center: total
+    var t1 = document.createElementNS(NS, 'text');
+    t1.setAttribute('x', cx); t1.setAttribute('y', cy + 7);
+    t1.setAttribute('text-anchor', 'middle');
+    t1.setAttribute('fill', '#F8FAFC');
+    t1.setAttribute('font-size', '17');
+    t1.setAttribute('font-weight', '900');
+    t1.setAttribute('font-family', 'Pretendard,sans-serif');
+    t1.textContent = total + '편';
+    svg.appendChild(t1);
+
+    var t2 = document.createElementNS(NS, 'text');
+    t2.setAttribute('x', cx); t2.setAttribute('y', cy + 20);
+    t2.setAttribute('text-anchor', 'middle');
+    t2.setAttribute('fill', 'rgba(255,255,255,0.45)');
+    t2.setAttribute('font-size', '9');
+    t2.setAttribute('font-weight', '700');
+    t2.setAttribute('font-family', 'Pretendard,sans-serif');
+    t2.textContent = '총 좋아요';
+    svg.appendChild(t2);
+
+    // legend: replace hidden spans with visible rows
+    if (legend) {
+        var rows = data.map(function(item, i) {
+            var pctVal = Math.round(item.count / total * 100);
+            return '<div class="taste-legend-item">'
+                + '<span class="taste-legend-dot" style="background:' + COLORS[i % COLORS.length] + '"></span>'
+                + '<span class="taste-legend-name">' + item.genre + '</span>'
+                + '<span class="taste-legend-pct">' + pctVal + '%</span>'
+                + '</div>';
+        });
+        legend.innerHTML = rows.join('');
+    }
 })();
 </script>
 </body>
