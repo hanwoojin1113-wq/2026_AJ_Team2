@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${post.movieTitle} + ' 게시물 | CineMatch'">게시물 상세 | CineMatch</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1e2330;
+            --surface-2: #262c3b;
+            --border: rgba(255,255,255,0.08);
+            --text: #f8fafc;
+            --sub: #94a3b8;
+            --accent: #60a5fa;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Pretendard, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top right, rgba(59,130,246,0.18), transparent 24%),
+                linear-gradient(180deg, #0b1020 0%, #0f1117 48%, #111827 100%);
+            color: var(--text);
+        }
+        .nav {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:18px 24px;
+            border-bottom:1px solid rgba(148,163,184,.12);
+            background:rgba(6,11,20,.86);
+            position:sticky;
+            top:0;
+            backdrop-filter:blur(16px);
+            z-index:20;
+        }
+        .nav a { color:#fff; text-decoration:none; font-weight:800; }
+        .nav-right { display:flex; gap:12px; align-items:center; }
+        .pill {
+            padding:10px 14px;
+            border-radius:999px;
+            background:rgba(255,255,255,.08);
+        }
+        .logout { background:#fff; color:#0f172a !important; }
+        .post-create-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            text-decoration: none;
+            transition: background 0.2s;
+            margin-right: 8px;
+        }
+        .post-create-btn:hover { background: rgba(255,255,255,0.2); }
+        .notif-wrap { position: relative; }
+        .notif-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.08);
+            color: white;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .notif-btn:hover { background: rgba(255,255,255,0.15); }
+        .notif-badge {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 3px;
+            border-radius: 999px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .notif-badge:empty { display: none; }
+        .notif-panel {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            width: 360px;
+            max-height: 480px;
+            border-radius: 16px;
+            background: #111827;
+            border: 1px solid rgba(148,163,184,0.15);
+            box-shadow: 0 24px 60px rgba(2,6,23,0.55);
+            z-index: 9999;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .notif-panel[hidden] { display: none; }
+        .notif-panel-header {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            padding:16px 20px 12px;
+            border-bottom:1px solid rgba(148,163,184,0.1);
+            font-weight:800;
+            font-size:0.95rem;
+        }
+        .notif-read-all-btn {
+            border:none;
+            background:none;
+            color:#60A5FA;
+            font-size:0.78rem;
+            font-weight:700;
+            cursor:pointer;
+            padding:4px 8px;
+            border-radius:6px;
+            font-family:inherit;
+        }
+        .notif-list { overflow-y:auto; flex:1; }
+        .notif-item {
+            display:flex;
+            align-items:center;
+            gap:12px;
+            padding:14px 20px;
+            border-bottom:1px solid rgba(148,163,184,0.07);
+            text-decoration:none;
+            color:inherit;
+        }
+        .notif-item.unread { background: rgba(0,72,255,0.07); }
+        .notif-avatar {
+            width:40px;
+            height:40px;
+            border-radius:50%;
+            background: rgba(255,255,255,0.12);
+            overflow:hidden;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-weight:900;
+        }
+        .notif-avatar img { width:100%; height:100%; object-fit:cover; }
+        .notif-content { flex:1; min-width:0; }
+        .notif-text { font-size:0.83rem; line-height:1.45; color:#CBD5E1; }
+        .notif-text strong { color:white; }
+        .notif-time { margin-top:3px; font-size:0.73rem; color:#64748B; }
+        .notif-movie-thumb {
+            width:46px;
+            height:64px;
+            border-radius:6px;
+            object-fit:cover;
+            flex-shrink:0;
+            background: rgba(255,255,255,0.06);
+        }
+        .notif-empty { padding: 40px 20px; text-align: center; color: #64748B; font-size: 0.88rem; }
+        .page {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 28px 20px 64px;
+        }
+        .post-card {
+            background: linear-gradient(180deg, rgba(30,35,48,0.98), rgba(20,24,34,0.98));
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(2,6,23,0.28);
+            transition: box-shadow 0.2s ease;
+        }
+        .post-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 20px 22px 18px;
+        }
+        .author-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: inherit;
+            text-decoration: none;
+            min-width: 0;
+        }
+        .author-link:hover .author-name {
+            color: #dbeafe;
+            text-decoration: underline;
+        }
+        .author-avatar,
+        .author-avatar-fallback {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex: 0 0 auto;
+            background: rgba(255,255,255,0.08);
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.12);
+        }
+        .author-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .author-avatar-fallback {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#cbd5e1;
+        }
+        .author-avatar-fallback svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+        .author-copy {
+            min-width: 0;
+        }
+        .author-name {
+            font-weight: 800;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .post-date {
+            margin-top: 4px;
+            color: var(--sub);
+            font-size: 0.82rem;
+        }
+        .follow-btn {
+            min-width: 92px;
+            height: 38px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(255,255,255,.92);
+            color: #0f172a;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            transition: background 0.18s, box-shadow 0.18s, transform 0.1s;
+        }
+        .follow-btn.following {
+            background: rgba(255,255,255,.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,.12);
+        }
+        .follow-btn:hover:not(.following) {
+            background: #fff;
+            box-shadow: 0 4px 14px rgba(255,255,255,0.18);
+        }
+        .follow-btn.following:hover {
+            background: rgba(255,255,255,0.14);
+        }
+        .follow-btn:active {
+            transform: scale(0.96);
+        }
+        .post-image-wrap {
+            position: relative;
+            background: #0f1117;
+            overflow: hidden;
+            aspect-ratio: 1 / 1;
+        }
+        .post-image-wrap.loading::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.03) 100%);
+            background-size: 200% 100%;
+            animation: shimmer 1.6s infinite;
+        }
+        .post-image {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: blur(14px);
+            transform: scale(1.04);
+            opacity: 0.72;
+            transition: filter 0.32s ease, transform 0.32s ease, opacity 0.32s ease;
+        }
+        .post-image.is-loaded {
+            filter: blur(0);
+            transform: scale(1);
+            opacity: 1;
+        }
+        .post-image-empty {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            min-height: 360px;
+            color: var(--sub);
+            background: #111827;
+        }
+        .post-body {
+            display: grid;
+            gap: 18px;
+            padding: 20px 24px;
+        }
+        .post-content {
+            margin: 0;
+            line-height: 1.7;
+            font-size: 0.96rem;
+            color: #e2e8f0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .post-actions {
+            display: flex;
+            gap: 10px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255,255,255,0.07);
+        }
+        .icon-btn {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04);
+            color: #94a3b8;
+            cursor: not-allowed;
+            padding: 0;
+            opacity: 0.4;
+        }
+        .movie-tag-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px;
+            border-radius: 16px;
+            background: #1e2330;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: inherit;
+            text-decoration: none;
+            transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
+        }
+        .movie-tag-card:hover {
+            border-color: rgba(96,165,250,0.6);
+            background: linear-gradient(180deg, rgba(37,99,235,0.16), rgba(30,35,48,0.96));
+            box-shadow: 0 16px 30px rgba(2,6,23,0.28);
+            transform: translateY(-2px);
+        }
+        .movie-tag-poster {
+            width: 48px;
+            height: 72px;
+            border-radius: 10px;
+            object-fit: cover;
+            flex: 0 0 auto;
+            background: rgba(255,255,255,0.06);
+        }
+        .movie-tag-poster-fallback {
+            width: 48px;
+            height: 72px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.06);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color: #475569;
+            flex: 0 0 auto;
+        }
+        .movie-tag-poster-fallback svg {
+            width: 20px;
+            height: 20px;
+        }
+        .movie-tag-copy {
+            min-width: 0;
+        }
+        .movie-tag-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--sub);
+            font-size: 0.76rem;
+            margin-bottom: 4px;
+        }
+        .movie-tag-label svg {
+            width: 12px;
+            height: 12px;
+            color: #94a3b8;
+            flex: 0 0 auto;
+        }
+        .movie-tag-title {
+            font-weight: 800;
+            line-height: 1.5;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        @media (max-width: 768px) {
+            .page { padding: 24px 16px 48px; }
+            .nav { padding: 14px 16px; }
+            .nav-right { gap: 8px; }
+            .post-header { padding: 18px; }
+            .post-body { padding: 18px; }
+        }
+        @media (max-width: 480px) {
+            .page { padding: 0 0 40px; }
+            .post-card { border-radius: 0; border-left: none; border-right: none; }
+            .post-header { padding: 16px; }
+            .post-body { padding: 18px 16px; }
+            .movie-tag-poster,
+            .movie-tag-poster-fallback {
+                width: 40px;
+                height: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+<nav class="nav">
+    <a th:href="@{/charts}">CineMatch</a>
+    <div class="nav-right">
+        <a th:if="${loginUserId != null}" th:href="@{/posts/create}" class="post-create-btn" aria-label="게시물 작성">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+        </a>
+        <div class="notif-wrap" th:if="${loginUserId != null}">
+            <button class="notif-btn" id="notifBtn" aria-label="알림">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span class="notif-badge" id="notifBadge"></span>
+            </button>
+            <div class="notif-panel" id="notifPanel" hidden>
+                <div class="notif-panel-header">
+                    <span>알림</span>
+                    <button class="notif-read-all-btn" id="notifReadAll">전체 읽음</button>
+                </div>
+                <div class="notif-list" id="notifList">
+                    <div class="notif-empty">아직 알림이 없습니다</div>
+                </div>
+            </div>
+        </div>
+        <a class="pill" th:if="${loginUserId != null}" th:href="@{/people}">People</a>
+        <a class="pill" th:if="${loginUserId != null}" th:href="@{/mypage}" th:text="${loginUserNickname != null ? loginUserNickname : loginUserId}">My Page</a>
+        <a class="pill logout" th:if="${loginUserId != null}" th:href="@{/logout}">로그아웃</a>
+        <a class="pill" th:if="${loginUserId == null}" th:href="@{/login}">로그인</a>
+    </div>
+</nav>
+
+<main class="page">
+    <article class="post-card">
+        <header class="post-header">
+            <a class="author-link" th:href="@{|/users/${post.loginId}|}">
+                <div class="author-avatar" th:if="${post.profileImageUrl != null and !#strings.isEmpty(post.profileImageUrl)}">
+                    <img th:src="${post.profileImageUrl}" th:alt="${post.nickname}">
+                </div>
+                <div class="author-avatar-fallback" th:if="${post.profileImageUrl == null or #strings.isEmpty(post.profileImageUrl)}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 12.2c2.6 0 4.6-2 4.6-4.5S14.6 3.2 12 3.2 7.4 5.2 7.4 7.7s2 4.5 4.6 4.5Zm0 2.3c-4.1 0-7.5 2.4-8.3 5.8-.1.5.2.9.7.9h15.2c.5 0 .8-.4.7-.9-.8-3.4-4.2-5.8-8.3-5.8Z"/>
+                    </svg>
+                </div>
+                <div class="author-copy">
+                    <div class="author-name" th:text="${post.nickname}">nickname</div>
+                    <div class="post-date" th:attr="data-created-at=${post.createdAt}" th:text="${post.createdAtLabel}">2026.05.03</div>
+                </div>
+            </a>
+            <button th:if="${loginUserId != null and !isMyPost}"
+                    class="follow-btn"
+                    type="button"
+                    data-follow-toggle
+                    th:classappend="${isFollowing} ? ' following' : ''"
+                    th:attr="data-login-id=${post.loginId},data-following=${isFollowing}">
+                <span th:text="${isFollowing ? '팔로잉' : '팔로우'}">팔로우</span>
+            </button>
+        </header>
+
+        <div class="post-image-wrap loading" th:if="${post.imageUrl != null and !#strings.isEmpty(post.imageUrl)}">
+            <img class="post-image" th:src="${post.imageUrl}" alt="게시물 이미지">
+        </div>
+        <div class="post-image-empty" th:if="${post.imageUrl == null or #strings.isEmpty(post.imageUrl)}">
+            업로드된 이미지가 없습니다.
+        </div>
+
+        <div class="post-body">
+            <p class="post-content" th:if="${post.content != null and !#strings.isEmpty(post.content)}" th:text="${post.content}">게시물 설명</p>
+
+            <div class="post-actions">
+                <button class="icon-btn" type="button" disabled aria-label="좋아요 준비중">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/>
+                    </svg>
+                </button>
+                <button class="icon-btn" type="button" disabled aria-label="댓글 준비중">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </button>
+                <button class="icon-btn" type="button" disabled aria-label="북마크 준비중">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <a class="movie-tag-card" th:href="@{|/movies/${post.movieCode}|}">
+                <img class="movie-tag-poster"
+                     th:if="${post.moviePosterUrl != null and !#strings.isEmpty(post.moviePosterUrl)}"
+                     th:src="${post.moviePosterUrl}"
+                     th:alt="${post.movieTitle}">
+                <div class="movie-tag-copy">
+                    <div class="movie-tag-label">태그한 영화</div>
+                    <div class="movie-tag-title" th:text="${post.movieTitle}">영화 제목</div>
+                </div>
+            </a>
+        </div>
+    </article>
+</main>
+
+<script>
+    (function () {
+        const btn = document.getElementById('notifBtn');
+        const panel = document.getElementById('notifPanel');
+        const badge = document.getElementById('notifBadge');
+        const list = document.getElementById('notifList');
+        const readAllBtn = document.getElementById('notifReadAll');
+
+        if (!btn || !panel || !badge || !list) {
+            return;
+        }
+
+        function timeAgo(value) {
+            if (!value) return '';
+            const seconds = Math.floor((Date.now() - new Date(value)) / 1000);
+            if (seconds < 60) return '방금 전';
+            if (seconds < 3600) return Math.floor(seconds / 60) + '분 전';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + '시간 전';
+            return Math.floor(seconds / 86400) + '일 전';
+        }
+
+        function renderItems(items) {
+            if (!items || !items.length) {
+                list.innerHTML = '<div class="notif-empty">아직 알림이 없습니다</div>';
+                return;
+            }
+            list.innerHTML = items.map((item) => {
+                const avatar = item.actorProfileImageUrl
+                    ? `<img src="${item.actorProfileImageUrl}" alt="">`
+                    : (item.actorNickname || '?')[0];
+                const thumbnail = item.moviePosterUrl
+                    ? `<img class="notif-movie-thumb" src="${item.moviePosterUrl}" alt="">`
+                    : '';
+                const text = item.type === 'FOLLOW'
+                    ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우했습니다`
+                    : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>를 인생영화에 추가했습니다`;
+                return `<a class="notif-item${!item.isRead ? ' unread' : ''}" href="${item.linkUrl || '#'}"><div class="notif-avatar">${avatar}</div><div class="notif-content"><div class="notif-text">${text}</div><div class="notif-time">${timeAgo(item.createdAt)}</div></div>${thumbnail}</a>`;
+            }).join('');
+        }
+
+        function updateBadge(count) {
+            badge.textContent = count > 0 ? (count > 99 ? '99+' : count) : '';
+        }
+
+        fetch('/api/notifications')
+            .then((response) => response.ok ? response.json() : null)
+            .then((data) => {
+                if (data) updateBadge(data.unreadCount);
+            })
+            .catch(() => {});
+
+        btn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const open = panel.hidden;
+            panel.hidden = !open;
+            if (!open) return;
+            fetch('/api/notifications')
+                .then((response) => response.ok ? response.json() : null)
+                .then((data) => {
+                    if (!data) return;
+                    updateBadge(data.unreadCount);
+                    renderItems(data.items);
+                })
+                .catch(() => {});
+        });
+
+        readAllBtn?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            fetch('/api/notifications/read-all', { method: 'POST' })
+                .then(() => {
+                    updateBadge(0);
+                    document.querySelectorAll('.notif-item.unread').forEach((element) => element.classList.remove('unread'));
+                })
+                .catch(() => {});
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!panel.hidden && !panel.contains(event.target) && event.target !== btn) {
+                panel.hidden = true;
+            }
+        });
+    })();
+
+    document.addEventListener('click', async (event) => {
+        const followButton = event.target.closest('[data-follow-toggle]');
+        if (!followButton) {
+            return;
+        }
+
+        const loginId = followButton.dataset.loginId;
+        const following = followButton.dataset.following === 'true';
+        const endpoint = following ? '/api/people/unfollow' : '/api/people/follow';
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams({ loginId })
+        });
+
+        if (!response.ok) {
+            alert('팔로우 상태를 변경하지 못했습니다.');
+            return;
+        }
+
+        const payload = await response.json();
+        const isFollowing = !!payload.followingByCurrentUser;
+        followButton.dataset.following = String(isFollowing);
+        followButton.classList.toggle('following', isFollowing);
+        const label = followButton.querySelector('span');
+        if (label) {
+            label.textContent = isFollowing ? '팔로잉' : '팔로우';
+        }
+    });
+
+    (function () {
+        const dateNode = document.querySelector('.post-date[data-created-at]');
+        const postImage = document.querySelector('.post-image');
+        const movieTagCard = document.querySelector('.movie-tag-card');
+        const movieTagLabel = document.querySelector('.movie-tag-label');
+
+        function formatRelativeTime(value) {
+            if (!value) return '';
+            const seconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
+            if (seconds < 60) return '방금 전';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}분 전`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}시간 전`;
+            return `${Math.floor(seconds / 86400)}일 전`;
+        }
+
+        if (dateNode) {
+            const createdAt = dateNode.dataset.createdAt;
+            if (createdAt) {
+                dateNode.textContent = formatRelativeTime(createdAt);
+            }
+        }
+
+        if (postImage) {
+            const wrap = postImage.closest('.post-image-wrap');
+            const markLoaded = () => {
+                postImage.classList.add('is-loaded');
+                wrap?.classList.remove('loading');
+            };
+            if (postImage.complete) {
+                markLoaded();
+            } else {
+                postImage.addEventListener('load', markLoaded, { once: true });
+                postImage.addEventListener('error', () => wrap?.classList.remove('loading'), { once: true });
+            }
+        }
+
+        document.querySelectorAll('.icon-btn').forEach((button) => {
+            if (!button.title) {
+                button.title = '준비 중인 기능입니다';
+            }
+        });
+
+        if (movieTagLabel && !movieTagLabel.querySelector('svg')) {
+            const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            icon.setAttribute('viewBox', '0 0 24 24');
+            icon.setAttribute('fill', 'none');
+            icon.setAttribute('stroke', 'currentColor');
+            icon.setAttribute('stroke-width', '2');
+            icon.setAttribute('aria-hidden', 'true');
+            icon.innerHTML = `
+                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                <line x1="7" y1="2" x2="7" y2="22"></line>
+                <line x1="17" y1="2" x2="17" y2="22"></line>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <line x1="2" y1="7" x2="22" y2="7"></line>
+                <line x1="2" y1="17" x2="22" y2="17"></line>
+            `;
+            movieTagLabel.prepend(icon);
+        }
+
+        if (movieTagCard && !movieTagCard.querySelector('.movie-tag-poster') && !movieTagCard.querySelector('.movie-tag-poster-fallback')) {
+            const fallback = document.createElement('div');
+            fallback.className = 'movie-tag-poster-fallback';
+            fallback.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                    <line x1="7" y1="2" x2="7" y2="22"></line>
+                    <line x1="17" y1="2" x2="17" y2="22"></line>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <line x1="2" y1="7" x2="22" y2="7"></line>
+                    <line x1="2" y1="17" x2="22" y2="17"></line>
+                </svg>
+            `;
+            movieTagCard.insertBefore(fallback, movieTagCard.querySelector('.movie-tag-copy'));
+        }
+    })();
+</script>
+</body>
+</html>
