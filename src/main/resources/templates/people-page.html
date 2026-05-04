@@ -650,7 +650,7 @@
         list.innerHTML = items.map(item => {
             const av = item.actorProfileImageUrl ? `<img src="${item.actorProfileImageUrl}" alt="">` : (item.actorNickname||'?')[0];
             const th = item.moviePosterUrl ? `<img class="notif-movie-thumb" src="${item.moviePosterUrl}" alt="">` : '';
-            const txt = item.type === 'FOLLOW' ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우하기 시작했습니다` : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>을(를) 인생영화로 추가했습니다`;
+            const txt = item.notifText || (item.type === 'FOLLOW' ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우하기 시작했습니다` : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>을(를) 인생영화로 추가했습니다`);
             return `<a class="notif-item${!item.isRead?' unread':''}" href="${item.linkUrl||'#'}"><div class="notif-avatar">${av}</div><div class="notif-content"><div class="notif-text">${txt}</div><div class="notif-time">${timeAgo(item.createdAt)}</div></div>${th}</a>`;
         }).join('');
     }

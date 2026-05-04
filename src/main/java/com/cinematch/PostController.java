@@ -21,7 +21,6 @@ import java.util.UUID;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -37,6 +36,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.cinematch.notification.NotificationService;
+
 @Slf4j
 @Controller
 @RequiredArgsConstructor
@@ -48,6 +49,7 @@ public class PostController {
     private static final DateTimeFormatter POST_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
 
     private final JdbcTemplate jdbcTemplate;
+    private final NotificationService notificationService;
 
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
@@ -65,6 +67,7 @@ public class PostController {
     @GetMapping("/posts/{postId}")
     public String postDetail(@PathVariable Long postId, Model model, HttpSession session) {
         initializeSocialTables();
+
         Map<String, Object> post = jdbcTemplate.queryForList("""
                 SELECT
                     sp.id AS postId,
@@ -77,12 +80,10 @@ public class PostController {
                     m.id AS movieDbId,
                     m.movie_cd AS movieCode,
                     COALESCE(m.title, m.movie_name) AS movieTitle,
-                    m.poster_image_url AS moviePosterUrl,
-                    spi.image_url AS imageUrl
+                    m.poster_image_url AS moviePosterUrl
                 FROM social_post sp
                 JOIN "USER" u ON u.id = sp.user_id
                 JOIN movie m ON m.id = sp.movie_id
-                LEFT JOIN social_post_image spi ON spi.post_id = sp.id AND spi.display_order = 0
                 WHERE sp.id = ?
                   AND sp.is_deleted = FALSE
                 """, postId).stream().findFirst().orElse(null);
@@ -92,39 +93,81 @@ public class PostController {
         }
 
         Long currentUserId = findOptionalCurrentUserId(session);
-        String loginUserNickname = (String) session.getAttribute(LOGIN_NICKNAME_SESSION_KEY);
-        String loginUserId = (String) session.getAttribute(LOGIN_SESSION_KEY);
-
-        boolean isFollowing = false;
-        boolean isMyPost = false;
-        Long postUserId = ((Number) post.get("userId")).longValue();
-        if (currentUserId != null) {
-            isMyPost = currentUserId.equals(postUserId);
-            if (!isMyPost) {
-                Integer cnt = jdbcTemplate.queryForObject("""
-                        SELECT COUNT(*)
-                        FROM user_follow
-                        WHERE follower_user_id = ? AND following_user_id = ?
-                        """, Integer.class, currentUserId, postUserId);
-                isFollowing = cnt != null && cnt > 0;
-            }
-        }
-
-        Object createdAt = post.get("createdAt");
-        if (createdAt instanceof Timestamp timestamp) {
-            post.put("createdAtLabel", timestamp.toLocalDateTime().format(POST_DATE_FORMAT));
-        } else if (createdAt != null) {
-            post.put("createdAtLabel", createdAt.toString());
-        } else {
-            post.put("createdAtLabel", "");
-        }
+        enrichPost(post, currentUserId);
 
         model.addAttribute("post", post);
-        model.addAttribute("isFollowing", isFollowing);
-        model.addAttribute("isMyPost", isMyPost);
-        model.addAttribute("loginUserNickname", loginUserNickname);
-        model.addAttribute("loginUserId", loginUserId);
+        model.addAttribute("isFollowing", post.get("isFollowing"));
+        model.addAttribute("isMyPost", post.get("isMyPost"));
+        model.addAttribute("loginUserNickname", session.getAttribute(LOGIN_NICKNAME_SESSION_KEY));
+        model.addAttribute("loginUserId", session.getAttribute(LOGIN_SESSION_KEY));
         return "post-detail";
+    }
+
+    @GetMapping("/movies/{movieCode}/posts")
+    public String moviePostsPage(@PathVariable String movieCode, Model model, HttpSession session) {
+        initializeSocialTables();
+
+        Long movieId = findMovieIdByCode(movieCode);
+        if (movieId == null) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+
+        Map<String, Object> movie = jdbcTemplate.query("""
+                SELECT movie_cd, COALESCE(title, movie_name) AS movieTitle, poster_image_url AS posterUrl
+                FROM movie
+                WHERE id = ?
+                """, rs -> {
+            if (!rs.next()) {
+                return null;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("movieCode", rs.getString("movie_cd"));
+            row.put("movieTitle", rs.getString("movieTitle"));
+            row.put("posterUrl", rs.getString("posterUrl"));
+            return row;
+        }, movieId);
+
+        if (movie == null) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+
+        List<Map<String, Object>> posts = jdbcTemplate.query("""
+                SELECT
+                    sp.id AS postId,
+                    sp.content,
+                    sp.created_at AS createdAt,
+                    sp.user_id AS userId,
+                    u.nickname,
+                    u.login_id AS loginId,
+                    u.profile_image_url AS profileImageUrl
+                FROM social_post sp
+                JOIN "USER" u ON u.id = sp.user_id
+                WHERE sp.movie_id = ?
+                  AND sp.is_deleted = FALSE
+                ORDER BY sp.created_at DESC
+                """, (rs, rowNum) -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("postId", rs.getLong("postId"));
+            row.put("content", rs.getString("content"));
+            row.put("createdAt", rs.getTimestamp("createdAt"));
+            row.put("userId", rs.getLong("userId"));
+            row.put("nickname", rs.getString("nickname"));
+            row.put("loginId", rs.getString("loginId"));
+            row.put("profileImageUrl", rs.getString("profileImageUrl"));
+            return row;
+        }, movieId);
+
+        Long currentUserId = findOptionalCurrentUserId(session);
+        for (Map<String, Object> post : posts) {
+            enrichPost(post, currentUserId);
+        }
+
+        model.addAttribute("movie", movie);
+        model.addAttribute("posts", posts);
+        model.addAttribute("loginUserNickname", session.getAttribute(LOGIN_NICKNAME_SESSION_KEY));
+        model.addAttribute("loginUserId", session.getAttribute(LOGIN_SESSION_KEY));
+        model.addAttribute("currentUserId", currentUserId);
+        return "movie-posts";
     }
 
     @GetMapping("/api/movies/search")
@@ -164,7 +207,7 @@ public class PostController {
 
     @PostMapping("/posts")
     @Transactional
-    public String createPost(@RequestParam("image") MultipartFile image,
+    public String createPost(@RequestParam("images") List<MultipartFile> images,
                              @RequestParam String content,
                              @RequestParam Long movieId,
                              HttpSession session) {
@@ -176,9 +219,25 @@ public class PostController {
         try {
             Long userId = requireCurrentUserId(session);
             String movieCode = findMovieCode(movieId);
-            String imageUrl = storeImage(userId, image);
+            List<MultipartFile> validImages = filterValidImages(images);
+            if (validImages.isEmpty()) {
+                throw new ResponseStatusException(BAD_REQUEST, "최소 한 장의 이미지를 첨부해주세요.");
+            }
+            if (validImages.size() > 5) {
+                throw new ResponseStatusException(BAD_REQUEST, "이미지는 최대 5장까지 업로드할 수 있습니다.");
+            }
+
             Long postId = insertPost(userId, movieId, normalizeContent(content));
-            insertPostImage(postId, imageUrl);
+            int order = 0;
+            for (MultipartFile image : validImages) {
+                String imageUrl = storeImage(userId, image);
+                insertPostImage(postId, imageUrl, order++);
+            }
+            try {
+                notificationService.createNewPostNotifications(userId, postId, movieCode);
+            } catch (Exception ex) {
+                log.warn("New post notification failed: {}", ex.getMessage());
+            }
             return "redirect:/movies/" + movieCode;
         } catch (ResponseStatusException e) {
             throw e;
@@ -186,6 +245,78 @@ public class PostController {
             log.error("게시물 저장 실패: {}", e.getMessage(), e);
             return "redirect:/posts/create?error=true";
         }
+    }
+
+    @PostMapping("/api/posts/{postId}/like")
+    @ResponseBody
+    public Map<String, Object> togglePostLike(@PathVariable Long postId, HttpSession session) {
+        initializeSocialTables();
+        if (!isLoggedIn(session)) {
+            throw new ResponseStatusException(UNAUTHORIZED);
+        }
+
+        Long userId = requireCurrentUserId(session);
+        Integer postExists = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM social_post
+                WHERE id = ?
+                  AND is_deleted = FALSE
+                """, Integer.class, postId);
+        if (postExists == null || postExists < 1) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+
+        Integer existing = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM post_like
+                WHERE user_id = ?
+                  AND post_id = ?
+                """, Integer.class, userId, postId);
+
+        boolean liked;
+        if (existing != null && existing > 0) {
+            jdbcTemplate.update("""
+                    DELETE FROM post_like
+                    WHERE user_id = ?
+                      AND post_id = ?
+                    """, userId, postId);
+            liked = false;
+        } else {
+            jdbcTemplate.update("""
+                    INSERT INTO post_like (user_id, post_id)
+                    VALUES (?, ?)
+                    """, userId, postId);
+            liked = true;
+            try {
+                Long postOwnerId = jdbcTemplate.query("""
+                        SELECT user_id
+                        FROM social_post
+                        WHERE id = ?
+                        """, rs -> rs.next() ? rs.getLong("user_id") : null, postId);
+                String postMovieCode = jdbcTemplate.query("""
+                        SELECT m.movie_cd
+                        FROM social_post sp
+                        JOIN movie m ON m.id = sp.movie_id
+                        WHERE sp.id = ?
+                        """, rs -> rs.next() ? rs.getString("movie_cd") : null, postId);
+                if (postOwnerId != null) {
+                    notificationService.createPostLikeNotification(userId, postId, postOwnerId, postMovieCode);
+                }
+            } catch (Exception ex) {
+                log.warn("Post like notification failed: {}", ex.getMessage());
+            }
+        }
+
+        Integer likeCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM post_like
+                WHERE post_id = ?
+                """, Integer.class, postId);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("liked", liked);
+        result.put("likeCount", likeCount != null ? likeCount : 0);
+        return result;
     }
 
     private boolean isLoggedIn(HttpSession session) {
@@ -197,11 +328,7 @@ public class PostController {
         if (loginId == null || loginId.isBlank()) {
             throw new ResponseStatusException(UNAUTHORIZED);
         }
-        Long userId = jdbcTemplate.query("""
-                SELECT id
-                FROM "USER"
-                WHERE login_id = ?
-                """, rs -> rs.next() ? rs.getLong("id") : null, loginId);
+        Long userId = findUserIdByLoginId(loginId);
         if (userId == null) {
             throw new ResponseStatusException(NOT_FOUND);
         }
@@ -213,11 +340,23 @@ public class PostController {
         if (loginId == null || loginId.isBlank()) {
             return null;
         }
+        return findUserIdByLoginId(loginId);
+    }
+
+    private Long findUserIdByLoginId(String loginId) {
         return jdbcTemplate.query("""
                 SELECT id
                 FROM "USER"
                 WHERE login_id = ?
                 """, rs -> rs.next() ? rs.getLong("id") : null, loginId);
+    }
+
+    private Long findMovieIdByCode(String movieCode) {
+        return jdbcTemplate.query("""
+                SELECT id
+                FROM movie
+                WHERE movie_cd = ?
+                """, rs -> rs.next() ? rs.getLong("id") : null, movieCode);
     }
 
     private String findMovieCode(Long movieId) {
@@ -233,6 +372,15 @@ public class PostController {
             throw new ResponseStatusException(BAD_REQUEST);
         }
         return movieCode;
+    }
+
+    private List<MultipartFile> filterValidImages(List<MultipartFile> images) {
+        if (images == null) {
+            return List.of();
+        }
+        return images.stream()
+                .filter(image -> image != null && !image.isEmpty())
+                .toList();
     }
 
     private String storeImage(Long userId, MultipartFile image) throws IOException {
@@ -273,11 +421,66 @@ public class PostController {
         return key.longValue();
     }
 
-    private void insertPostImage(Long postId, String imageUrl) {
+    private void insertPostImage(Long postId, String imageUrl, int displayOrder) {
         jdbcTemplate.update("""
                 INSERT INTO social_post_image (post_id, image_url, display_order)
-                VALUES (?, ?, 0)
-                """, postId, imageUrl);
+                VALUES (?, ?, ?)
+                """, postId, imageUrl, displayOrder);
+    }
+
+    private void enrichPost(Map<String, Object> post, Long currentUserId) {
+        Long postId = ((Number) post.get("postId")).longValue();
+        List<String> images = jdbcTemplate.queryForList("""
+                SELECT image_url
+                FROM social_post_image
+                WHERE post_id = ?
+                ORDER BY display_order ASC
+                """, String.class, postId);
+        post.put("images", images);
+        post.put("imageUrl", images.isEmpty() ? null : images.get(0));
+
+        Integer likeCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM post_like
+                WHERE post_id = ?
+                """, Integer.class, postId);
+        post.put("likeCount", likeCount != null ? likeCount : 0);
+
+        boolean likedByMe = false;
+        if (currentUserId != null) {
+            Integer cnt = jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*)
+                    FROM post_like
+                    WHERE user_id = ?
+                      AND post_id = ?
+                    """, Integer.class, currentUserId, postId);
+            likedByMe = cnt != null && cnt > 0;
+        }
+        post.put("likedByMe", likedByMe);
+
+        Long postUserId = ((Number) post.get("userId")).longValue();
+        boolean isMyPost = currentUserId != null && currentUserId.equals(postUserId);
+        boolean isFollowing = false;
+        if (currentUserId != null && !isMyPost) {
+            Integer cnt = jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*)
+                    FROM user_follow
+                    WHERE follower_user_id = ?
+                      AND following_user_id = ?
+                    """, Integer.class, currentUserId, postUserId);
+            isFollowing = cnt != null && cnt > 0;
+        }
+        post.put("isMyPost", isMyPost);
+        post.put("isFollowing", isFollowing);
+
+        Object createdAt = post.get("createdAt");
+        if (createdAt instanceof Timestamp timestamp) {
+            post.put("createdAtLabel", timestamp.toLocalDateTime().format(POST_DATE_FORMAT));
+        } else if (createdAt != null) {
+            post.put("createdAtLabel", createdAt.toString());
+        } else {
+            post.put("createdAtLabel", "");
+        }
     }
 
     private String normalizeContent(String content) {
@@ -316,6 +519,15 @@ public class PostController {
                     image_url VARCHAR(500) NOT NULL,
                     display_order INT NOT NULL DEFAULT 0,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS post_like (
+                    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    post_id BIGINT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uk_post_like UNIQUE (user_id, post_id)
                 )
                 """);
     }
