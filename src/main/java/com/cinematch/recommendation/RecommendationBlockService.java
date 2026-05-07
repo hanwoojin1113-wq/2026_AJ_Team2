@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -121,7 +122,7 @@ public class RecommendationBlockService {
                 tagsByMovie,
                 tagProfileScores,
                 normalizedItemLimit,
-                2,
+                3,
                 Map.of()
         ));
         thematicBlocks.addAll(collectFeatureBlocks(
@@ -174,11 +175,18 @@ public class RecommendationBlockService {
                 normalizedItemLimit
         );
 
+        Optional<RecommendationBlock> serendipityBlock = buildSerendipityBlock(
+                rankingSlice, tagsByMovie, genresByMovie,
+                tagProfileScores, genreProfileScores,
+                thematicBlocks, normalizedItemLimit
+        );
+
         List<RecommendationBlock> blocks = new ArrayList<>();
         blocks.add(personalizedBlock);
         thematicBlocks.stream()
                 .map(InternalBlock::toExternalBlock)
                 .forEach(blocks::add);
+        serendipityBlock.ifPresent(blocks::add);
 
         return new RecommendationBlockResponse(userId, normalizedSliceLimit, normalizedItemLimit, blocks.size(), blocks);
     }
@@ -308,6 +316,14 @@ public class RecommendationBlockService {
             }
 
             if (bestCandidate == null) {
+                // 다양성 제약 소진 시 나머지를 랭킹 순으로 채움
+                for (PersonalizedCandidate candidate : pool) {
+                    if (selected.size() >= itemLimit) break;
+                    if (!selectedMovieIds.contains(candidate.movie().movieId())) {
+                        selected.add(candidate);
+                        selectedMovieIds.add(candidate.movie().movieId());
+                    }
+                }
                 break;
             }
 
@@ -745,6 +761,73 @@ public class RecommendationBlockService {
         }, params.toArray());
 
         return featuresByMovie;
+    }
+
+    private Optional<RecommendationBlock> buildSerendipityBlock(
+            List<RankedMovie> rankingSlice,
+            Map<Long, Set<String>> tagsByMovie,
+            Map<Long, Set<String>> genresByMovie,
+            Map<String, Double> tagProfileScores,
+            Map<String, Double> genreProfileScores,
+            List<InternalBlock> existingBlocks,
+            int itemLimit
+    ) {
+        Set<String> usedTagFeatures = existingBlocks.stream()
+                .filter(b -> b.key().startsWith("TAG:"))
+                .map(b -> b.key().substring(4))
+                .collect(Collectors.toSet());
+        Set<String> usedGenreFeatures = existingBlocks.stream()
+                .filter(b -> b.key().startsWith("GENRE:"))
+                .map(b -> b.key().substring(6))
+                .collect(Collectors.toSet());
+
+        List<FeatureAggregate> tagCandidates = collectFeatureAggregates(rankingSlice, tagsByMovie, tagProfileScores)
+                .stream()
+                .filter(a -> a.profileScore() > 0)
+                .filter(a -> !usedTagFeatures.contains(a.featureName()))
+                .sorted(Comparator.comparingDouble(FeatureAggregate::profileScore).reversed())
+                .toList();
+
+        List<FeatureAggregate> genreCandidates = collectFeatureAggregates(rankingSlice, genresByMovie, genreProfileScores)
+                .stream()
+                .filter(a -> a.profileScore() > 0)
+                .filter(a -> !usedGenreFeatures.contains(a.featureName()))
+                .sorted(Comparator.comparingDouble(FeatureAggregate::profileScore).reversed())
+                .toList();
+
+        for (FeatureAggregate candidate : tagCandidates) {
+            List<RankedMovie> items = rankingSlice.stream()
+                    .filter(movie -> tagsByMovie.getOrDefault(movie.movieId(), Collections.emptySet())
+                            .contains(candidate.featureName()))
+                    .limit(itemLimit)
+                    .toList();
+            if (items.size() >= recommendationFeaturePolicy.blockMinimumSize()) {
+                return Optional.of(new RecommendationBlock(
+                        "SERENDIPITY:TAG:" + candidate.featureName(),
+                        recommendationFeaturePolicy.tagBlockTitle(candidate.featureName()) + "도 어떠세요?",
+                        "취향 경계에서 발견한 새로운 추천",
+                        items.stream().map(RankedMovie::toBlockMovie).toList()
+                ));
+            }
+        }
+
+        for (FeatureAggregate candidate : genreCandidates) {
+            List<RankedMovie> items = rankingSlice.stream()
+                    .filter(movie -> genresByMovie.getOrDefault(movie.movieId(), Collections.emptySet())
+                            .contains(candidate.featureName()))
+                    .limit(itemLimit)
+                    .toList();
+            if (items.size() >= recommendationFeaturePolicy.blockMinimumSize()) {
+                return Optional.of(new RecommendationBlock(
+                        "SERENDIPITY:GENRE:" + candidate.featureName(),
+                        candidate.featureName() + " 장르도 어떠세요?",
+                        "취향 경계에서 발견한 새로운 추천",
+                        items.stream().map(RankedMovie::toBlockMovie).toList()
+                ));
+            }
+        }
+
+        return Optional.empty();
     }
 
     private String blockTitle(String featureType, String featureName) {

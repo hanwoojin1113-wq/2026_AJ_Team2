@@ -70,6 +70,11 @@ public class AdminBatchController {
         return movieDataBatchService.runTagRebuild();
     }
 
+    @PostMapping("/recommendation/co-occurrence")
+    public MovieDataBatchService.JobRunResponse rebuildCoOccurrence() {
+        return movieDataBatchService.runCoOccurrenceRebuild();
+    }
+
     @PostMapping("/recommendation/profile")
     public MovieDataBatchService.JobRunResponse rebuildPreferenceProfile(
             @RequestParam Long userId

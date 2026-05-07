@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -601,7 +602,8 @@ public class TmdbMovieNormalizeService {
 
     private Long resolveKeywordId(JsonNode keywordNode) {
         // TMDB keyword id가 있으면 그걸 우선 기준으로 쓰고, 없으면 name 기반으로 병합한다.
-        String keywordName = textValue(keywordNode, "name");
+        String rawName = textValue(keywordNode, "name");
+        String keywordName = rawName == null ? null : rawName.toLowerCase(Locale.ROOT).trim();
         Long tmdbKeywordId = longValue(keywordNode, "id");
         if (keywordName == null) {
             return null;
@@ -626,7 +628,7 @@ public class TmdbMovieNormalizeService {
         Long existingByName = jdbcTemplate.query("""
                 SELECT id
                 FROM keyword
-                WHERE name = ?
+                WHERE LOWER(name) = ?
                 """, rs -> rs.next() ? rs.getLong("id") : null, keywordName);
         if (existingByName != null) {
             if (tmdbKeywordId != null) {

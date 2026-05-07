@@ -25,6 +25,23 @@ public class TagScoreCalculator {
             return emptyResult(rule.tag(), "required genre not matched");
         }
         if (!rule.requiredKeywordsAny().isEmpty() && Collections.disjoint(keywords, rule.requiredKeywordsAny())) {
+            if (rule.genreOnlyFallbackThreshold() > 0) {
+                // keyword 없는 영화를 위한 genre-only 경로: hard exclude를 먼저 체크하고
+                // genre 점수만으로 fallback threshold를 넘으면 태그를 부여한다.
+                if (!Collections.disjoint(genres, rule.hardExcludedGenres())) {
+                    return emptyResult(rule.tag(), "hard excluded genre matched");
+                }
+                if (!Collections.disjoint(keywords, rule.hardExcludedKeywords())) {
+                    return emptyResult(rule.tag(), "hard excluded keyword matched");
+                }
+                int genreOnlyScore = computeGenreOnlyScore(genres, rule);
+                if (genreOnlyScore >= rule.genreOnlyFallbackThreshold()) {
+                    List<String> matchedGenres = matchedGenreNames(genres, rule.positiveGenreWeights());
+                    return new MovieTagResult(rule.tag(), genreOnlyScore, true,
+                            matchedGenres, List.of(), List.of(),
+                            List.of("genre-only fallback: score=" + genreOnlyScore));
+                }
+            }
             return emptyResult(rule.tag(), "required keyword not matched");
         }
         // hard exclude는 특정 장르/키워드가 보이면 즉시 태그 부여를 막는 장치다.
@@ -113,6 +130,25 @@ public class TagScoreCalculator {
             collectedReasons.add(prefix + ":" + entry.getKey() + "=" + entry.getValue());
         }
         return score;
+    }
+
+    private int computeGenreOnlyScore(Set<String> genres, TagRule rule) {
+        int score = 0;
+        for (Map.Entry<String, Integer> entry : rule.positiveGenreWeights().entrySet()) {
+            if (genres.contains(entry.getKey())) score += entry.getValue();
+        }
+        for (Map.Entry<String, Integer> entry : rule.negativeGenreWeights().entrySet()) {
+            if (genres.contains(entry.getKey())) score -= entry.getValue();
+        }
+        return Math.max(0, Math.min(100, score));
+    }
+
+    private List<String> matchedGenreNames(Set<String> genres, Map<String, Integer> positiveWeights) {
+        List<String> matched = new ArrayList<>();
+        for (String genre : positiveWeights.keySet()) {
+            if (genres.contains(genre)) matched.add(genre);
+        }
+        return List.copyOf(matched);
     }
 
     private int scoreRuntime(Integer runtimeMinutes, List<TagRule.RuntimeWeight> runtimeWeights) {

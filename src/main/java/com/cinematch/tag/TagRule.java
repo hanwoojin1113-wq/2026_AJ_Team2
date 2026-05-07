@@ -20,6 +20,7 @@ public final class TagRule {
     private final Set<String> requiredKeywordsAny;
     private final Set<String> hardExcludedKeywords;
     private final List<RuntimeWeight> runtimeWeights;
+    private final int genreOnlyFallbackThreshold;
 
     private TagRule(Builder builder) {
         this.tag = builder.tag;
@@ -32,6 +33,7 @@ public final class TagRule {
         this.requiredKeywordsAny = Set.copyOf(builder.requiredKeywordsAny);
         this.hardExcludedKeywords = Set.copyOf(builder.hardExcludedKeywords);
         this.runtimeWeights = List.copyOf(builder.runtimeWeights);
+        this.genreOnlyFallbackThreshold = builder.genreOnlyFallbackThreshold;
     }
 
     public RecommendationTag tag() {
@@ -74,6 +76,10 @@ public final class TagRule {
         return runtimeWeights;
     }
 
+    public int genreOnlyFallbackThreshold() {
+        return genreOnlyFallbackThreshold;
+    }
+
     public static Builder builder(RecommendationTag tag) {
         return new Builder(tag);
     }
@@ -89,6 +95,7 @@ public final class TagRule {
         private final Set<String> requiredKeywordsAny = new LinkedHashSet<>();
         private final Set<String> hardExcludedKeywords = new LinkedHashSet<>();
         private final List<RuntimeWeight> runtimeWeights = new ArrayList<>();
+        private int genreOnlyFallbackThreshold = 0;
 
         private Builder(RecommendationTag tag) {
             this.tag = tag;
@@ -136,6 +143,11 @@ public final class TagRule {
 
         public Builder runtimeWeight(int minimumMinutes, int weight) {
             runtimeWeights.add(new RuntimeWeight(minimumMinutes, weight));
+            return this;
+        }
+
+        public Builder genreOnlyFallbackThreshold(int threshold) {
+            this.genreOnlyFallbackThreshold = threshold;
             return this;
         }
 

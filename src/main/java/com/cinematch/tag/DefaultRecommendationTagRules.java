@@ -49,7 +49,11 @@ public class DefaultRecommendationTagRules {
                 comingOfAge(),
                 friendship(),
                 survival(),
-                revenge()
+                revenge(),
+                animated(),
+                periodDrama(),
+                sciFiTech(),
+                musicalFilm()
         );
     }
 
@@ -552,6 +556,7 @@ public class DefaultRecommendationTagRules {
                 .negativeKeyword("ghost", 16)
                 .negativeKeyword("demon", 16)
                 .negativeKeyword("zombie", 20)
+                .genreOnlyFallbackThreshold(50)
                 .build();
     }
 
@@ -585,6 +590,7 @@ public class DefaultRecommendationTagRules {
                 .positiveKeyword("parallel world", 6)
                 .negativeKeyword("talking animal", 14)
                 .negativeKeyword("slapstick", 12)
+                .genreOnlyFallbackThreshold(36)
                 .build();
     }
 
@@ -657,6 +663,7 @@ public class DefaultRecommendationTagRules {
                 .positiveKeyword("survival", 10)
                 .negativeKeyword("cheerful", 10)
                 .negativeKeyword("talking animal", 20)
+                .genreOnlyFallbackThreshold(38)
                 .build();
     }
 
@@ -790,6 +797,108 @@ public class DefaultRecommendationTagRules {
                 .negativeKeyword("cheerful", 16)
                 .negativeKeyword("lighthearted", 16)
                 .negativeKeyword("talking animal", 18)
+                .genreOnlyFallbackThreshold(40)
+                .build();
+    }
+
+    private TagRule animated() {
+        return TagRule.builder(RecommendationTag.ANIMATED)
+                .requiredGenre(GenreNames.ANIMATION)
+                .positiveGenre(GenreNames.ANIMATION, 42)
+                .positiveGenre(GenreNames.FAMILY, 8)
+                .positiveGenre(GenreNames.ADVENTURE, 6)
+                .positiveGenre(GenreNames.COMEDY, 4)
+                .positiveKeyword("anime", 20)
+                .positiveKeyword("animated film", 18)
+                .positiveKeyword("3d animation", 16)
+                .positiveKeyword("hand-drawn animation", 16)
+                .positiveKeyword("stop motion", 14)
+                .positiveKeyword("claymation", 14)
+                .positiveKeyword("cgi animation", 12)
+                .build();
+    }
+
+    private TagRule periodDrama() {
+        return TagRule.builder(RecommendationTag.PERIOD_DRAMA)
+                .requiredGenre(GenreNames.HISTORY)
+                .requiredGenre(GenreNames.PERIOD)
+                .positiveGenre(GenreNames.DRAMA, 20)
+                .positiveGenre(GenreNames.HISTORY, 26)
+                .positiveGenre(GenreNames.PERIOD, 24)
+                .positiveGenre(GenreNames.WAR, 8)
+                .positiveGenre(GenreNames.ROMANCE, 6)
+                .negativeGenre(GenreNames.SF, 14)
+                .negativeGenre(GenreNames.ANIMATION, 10)
+                .positiveKeyword("period piece", 22)
+                .positiveKeyword("period drama", 22)
+                .positiveKeyword("historical", 18)
+                .positiveKeyword("historical fiction", 14)
+                .positiveKeyword("19th century", 18)
+                .positiveKeyword("18th century", 18)
+                .positiveKeyword("middle ages", 20)
+                .positiveKeyword("medieval", 18)
+                .positiveKeyword("feudal", 18)
+                .positiveKeyword("ancient", 14)
+                .positiveKeyword("victorian era", 18)
+                .positiveKeyword("dynasty", 16)
+                .positiveKeyword("samurai", 16)
+                .positiveKeyword("court intrigue", 16)
+                .negativeKeyword("superhero", 16)
+                .negativeKeyword("zombie", 16)
+                .genreOnlyFallbackThreshold(40)
+                .build();
+    }
+
+    private TagRule sciFiTech() {
+        return TagRule.builder(RecommendationTag.SCI_FI_TECH)
+                .requiredGenre(GenreNames.SF)
+                .positiveGenre(GenreNames.SF, 30)
+                .positiveGenre(GenreNames.ACTION, 6)
+                .positiveGenre(GenreNames.THRILLER, 6)
+                .positiveGenre(GenreNames.ADVENTURE, 4)
+                .negativeGenre(GenreNames.HORROR, 10)
+                .negativeGenre(GenreNames.ANIMATION, 10)
+                .positiveKeyword("artificial intelligence", 22)
+                .positiveKeyword("ai", 18)
+                .positiveKeyword("robot", 18)
+                .positiveKeyword("cyberpunk", 22)
+                .positiveKeyword("dystopia", 18)
+                .positiveKeyword("dystopian", 18)
+                .positiveKeyword("space exploration", 20)
+                .positiveKeyword("space travel", 18)
+                .positiveKeyword("time travel", 14)
+                .positiveKeyword("virtual reality", 18)
+                .positiveKeyword("hacker", 16)
+                .positiveKeyword("genetic engineering", 16)
+                .positiveKeyword("clone", 12)
+                .positiveKeyword("surveillance", 14)
+                .negativeKeyword("zombie", 14)
+                .negativeKeyword("based on children's book", 16)
+                .genreOnlyFallbackThreshold(28)
+                .build();
+    }
+
+    private TagRule musicalFilm() {
+        return TagRule.builder(RecommendationTag.MUSICAL_FILM)
+                .requiredGenre(GenreNames.MUSIC)
+                .requiredGenre(GenreNames.MUSICAL)
+                .positiveGenre(GenreNames.MUSIC, 28)
+                .positiveGenre(GenreNames.MUSICAL, 26)
+                .positiveGenre(GenreNames.COMEDY, 8)
+                .positiveGenre(GenreNames.DRAMA, 6)
+                .positiveGenre(GenreNames.FAMILY, 4)
+                .hardExcludedGenre(GenreNames.HORROR)
+                .positiveKeyword("musical", 26)
+                .positiveKeyword("singing", 18)
+                .positiveKeyword("dance", 16)
+                .positiveKeyword("choreography", 16)
+                .positiveKeyword("song", 14)
+                .positiveKeyword("broadway", 18)
+                .positiveKeyword("jukebox musical", 18)
+                .positiveKeyword("music performance", 12)
+                .negativeKeyword("gore", 18)
+                .negativeKeyword("serial killer", 18)
+                .genreOnlyFallbackThreshold(42)
                 .build();
     }
 
@@ -823,6 +932,7 @@ public class DefaultRecommendationTagRules {
                 .negativeKeyword("cheerful", 16)
                 .negativeKeyword("lighthearted", 16)
                 .negativeKeyword("talking animal", 18)
+                .genreOnlyFallbackThreshold(42)
                 .build();
     }
 }

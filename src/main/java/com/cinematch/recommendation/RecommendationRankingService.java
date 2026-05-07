@@ -34,26 +34,30 @@ public class RecommendationRankingService {
     private final RecommendationFeaturePolicy recommendationFeaturePolicy;
     private final RecommendationMovieFilterService recommendationMovieFilterService;
     private final KobisBoxOfficeService kobisBoxOfficeService;
+    private final MovieCoOccurrenceService movieCoOccurrenceService;
 
     public RecommendationRankingService(
             JdbcTemplate jdbcTemplate,
             RecommendationRefreshStateService recommendationRefreshStateService,
             RecommendationFeaturePolicy recommendationFeaturePolicy,
             RecommendationMovieFilterService recommendationMovieFilterService,
-            KobisBoxOfficeService kobisBoxOfficeService
+            KobisBoxOfficeService kobisBoxOfficeService,
+            MovieCoOccurrenceService movieCoOccurrenceService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.recommendationRefreshStateService = recommendationRefreshStateService;
         this.recommendationFeaturePolicy = recommendationFeaturePolicy;
         this.recommendationMovieFilterService = recommendationMovieFilterService;
         this.kobisBoxOfficeService = kobisBoxOfficeService;
+        this.movieCoOccurrenceService = movieCoOccurrenceService;
     }
 
     public RankingRebuildResult rebuildRanking(Long userId, Integer limit) {
         initializeRecommendationResultTable();
 
         int normalizedLimit = normalizeLimit(limit);
-        PreferenceProfile profile = loadProfile(userId);
+        PreferenceProfile longTermProfile = loadProfile(userId);
+        PreferenceProfile profile = blendWithShortTerm(userId, longTermProfile);
 
         deleteExistingResults(userId);
 
@@ -64,20 +68,44 @@ public class RecommendationRankingService {
 
         Set<Long> excludedMovieIds = loadExcludedMovieIds(userId);
         List<CandidateMovie> candidateMovies = loadCandidateMovies(profile, excludedMovieIds);
-        if (candidateMovies.isEmpty()) {
-            recommendationRefreshStateService.markRefreshed(userId, RecommendationFeaturePolicy.ALGORITHM_VERSION);
-            return new RankingRebuildResult(userId, 0, 0, normalizedLimit, RecommendationFeaturePolicy.ALGORITHM_VERSION);
+
+        Set<Long> candidateMovieIds;
+        if (!candidateMovies.isEmpty()) {
+            candidateMovieIds = candidateMovies.stream()
+                    .map(CandidateMovie::movieId)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            Set<Long> recommendableCandidateMovieIds =
+                    recommendationMovieFilterService.filterRecommendableMovieIds(candidateMovieIds);
+            candidateMovies = candidateMovies.stream()
+                    .filter(movie -> recommendableCandidateMovieIds.contains(movie.movieId()))
+                    .toList();
         }
 
-        Set<Long> candidateMovieIds = candidateMovies.stream()
-                .map(CandidateMovie::movieId)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        // CF 후보 확장: 사용자 긍정 활동 영화와 co-occurrence가 높은 영화를 후보에 추가
+        Set<Long> interactedMovieIds = loadInteractedMovieIds(userId);
+        Map<Long, Double> cfScores = movieCoOccurrenceService.loadCFScores(
+                interactedMovieIds, excludedMovieIds, recommendationFeaturePolicy.cfTopN());
 
-        Set<Long> recommendableCandidateMovieIds =
-                recommendationMovieFilterService.filterRecommendableMovieIds(candidateMovieIds);
-        candidateMovies = candidateMovies.stream()
-                .filter(movie -> recommendableCandidateMovieIds.contains(movie.movieId()))
-                .toList();
+        if (!cfScores.isEmpty()) {
+            Set<Long> existingCandidateIds = candidateMovies.stream()
+                    .map(CandidateMovie::movieId)
+                    .collect(Collectors.toSet());
+            Set<Long> cfOnlyIds = cfScores.keySet().stream()
+                    .filter(id -> !existingCandidateIds.contains(id))
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            if (!cfOnlyIds.isEmpty()) {
+                Set<Long> eligibleCfOnlyIds = recommendationMovieFilterService.filterRecommendableMovieIds(cfOnlyIds);
+                Set<Long> filteredCfOnlyIds = cfOnlyIds.stream()
+                        .filter(eligibleCfOnlyIds::contains)
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
+                if (!filteredCfOnlyIds.isEmpty()) {
+                    List<CandidateMovie> mutableCandidates = new ArrayList<>(candidateMovies);
+                    mutableCandidates.addAll(loadMoviesByIds(filteredCfOnlyIds));
+                    candidateMovies = mutableCandidates;
+                }
+            }
+        }
+
         if (candidateMovies.isEmpty()) {
             recommendationRefreshStateService.markRefreshed(userId, RecommendationFeaturePolicy.ALGORITHM_VERSION);
             return new RankingRebuildResult(userId, 0, 0, normalizedLimit, RecommendationFeaturePolicy.ALGORITHM_VERSION);
@@ -207,10 +235,11 @@ public class RecommendationRankingService {
             double trendingBonus = recommendationFeaturePolicy.trendingBonusForRank(
                     boxOfficeRanksByMovieCode.get(movie.movieCode())
             );
+            double cfScore = cfScores.getOrDefault(movie.movieId(), 0.0);
 
             int matchedSignalCount = countMatchedSignals(tagScore, genreScore, peopleScore, keywordScore, providerScore);
             double matchCoverage = tagScore + genreScore + peopleScore + keywordScore + providerScore;
-            if (matchCoverage <= 0.0) {
+            if (matchCoverage <= 0.0 && cfScore <= 0.0) {
                 continue;
             }
 
@@ -222,6 +251,7 @@ public class RecommendationRankingService {
                             + (recommendationFeaturePolicy.rankingWeight("PROVIDER") * providerScore)
                             + (recommendationFeaturePolicy.rankingWeight("POPULARITY") * popularityScore)
                             + (recommendationFeaturePolicy.rankingWeight("FRESHNESS") * freshnessBonus)
+                            + (recommendationFeaturePolicy.rankingWeight("CF") * cfScore)
                             + recommendationFeaturePolicy.multiSignalBonus(matchedSignalCount)
                             + trendingBonus
                             - penaltyScore
@@ -328,6 +358,56 @@ public class RecommendationRankingService {
                 keywordScores,
                 providerScores
         );
+    }
+
+    private Set<Long> loadInteractedMovieIds(Long userId) {
+        Set<Long> ids = new LinkedHashSet<>();
+        jdbcTemplate.query("""
+                SELECT movie_id FROM (
+                    SELECT movie_id FROM user_movie_life WHERE user_id = ?
+                    UNION
+                    SELECT movie_id FROM user_movie_like WHERE user_id = ? AND liked = TRUE
+                    UNION
+                    SELECT movie_id FROM user_movie_watched
+                    WHERE user_id = ? AND COALESCE(rating, 0) >= 4
+                ) t
+                """, (org.springframework.jdbc.core.RowCallbackHandler) rs ->
+                ids.add(rs.getLong("movie_id")), userId, userId, userId);
+        return ids;
+    }
+
+    private List<CandidateMovie> loadMoviesByIds(Set<Long> movieIds) {
+        if (movieIds.isEmpty()) {
+            return List.of();
+        }
+        String sql = """
+                SELECT
+                    m.id,
+                    m.movie_cd,
+                    COALESCE(m.title, m.movie_name) AS display_title,
+                    COALESCE(m.release_date, m.movie_info_open_date, m.box_office_open_date) AS release_date,
+                    m.production_year,
+                    m.popularity,
+                    m.vote_average,
+                    m.vote_count,
+                    m.ranking
+                FROM movie m
+                WHERE m.id IN (%s)
+                  AND (m.popularity IS NULL OR m.popularity >= ?)
+                """.formatted(placeholders(movieIds.size()));
+        List<Object> params = new ArrayList<>(movieIds);
+        params.add(recommendationFeaturePolicy.minRecommendationPopularity());
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new CandidateMovie(
+                rs.getLong("id"),
+                rs.getString("movie_cd"),
+                rs.getString("display_title"),
+                rs.getObject("release_date", LocalDate.class),
+                rs.getObject("production_year", Integer.class),
+                rs.getObject("popularity", Double.class),
+                rs.getObject("vote_average", Double.class),
+                rs.getObject("vote_count", Integer.class),
+                rs.getObject("ranking", Integer.class)
+        ), params.toArray());
     }
 
     private Set<Long> loadExcludedMovieIds(Long userId) {
@@ -477,6 +557,9 @@ public class RecommendationRankingService {
             sql.append(" AND m.id NOT IN (").append(placeholders(excludedMovieIds.size())).append(")");
             params.addAll(excludedMovieIds);
         }
+
+        sql.append(" AND (m.popularity IS NULL OR m.popularity >= ?)");
+        params.add(recommendationFeaturePolicy.minRecommendationPopularity());
 
         sql.append(" AND (").append(String.join(" OR ", matchConditions)).append(")");
         params.addAll(matchParams);
@@ -697,7 +780,20 @@ public class RecommendationRankingService {
 
         int releaseYear = releaseDate != null ? releaseDate.getYear() : productionYear;
         long yearsOld = Math.max(0, ChronoUnit.YEARS.between(LocalDate.of(releaseYear, 1, 1), LocalDate.now()));
-        return roundScore(Math.max(0.0, 1.0 - (yearsOld / 20.0)));
+
+        double bonus;
+        if (yearsOld <= 2) {
+            bonus = 0.55;
+        } else if (yearsOld <= 5) {
+            bonus = 0.40;
+        } else if (yearsOld <= 10) {
+            bonus = 0.50;
+        } else if (yearsOld <= 20) {
+            bonus = 0.20;
+        } else {
+            bonus = 0.05;
+        }
+        return roundScore(bonus);
     }
 
     private List<ScoredRecommendation> applyDiversityReRank(List<ScoredRecommendation> rankedRecommendations, int limit) {
@@ -876,6 +972,109 @@ public class RecommendationRankingService {
         return java.util.stream.IntStream.range(0, count)
                 .mapToObj(index -> "?")
                 .collect(Collectors.joining(", "));
+    }
+
+    private PreferenceProfile blendWithShortTerm(Long userId, PreferenceProfile longTerm) {
+        if (longTerm.isEmpty()) return longTerm;
+        Map<String, Map<String, Double>> st = buildShortTermRawScores(userId);
+        if (st.isEmpty()) return longTerm;
+
+        double stWeight = recommendationFeaturePolicy.shortTermBlendWeight();
+        double ltWeight = 1.0 - stWeight;
+        return new PreferenceProfile(
+                blendScoreMap(longTerm.tagScores(), st.getOrDefault("TAG", Map.of()), ltWeight, stWeight),
+                longTerm.cautionScores(),
+                blendScoreMap(longTerm.genreScores(), st.getOrDefault("GENRE", Map.of()), ltWeight, stWeight),
+                longTerm.directorScores(),
+                longTerm.actorScores(),
+                blendScoreMap(longTerm.keywordScores(), st.getOrDefault("KEYWORD", Map.of()), ltWeight, stWeight),
+                longTerm.providerScores()
+        );
+    }
+
+    private Map<String, Map<String, Double>> buildShortTermRawScores(Long userId) {
+        List<Long> recentIds = jdbcTemplate.queryForList("""
+                SELECT movie_id FROM (
+                    SELECT movie_id, created_at FROM user_movie_life WHERE user_id = ?
+                    UNION ALL
+                    SELECT movie_id, created_at FROM user_movie_like WHERE user_id = ? AND liked = TRUE
+                    UNION ALL
+                    SELECT movie_id, created_at FROM user_movie_store WHERE user_id = ?
+                    UNION ALL
+                    SELECT movie_id, created_at FROM user_movie_watched
+                    WHERE user_id = ? AND COALESCE(status, 'WATCHED') = 'WATCHED'
+                    AND COALESCE(rating, 4) >= 3
+                ) recent
+                ORDER BY created_at DESC
+                LIMIT ?
+                """, Long.class, userId, userId, userId, userId,
+                recommendationFeaturePolicy.shortTermActivityLimit());
+
+        if (recentIds.isEmpty()) return Map.of();
+        Set<Long> idSet = new LinkedHashSet<>(recentIds);
+
+        Map<Long, Set<String>> tags = loadNamedFeatureSetMap(idSet, """
+                SELECT mt.movie_id, t.tag_name AS feature_name
+                FROM movie_tag mt JOIN tag t ON t.id = mt.tag_id
+                WHERE mt.movie_id IN (%s) AND t.tag_type <> 'CAUTION'
+                """);
+        Map<Long, Set<String>> genres = loadNamedFeatureSetMap(idSet, """
+                SELECT mg.movie_id, g.name AS feature_name
+                FROM movie_genre mg JOIN genre g ON g.id = mg.genre_id
+                WHERE mg.movie_id IN (%s)
+                """);
+        Map<Long, Set<String>> keywords = loadNamedFeatureSetMap(idSet, """
+                SELECT mk.movie_id, k.name AS feature_name
+                FROM movie_keyword mk JOIN keyword k ON k.id = mk.keyword_id
+                WHERE mk.movie_id IN (%s) AND mk.display_order <= %d
+                AND LOWER(k.name) NOT IN (%s)
+                """.formatted("%s",
+                recommendationFeaturePolicy.keywordLimit(),
+                recommendationFeaturePolicy.keywordBlacklistSqlLiteralList()));
+
+        Map<String, Map<String, Double>> result = new LinkedHashMap<>();
+        result.put("TAG", flattenToScores(tags));
+        result.put("GENRE", flattenToScores(genres));
+        result.put("KEYWORD", flattenToScores(keywords));
+        return result;
+    }
+
+    private Map<String, Double> flattenToScores(Map<Long, Set<String>> featuresByMovie) {
+        Map<String, Double> scores = new LinkedHashMap<>();
+        for (Set<String> features : featuresByMovie.values()) {
+            for (String feature : features) {
+                scores.merge(feature, 1.0, Double::sum);
+            }
+        }
+        return scores;
+    }
+
+    private Map<String, Double> blendScoreMap(
+            Map<String, Double> longTerm,
+            Map<String, Double> shortTerm,
+            double ltWeight,
+            double stWeight
+    ) {
+        if (shortTerm.isEmpty()) return longTerm;
+
+        double ltMax = longTerm.values().stream()
+                .filter(v -> v > 0).mapToDouble(Double::doubleValue).max().orElse(1.0);
+        double stMax = shortTerm.values().stream()
+                .filter(v -> v > 0).mapToDouble(Double::doubleValue).max().orElse(1.0);
+
+        Set<String> allKeys = new LinkedHashSet<>(longTerm.keySet());
+        allKeys.addAll(shortTerm.keySet());
+
+        Map<String, Double> blended = new LinkedHashMap<>();
+        for (String key : allKeys) {
+            double lt = longTerm.getOrDefault(key, 0.0);
+            double st = shortTerm.getOrDefault(key, 0.0);
+            double ltNorm = lt > 0 ? lt / ltMax : lt;
+            double stNorm = st > 0 ? st / stMax : 0.0;
+            double combined = ltWeight * ltNorm + stWeight * stNorm;
+            if (combined != 0.0) blended.put(key, combined);
+        }
+        return blended;
     }
 
     private double roundScore(double value) {
