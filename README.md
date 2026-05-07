@@ -1,3 +1,122 @@
+## 05-07 구현사항
+
+### 추천 알고리즘 v4.0 업그레이드
+
+#### v3.5 — 시간 감쇠 (Temporal Decay)
+
+모든 사용자 활동 신호에 시간 감쇠를 적용해, 최근 활동이 오래된 활동보다 추천에 더 강하게 반영됩니다.
+
+- 인생영화·좋아요·봤어요·나중에볼게요 전 신호에 `created_at` 기반 감쇠 적용
+- 감쇠 공식: `e^(-λ × 경과일수)`, λ = 0.005
+  - 3개월 전 활동 → 약 0.64배 반영
+  - 1년 전 활동 → 약 0.16배 반영
+- SQL 쿼리에 `created_at` 컬럼을 추가해 활동 시점을 서비스 레이어에서 처리
+
+**변경 파일:**
+- `UserPreferenceProfileService.java` — `mergeDecayedSignal()`, `temporalDecayFactor()` 추가
+- `RecommendationFeaturePolicy.java` — `TEMPORAL_DECAY_LAMBDA = 0.005` 추가
+
+---
+
+#### v3.5 — 단기 취향 레이어 (Short-term Interest Layer)
+
+최근 15개 활동으로 단기 프로필을 별도 생성한 뒤 장기 프로필과 블렌딩해, 최근 관심사 변화를 빠르게 추천에 반영합니다.
+
+- `blendWithShortTerm()`: 장기 프로필 35% + 단기 프로필 65% 가중 합산
+- 단기 프로필 대상: 최근 활동 15건의 TAG·GENRE·KEYWORD (별점 3점 이상 봤어요 포함)
+- 감독·배우·OTT는 단기 레이어 미적용 (신호 노이즈 방지)
+
+**변경 파일:**
+- `RecommendationRankingService.java` — `blendWithShortTerm()`, `buildShortTermRawScores()` 추가
+- `RecommendationFeaturePolicy.java` — `SHORT_TERM_ACTIVITY_LIMIT = 15`, `SHORT_TERM_BLEND_WEIGHT = 0.65` 추가
+
+---
+
+#### v3.5 — 탐험 블록 (Serendipity Block)
+
+유튜브·스포티파이처럼 취향 경계 밖 콘텐츠를 1개 블록으로 추가해 우연한 발견을 유도합니다.
+
+- 기존 TAG/GENRE 블록에서 선택되지 않은 차상위 피처 1개를 탐험 블록으로 노출
+- key 형식: `SERENDIPITY:TAG:{name}` / `SERENDIPITY:GENRE:{name}`
+- 제목 형식: `"{tagTitle}도 어떠세요?"` / `"{genre} 장르도 어떠세요?"`
+- 부제: `"취향 경계에서 발견한 새로운 추천"`
+- 최소 영화 수(`blockMinimumSize`) 미달 시 블록 생성 생략
+
+**변경 파일:**
+- `RecommendationBlockService.java` — `buildSerendipityBlock()` 추가
+
+---
+
+#### Phase 3 — 아이템 기반 협업 필터링 (CF) 추가
+
+- `movie_co_occurrence` 테이블을 신규 생성하여 사용자들의 긍정 활동(인생영화·좋아요·별점 4점 이상)에서 함께 등장하는 영화 쌍을 집계합니다.
+- 추천 랭킹 생성 시 사용자가 반응한 영화들의 co-occurrence 점수를 조회해 콘텐츠 기반 매칭 점수와 합산합니다.
+- 콘텐츠 매칭이 없어도 CF 점수가 있으면 추천 후보로 편입되어, 취향 다양성이 확장됩니다.
+- Admin API: `POST /admin/pipeline/recommendation/co-occurrence`
+
+**변경 파일:**
+- `schema.sql` — `movie_co_occurrence` 테이블 + 인덱스 추가
+- `MovieCoOccurrenceService.java` — 신규 생성 (co-occurrence 빌드 + CF 점수 조회)
+- `RecommendationRankingService.java` — CF 후보 확장, CF 점수 랭킹 반영
+- `RecommendationFeaturePolicy.java` — `CF` 가중치(0.06), `cfTopN()` 추가
+- `MovieDataBatchService.java`, `AdminBatchController.java` — Admin 엔드포인트 추가
+
+#### Phase A — 무명 영화 후보 제외
+
+- TMDB `popularity < 2.0`인 영화를 추천 후보에서 제외합니다.
+- KOBIS 전용 영화(popularity 없음)는 그대로 유지합니다.
+- 전체 798편 중 약 241편(30%)이 필터링 대상이며, 인지도 있는 영화 위주로 추천됩니다.
+
+**변경 파일:**
+- `RecommendationRankingService.java` — `loadCandidateMovies()`, `loadMoviesByIds()`에 popularity 필터 추가
+- `RecommendationFeaturePolicy.java` — `MIN_RECOMMENDATION_POPULARITY = 2.0` 추가
+
+#### Phase B — 태그 4개 신규 추가 및 threshold 조정
+
+새 태그:
+
+| 태그 | 타입 | 설명 |
+|------|------|------|
+| `animated` | CONTEXT | 애니메이션 영화 (3D·2D·스톱모션 등) |
+| `period_drama` | THEME | 시대극 (중세·왕조·사무라이 등 역사 배경) |
+| `sci_fi_tech` | THEME | SF·기술 (AI·사이버펑크·우주탐사·타임트래블 등) |
+| `musical_film` | MOOD | 뮤지컬 영화 (노래·춤·브로드웨이 스타일) |
+
+threshold 조정:
+- `CREEPY`: 60 → 55 (공포 분위기 태그 감도 상향)
+- `ZOMBIE`: 60 → 56 (좀비 태그 감도 상향)
+
+**변경 파일:**
+- `RecommendationTag.java` — 태그 4개 추가, threshold 조정
+- `DefaultRecommendationTagRules.java` — 4개 태그 규칙 추가
+- `RecommendationFeaturePolicy.java` — TAG_LABELS, `tagBlockTitle()` 4개 추가
+
+#### Phase C — 추천 블록 시스템 개선
+
+- **TAG 블록**: 최대 2개 → 3개로 확장 (태그 기반 추천 카테고리 더 다양하게 노출)
+- **ACTOR 블록**: 배우 신호 최소 가중치 7.0 → 5.5 완화 (배우 팬 유저의 배우 블록 생성 가능성 향상)
+- **개인화 블록 fallback**: 다양성 제약(태그 캡·이유 패턴 캡 등) 소진 시 break 대신 상위 랭킹 순으로 남은 자리를 채워 항상 최대 10편을 보장
+
+**변경 파일:**
+- `RecommendationBlockService.java` — TAG maxBlocks 수정, `selectPersonalizedCandidates()` fallback 추가
+- `RecommendationFeaturePolicy.java` — `ACTOR_BLOCK_MIN_SIGNAL_WEIGHT` 조정
+
+#### 신작 보정 완화
+
+연도별 freshness bonus를 과도한 신작 편향을 줄이는 방향으로 조정했습니다.
+
+| 출시 연도 | 변경 전 | 변경 후 |
+|-----------|---------|---------|
+| 2년 이내  | 1.00    | 0.55    |
+| 5년 이내  | 0.75    | 0.40    |
+| 10년 이내 | 0.50    | 0.50 (유지) |
+
+#### 알고리즘 버전
+
+`content-ranking-v3.5` → `content-ranking-v4.0`
+
+---
+
 ## 05-05 구현사항
 
 ### 마이페이지 UI 전면 개편
