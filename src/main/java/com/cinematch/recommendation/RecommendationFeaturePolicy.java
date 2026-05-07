@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class RecommendationFeaturePolicy {
 
-    public static final String ALGORITHM_VERSION = "content-ranking-v3.3";
+    public static final String ALGORITHM_VERSION = "content-ranking-v4.0";
 
     private static final int ACTOR_LIMIT = 3;
     private static final int KEYWORD_LIMIT = 8;
@@ -23,7 +23,7 @@ public class RecommendationFeaturePolicy {
     private static final int DIRECTOR_BLOCK_MIN_SOURCE_MOVIES = 2;
     private static final int ACTOR_BLOCK_MIN_SOURCE_MOVIES = 3;
     private static final double DIRECTOR_BLOCK_MIN_SIGNAL_WEIGHT = 4.5;
-    private static final double ACTOR_BLOCK_MIN_SIGNAL_WEIGHT = 7.0;
+    private static final double ACTOR_BLOCK_MIN_SIGNAL_WEIGHT = 5.5;
 
     private static final int GENRE_DOMINANCE_UNLOCK_MIN_COUNT = 4;
     private static final double GENRE_DOMINANCE_UNLOCK_MIN_WEIGHT = 8.5;
@@ -34,7 +34,10 @@ public class RecommendationFeaturePolicy {
     private static final double ANIMATION_EXTRA_MULTIPLIER_PRE_UNLOCK = 0.70;
     private static final double ANIMATION_EXTRA_MULTIPLIER_POST_UNLOCK = 0.90;
 
-    private static final int PERSONALIZED_POOL_SIZE = 60;
+    private static final int PERSONALIZED_POOL_SIZE = 100;
+    private static final double TEMPORAL_DECAY_LAMBDA = 0.005;
+    private static final int SHORT_TERM_ACTIVITY_LIMIT = 15;
+    private static final double SHORT_TERM_BLEND_WEIGHT = 0.65;
     private static final int THEMATIC_OVERLAP_CAP = 2;
     private static final int PERSONALIZED_GENRE_CAP = 3;
     private static final int PERSONALIZED_TAG_CAP = 2;
@@ -90,7 +93,8 @@ public class RecommendationFeaturePolicy {
             "모험", 0.65,
             "드라마", 0.75,
             "액션", 0.82,
-            "코미디", 0.85
+            "코미디", 0.85,
+            "역사", 0.90
     );
 
     private static final Map<String, Integer> PROFILE_FEATURE_LIMITS = Map.of(
@@ -113,6 +117,9 @@ public class RecommendationFeaturePolicy {
             "PROVIDER", 0.08
     );
 
+    private static final int CF_TOP_N = 50;
+    private static final double MIN_RECOMMENDATION_POPULARITY = 2.0;
+
     private static final Map<String, Double> RANKING_WEIGHTS = Map.of(
             "TAG", 0.34,
             "GENRE", 0.18,
@@ -120,7 +127,8 @@ public class RecommendationFeaturePolicy {
             "PEOPLE", 0.16,
             "PROVIDER", 0.02,
             "POPULARITY", 0.10,
-            "FRESHNESS", 0.04
+            "FRESHNESS", 0.04,
+            "CF", 0.06
     );
 
     private static final Map<String, Integer> IDEAL_MATCH_COUNTS = Map.of(
@@ -194,7 +202,11 @@ public class RecommendationFeaturePolicy {
             Map.entry("coming_of_age", "성장"),
             Map.entry("friendship", "우정"),
             Map.entry("survival", "생존"),
-            Map.entry("revenge", "복수")
+            Map.entry("revenge", "복수"),
+            Map.entry("animated", "애니메이션"),
+            Map.entry("period_drama", "시대극"),
+            Map.entry("sci_fi_tech", "SF·기술"),
+            Map.entry("musical_film", "뮤지컬")
     );
 
     public int actorLimit() {
@@ -371,6 +383,18 @@ public class RecommendationFeaturePolicy {
         return PERSONALIZED_POOL_SIZE;
     }
 
+    public double temporalDecayLambda() {
+        return TEMPORAL_DECAY_LAMBDA;
+    }
+
+    public int shortTermActivityLimit() {
+        return SHORT_TERM_ACTIVITY_LIMIT;
+    }
+
+    public double shortTermBlendWeight() {
+        return SHORT_TERM_BLEND_WEIGHT;
+    }
+
     public int thematicOverlapCap() {
         return THEMATIC_OVERLAP_CAP;
     }
@@ -421,6 +445,14 @@ public class RecommendationFeaturePolicy {
 
     public double trendingBonusMin() {
         return TRENDING_BONUS_MIN;
+    }
+
+    public int cfTopN() {
+        return CF_TOP_N;
+    }
+
+    public double minRecommendationPopularity() {
+        return MIN_RECOMMENDATION_POPULARITY;
     }
 
     public double trendingBonusForRank(Integer rankNo) {
@@ -571,6 +603,10 @@ public class RecommendationFeaturePolicy {
             case "investigation" -> "수사물 영화 추천";
             case "coming_of_age" -> "성장 영화 추천";
             case "true_story" -> "실화 기반 영화 추천";
+            case "animated" -> "애니메이션 영화 추천";
+            case "period_drama" -> "시대극 영화 추천";
+            case "sci_fi_tech" -> "SF · 기술 영화 추천";
+            case "musical_film" -> "뮤지컬 영화 추천";
             default -> tagDisplayName(tagCode) + " 영화 추천";
         };
     }

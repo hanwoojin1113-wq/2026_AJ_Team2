@@ -15,7 +15,7 @@ public enum RecommendationTag {
     HOPEFUL("hopeful", RecommendationTagType.MOOD, 52),
     HEALING("healing", RecommendationTagType.MOOD, 52),
     SPECTACLE("spectacle", RecommendationTagType.MOOD, 55),
-    CREEPY("creepy", RecommendationTagType.MOOD, 60),
+    CREEPY("creepy", RecommendationTagType.MOOD, 55),
 
     WITH_FAMILY("with_family", RecommendationTagType.CONTEXT, 52),
     WITH_PARTNER("with_partner", RecommendationTagType.CONTEXT, 53),
@@ -28,13 +28,18 @@ public enum RecommendationTag {
 
     INVESTIGATION("investigation", RecommendationTagType.THEME, 53),
     MYSTERY("mystery", RecommendationTagType.THEME, 52),
-    ZOMBIE("zombie", RecommendationTagType.THEME, 60),
+    ZOMBIE("zombie", RecommendationTagType.THEME, 56),
     DISASTER("disaster", RecommendationTagType.THEME, 52),
     TRUE_STORY("true_story", RecommendationTagType.THEME, 55),
     COMING_OF_AGE("coming_of_age", RecommendationTagType.THEME, 50),
     FRIENDSHIP("friendship", RecommendationTagType.THEME, 52),
     SURVIVAL("survival", RecommendationTagType.THEME, 52),
-    REVENGE("revenge", RecommendationTagType.THEME, 52);
+    REVENGE("revenge", RecommendationTagType.THEME, 52),
+
+    ANIMATED("animated", RecommendationTagType.CONTEXT, 54),
+    PERIOD_DRAMA("period_drama", RecommendationTagType.THEME, 52),
+    SCI_FI_TECH("sci_fi_tech", RecommendationTagType.THEME, 53),
+    MUSICAL_FILM("musical_film", RecommendationTagType.MOOD, 52);
 
     private final String code;
     private final RecommendationTagType type;

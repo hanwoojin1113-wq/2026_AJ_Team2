@@ -7,6 +7,7 @@ import java.util.List;
 
 import com.cinematch.kobis.KobisMovieImportService;
 import com.cinematch.kobis.KobisMovieNormalizeService;
+import com.cinematch.recommendation.MovieCoOccurrenceService;
 import com.cinematch.recommendation.RecommendationBlockService;
 import com.cinematch.recommendation.RecommendationMaintenanceService;
 import com.cinematch.recommendation.RecommendationRankingService;
@@ -37,6 +38,7 @@ public class MovieDataBatchService {
     private final RecommendationMaintenanceService recommendationMaintenanceService;
     private final RecommendationBlockService recommendationBlockService;
     private final RecommendationValidationService recommendationValidationService;
+    private final MovieCoOccurrenceService movieCoOccurrenceService;
     private final DummyUserSeedService dummyUserSeedService;
     private final DummyUserActivitySeedService dummyUserActivitySeedService;
 
@@ -53,6 +55,7 @@ public class MovieDataBatchService {
             RecommendationMaintenanceService recommendationMaintenanceService,
             RecommendationBlockService recommendationBlockService,
             RecommendationValidationService recommendationValidationService,
+            MovieCoOccurrenceService movieCoOccurrenceService,
             DummyUserSeedService dummyUserSeedService,
             DummyUserActivitySeedService dummyUserActivitySeedService
     ) {
@@ -68,6 +71,7 @@ public class MovieDataBatchService {
         this.recommendationMaintenanceService = recommendationMaintenanceService;
         this.recommendationBlockService = recommendationBlockService;
         this.recommendationValidationService = recommendationValidationService;
+        this.movieCoOccurrenceService = movieCoOccurrenceService;
         this.dummyUserSeedService = dummyUserSeedService;
         this.dummyUserActivitySeedService = dummyUserActivitySeedService;
     }
@@ -102,6 +106,10 @@ public class MovieDataBatchService {
 
     public JobRunResponse runTagRebuild() {
         return executeJob("TAG_REBUILD", null, movieTagService::rebuildTags);
+    }
+
+    public JobRunResponse runCoOccurrenceRebuild() {
+        return executeJob("CO_OCCURRENCE_REBUILD", null, movieCoOccurrenceService::rebuildCoOccurrence);
     }
 
     public JobRunResponse runPreferenceProfileRebuild(Long userId) {

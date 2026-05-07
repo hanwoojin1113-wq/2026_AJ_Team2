@@ -15,7 +15,9 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class TmdbMovieImportService {
@@ -23,6 +25,9 @@ public class TmdbMovieImportService {
     private static final int TARGET_MOVIE_COUNT = 300;
     private static final int MOVIES_PER_PAGE = 20;
     private static final int MAX_EXISTING_IMPORT_LIMIT = 1000;
+    private static final int MIN_MATCH_SCORE = 80;
+    private static final int NEAR_MISS_MIN_SCORE = 60;
+    private static final int MAX_SHORTLIST_SIZE = 3;
 
     private final RestTemplate tmdbRestTemplate;
     private final ObjectMapper objectMapper;
@@ -219,18 +224,103 @@ public class TmdbMovieImportService {
     }
 
     private JsonNode findBestSearchMatch(ExistingMovieCandidate candidate) {
-        List<JsonNode> results = searchMovieResults(candidate.displayTitle());
-        JsonNode bestMatch = chooseBestMatch(candidate, results);
-        if (bestMatch != null) {
-            return bestMatch;
+        List<JsonNode> displayResults = searchMovieResults(candidate.displayTitle());
+        JsonNode fastMatch = chooseBestMatch(candidate, displayResults);
+        if (fastMatch != null) {
+            return fastMatch;
         }
 
+        List<JsonNode> originalResults = List.of();
         if (candidate.originalTitle() != null && !candidate.originalTitle().isBlank()
                 && !candidate.originalTitle().equals(candidate.displayTitle())) {
-            return chooseBestMatch(candidate, searchMovieResults(candidate.originalTitle()));
+            originalResults = searchMovieResults(candidate.originalTitle());
+            fastMatch = chooseBestMatch(candidate, originalResults);
+            if (fastMatch != null) {
+                return fastMatch;
+            }
         }
 
-        return null;
+        // Near-miss path: search 결과의 제목이 어긋나는 경우(한글↔영문 차이 등)를
+        // TMDB detail의 alternative_titles(KR) / translations(ko)로 재검증한다.
+        List<JsonNode> allResults = new ArrayList<>(displayResults);
+        allResults.addAll(originalResults);
+        return findBestMatchWithAlternativeTitles(candidate, allResults);
+    }
+
+    private JsonNode findBestMatchWithAlternativeTitles(ExistingMovieCandidate candidate, List<JsonNode> results) {
+        List<ScoredResult> shortlist = new ArrayList<>();
+        for (JsonNode result : results) {
+            int baseScore = scoreSearchResult(candidate, result);
+            if (baseScore >= NEAR_MISS_MIN_SCORE) {
+                shortlist.add(new ScoredResult(result, baseScore));
+            }
+        }
+        shortlist.sort((a, b) -> b.score() - a.score());
+        if (shortlist.size() > MAX_SHORTLIST_SIZE) {
+            shortlist = shortlist.subList(0, MAX_SHORTLIST_SIZE);
+        }
+        if (shortlist.isEmpty()) {
+            return null;
+        }
+
+        JsonNode bestMatch = null;
+        int bestScore = MIN_MATCH_SCORE - 1;
+        Set<Long> checkedIds = new HashSet<>();
+
+        for (ScoredResult sr : shortlist) {
+            Long tmdbId = longValue(sr.node(), "id");
+            if (tmdbId == null || !checkedIds.add(tmdbId)) {
+                continue;
+            }
+            JsonNode detail = readTree(tmdbRestTemplate.getForObject(buildMovieDetailUri(tmdbId), String.class));
+            if (detail == null) {
+                continue;
+            }
+            int totalScore = sr.score() + scoreAlternativeTitles(candidate, detail);
+            if (totalScore > bestScore) {
+                bestScore = totalScore;
+                bestMatch = sr.node();
+            }
+        }
+
+        return bestScore >= MIN_MATCH_SCORE ? bestMatch : null;
+    }
+
+    private int scoreAlternativeTitles(ExistingMovieCandidate candidate, JsonNode detail) {
+        String displayTitle = normalizeTitle(candidate.displayTitle());
+        if (displayTitle == null) {
+            return 0;
+        }
+
+        JsonNode altTitles = detail.path("alternative_titles").path("titles");
+        if (altTitles.isArray()) {
+            for (JsonNode entry : altTitles) {
+                if (!"KR".equals(textValue(entry, "iso_3166_1"))) {
+                    continue;
+                }
+                if (displayTitle.equals(normalizeTitle(textValue(entry, "title")))) {
+                    return 45;
+                }
+            }
+        }
+
+        JsonNode translations = detail.path("translations").path("translations");
+        if (translations.isArray()) {
+            for (JsonNode entry : translations) {
+                if (!"ko".equals(textValue(entry, "iso_639_1"))) {
+                    continue;
+                }
+                JsonNode dataNode = entry.get("data");
+                if (dataNode == null || dataNode.isNull()) {
+                    continue;
+                }
+                if (displayTitle.equals(normalizeTitle(textValue(dataNode, "title")))) {
+                    return 40;
+                }
+            }
+        }
+
+        return 0;
     }
 
     private List<JsonNode> searchMovieResults(String query) {
@@ -262,7 +352,7 @@ public class TmdbMovieImportService {
             }
         }
 
-        return bestScore >= 80 ? bestMatch : null;
+        return bestScore >= MIN_MATCH_SCORE ? bestMatch : null;
     }
 
     private int scoreSearchResult(ExistingMovieCandidate candidate, JsonNode result) {
@@ -395,5 +485,8 @@ public class TmdbMovieImportService {
             String originalTitle,
             LocalDate releaseDate
     ) {
+    }
+
+    private record ScoredResult(JsonNode node, int score) {
     }
 }

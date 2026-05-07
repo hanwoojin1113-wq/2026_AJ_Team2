@@ -2,7 +2,9 @@ package com.cinematch.recommendation;
 
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -225,29 +227,30 @@ public class UserPreferenceProfileService {
 
         initializeWatchedSignalTable();
 
-        mergeFixedSignal(signalWeightsByMovie, userId, """
-                SELECT movie_id
+        mergeDecayedSignal(signalWeightsByMovie, userId, """
+                SELECT movie_id, created_at
                 FROM user_movie_life
                 WHERE user_id = ?
                 """, recommendationFeaturePolicy.lifeSignalWeight());
 
-        mergeFixedSignal(signalWeightsByMovie, userId, """
-                SELECT movie_id
+        mergeDecayedSignal(signalWeightsByMovie, userId, """
+                SELECT movie_id, created_at
                 FROM user_movie_like
                 WHERE user_id = ?
                   AND liked = TRUE
                 """, recommendationFeaturePolicy.likeSignalWeight());
 
         jdbcTemplate.query("""
-                SELECT movie_id, rating
+                SELECT movie_id, rating, created_at
                 FROM user_movie_watched
                 WHERE user_id = ?
                   AND COALESCE(status, 'WATCHED') = 'WATCHED'
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
             long movieId = rs.getLong("movie_id");
+            double decay = temporalDecayFactor(rs.getTimestamp("created_at"));
             double watchedSignal = recommendationFeaturePolicy.watchedSignalWeight(
                     rs.getObject("rating", Integer.class)
-            );
+            ) * decay;
             signalWeightsByMovie.compute(
                     movieId,
                     (ignored, current) -> {
@@ -257,8 +260,8 @@ public class UserPreferenceProfileService {
             );
         }, userId);
 
-        mergeFixedSignal(signalWeightsByMovie, userId, """
-                SELECT movie_id
+        mergeDecayedSignal(signalWeightsByMovie, userId, """
+                SELECT movie_id, created_at
                 FROM user_movie_store
                 WHERE user_id = ?
                 """, recommendationFeaturePolicy.storeSignalWeight());
@@ -267,21 +270,29 @@ public class UserPreferenceProfileService {
         return signalWeightsByMovie;
     }
 
-    private void mergeFixedSignal(
+    private void mergeDecayedSignal(
             Map<Long, MovieSignalWeights> signalWeightsByMovie,
             Long userId,
             String sql,
             double weight
     ) {
         jdbcTemplate.query(sql, (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
+            double decay = temporalDecayFactor(rs.getTimestamp("created_at"));
             signalWeightsByMovie.compute(
                     rs.getLong("movie_id"),
                     (ignored, current) -> {
                         MovieSignalWeights base = current == null ? MovieSignalWeights.empty() : current;
-                        return base.addPositive(weight);
+                        return base.addPositive(weight * decay);
                     }
             );
         }, userId);
+    }
+
+    private double temporalDecayFactor(Timestamp createdAt) {
+        if (createdAt == null) return 1.0;
+        long daysAgo = Math.max(0, ChronoUnit.DAYS.between(
+                createdAt.toLocalDateTime().toLocalDate(), LocalDate.now()));
+        return Math.exp(-recommendationFeaturePolicy.temporalDecayLambda() * daysAgo);
     }
 
     private synchronized void initializeWatchedSignalTable() {

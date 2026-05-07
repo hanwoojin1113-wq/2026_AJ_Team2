@@ -18,9 +18,9 @@ import java.util.stream.Collectors;
 @Service
 public class CollaborativeLifeMovieRecommendationService {
 
-    private static final double SIMILARITY_THRESHOLD = 0.55;
+    private static final double SIMILARITY_THRESHOLD = 0.45;
     private static final int MAX_SIMILAR_USERS = 5;
-    private static final int MIN_CANDIDATE_COUNT = 3;
+    private static final int MIN_CANDIDATE_COUNT = 2;
     private static final int MAX_RESULT_COUNT = 10;
 
     private static final String BLOCK_KEY = "COLLABORATIVE_LIFE";
