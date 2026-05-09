@@ -613,10 +613,10 @@ function setView(mode) {
     let timer = null;
     const actionState = {};
     const ICONS = {
-        like:       '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
-        dislike:    '<svg viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/></svg>',
-        later:      '<svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
-        collection: '<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
+        like:       '<svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg>',
+        dislike:    '<svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg>',
+        later:      '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg>',
+        collection: '<svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg>'
     };
     const TITLES = { like:'좋아요', dislike:'별로에요', later:'나중에 볼게요', collection:'컬렉션에 추가' };
     function rankColor(r) { return r==1?'#fbbf24':r==2?'#cbd5e1':r==3?'#d97706':'white'; }

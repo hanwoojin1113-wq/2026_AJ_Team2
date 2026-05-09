@@ -407,6 +407,37 @@
             color: #082f49;
         }
 
+        .similarity-widget {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sim-donut-wrap {
+            position: relative;
+        }
+
+        .sim-donut-svg {
+            width: 96px;
+            height: 96px;
+        }
+
+        .sim-label {
+            font-size: 0.73rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.70);
+            letter-spacing: 0.04em;
+            text-align: center;
+        }
+
+        .sim-no-data {
+            font-size: 0.73rem;
+            color: rgba(255, 255, 255, 0.40);
+            text-align: center;
+            padding: 8px 0;
+        }
+
         @media (max-width: 900px) {
             .hero-top {
                 flex-direction: column;
@@ -487,17 +518,27 @@
                 </div>
             </div>
 
-            <div class="hero-actions">
-                <form th:if="${!targetUser.self and !targetUser.followedByCurrentUser}" th:action="@{/people/follow}" method="post">
-                    <input type="hidden" name="loginId" th:value="${targetUser.loginId}">
-                    <input type="hidden" name="redirectTo" th:value="${profileRedirectPath}">
-                    <button class="action-btn primary" type="submit">팔로우</button>
-                </form>
-                <form th:if="${!targetUser.self and targetUser.followedByCurrentUser}" th:action="@{/people/unfollow}" method="post">
-                    <input type="hidden" name="loginId" th:value="${targetUser.loginId}">
-                    <input type="hidden" name="redirectTo" th:value="${profileRedirectPath}">
-                    <button class="action-btn" type="submit">팔로잉</button>
-                </form>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px;">
+                <div class="hero-actions">
+                    <form th:if="${!targetUser.self and !targetUser.followedByCurrentUser}" th:action="@{/people/follow}" method="post">
+                        <input type="hidden" name="loginId" th:value="${targetUser.loginId}">
+                        <input type="hidden" name="redirectTo" th:value="${profileRedirectPath}">
+                        <button class="action-btn primary" type="submit">팔로우</button>
+                    </form>
+                    <form th:if="${!targetUser.self and targetUser.followedByCurrentUser}" th:action="@{/people/unfollow}" method="post">
+                        <input type="hidden" name="loginId" th:value="${targetUser.loginId}">
+                        <input type="hidden" name="redirectTo" th:value="${profileRedirectPath}">
+                        <button class="action-btn" type="submit">팔로잉</button>
+                    </form>
+                </div>
+                <div class="similarity-widget">
+                    <div class="sim-donut-wrap" th:if="${similarityPct > 0}">
+                        <svg class="sim-donut-svg" id="simDonutSvg" viewBox="0 0 96 96"
+                             th:attr="data-pct=${similarityPct}" aria-hidden="true"></svg>
+                    </div>
+                    <div class="sim-no-data" th:if="${similarityPct == 0}">취향 데이터 없음</div>
+                    <div class="sim-label">취향 유사도</div>
+                </div>
             </div>
         </div>
         <div class="profile-summary">
@@ -622,6 +663,45 @@
     btn.addEventListener('click', e => { e.stopPropagation(); const op = panel.hidden; panel.hidden = !op; if (!op) return; fetch('/api/notifications').then(r => r.ok ? r.json() : null).then(d => { if (!d) return; upd(d.unreadCount); renderItems(d.items); }).catch(()=>{}); });
     readAllBtn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); fetch('/api/notifications/read-all',{method:'POST'}).then(() => { upd(0); document.querySelectorAll('.notif-item.unread').forEach(el=>el.classList.remove('unread')); }).catch(()=>{}); });
     document.addEventListener('click', e => { if (!panel.hidden && !panel.contains(e.target) && e.target !== btn) panel.hidden = true; });
+})();
+</script>
+<script>
+(function () {
+    var svg = document.getElementById('simDonutSvg');
+    if (!svg) return;
+    var pct = parseInt(svg.getAttribute('data-pct'), 10) || 0;
+    var NS = 'http://www.w3.org/2000/svg';
+    var cx = 48, cy = 48, R = 36, SW = 10;
+    var C = 2 * Math.PI * R;
+
+    var bg = document.createElementNS(NS, 'circle');
+    bg.setAttribute('cx', cx); bg.setAttribute('cy', cy); bg.setAttribute('r', R);
+    bg.setAttribute('fill', 'none');
+    bg.setAttribute('stroke', 'rgba(255,255,255,0.10)');
+    bg.setAttribute('stroke-width', SW);
+    svg.appendChild(bg);
+
+    var dash = C * pct / 100;
+    var gap = C - dash;
+    var arc = document.createElementNS(NS, 'circle');
+    arc.setAttribute('cx', cx); arc.setAttribute('cy', cy); arc.setAttribute('r', R);
+    arc.setAttribute('fill', 'none');
+    arc.setAttribute('stroke', '#0048FF');
+    arc.setAttribute('stroke-width', SW);
+    arc.setAttribute('stroke-dasharray', dash + ' ' + gap);
+    arc.setAttribute('stroke-linecap', 'round');
+    arc.setAttribute('transform', 'rotate(-90 ' + cx + ' ' + cy + ')');
+    svg.appendChild(arc);
+
+    var t1 = document.createElementNS(NS, 'text');
+    t1.setAttribute('x', cx); t1.setAttribute('y', cy + 6);
+    t1.setAttribute('text-anchor', 'middle');
+    t1.setAttribute('fill', '#F8FAFC');
+    t1.setAttribute('font-size', '15');
+    t1.setAttribute('font-weight', '900');
+    t1.setAttribute('font-family', 'Pretendard,sans-serif');
+    t1.textContent = pct + '%';
+    svg.appendChild(t1);
 })();
 </script>
 </body>

@@ -2,6 +2,7 @@ package com.cinematch;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -446,6 +447,7 @@ public class MovieController {
         model.addAttribute("likedMovies", fetchLikedMovies(targetUser.userId(), LIFE_MOVIE_LIMIT));
         model.addAttribute("likedMovieCount", countLikedMovies(targetUser.userId()));
         model.addAttribute("profileRedirectPath", "/users/" + targetUser.loginId());
+        model.addAttribute("similarityPct", computeCosineSimilarity(currentUserId, targetUser.userId()));
         return "user-profile";
     }
 
@@ -1845,6 +1847,28 @@ public class MovieController {
 
     private boolean isSearchExcludedGenre(String genreName) {
         return genreName != null && SEARCH_EXCLUDED_GENRES.contains(genreName.trim());
+    }
+
+    private int computeCosineSimilarity(Long userId1, Long userId2) {
+        String sql = "SELECT feature_type, feature_name, score FROM user_preference_profile WHERE user_id = ?";
+        Map<String, Double> vec1 = new HashMap<>();
+        jdbcTemplate.query(sql, rs -> {
+            vec1.put(rs.getString("feature_type") + ":" + rs.getString("feature_name"), rs.getDouble("score"));
+        }, userId1);
+        Map<String, Double> vec2 = new HashMap<>();
+        jdbcTemplate.query(sql, rs -> {
+            vec2.put(rs.getString("feature_type") + ":" + rs.getString("feature_name"), rs.getDouble("score"));
+        }, userId2);
+        if (vec1.isEmpty() || vec2.isEmpty()) return 0;
+        double dot = 0;
+        for (Map.Entry<String, Double> e : vec1.entrySet()) {
+            Double v2 = vec2.get(e.getKey());
+            if (v2 != null) dot += e.getValue() * v2;
+        }
+        double mag1 = Math.sqrt(vec1.values().stream().mapToDouble(v -> v * v).sum());
+        double mag2 = Math.sqrt(vec2.values().stream().mapToDouble(v -> v * v).sum());
+        if (mag1 == 0 || mag2 == 0) return 0;
+        return (int) Math.round(dot / (mag1 * mag2) * 100);
     }
 
     private List<TasteChartEntry> fetchUserGenreChart(Long userId) {
