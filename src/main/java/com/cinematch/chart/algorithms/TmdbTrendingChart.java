@@ -17,50 +17,46 @@ public class TmdbTrendingChart implements ChartAlgorithm {
 
     private static final String MOVIE_DETAIL_PREFIX = "/movies/";
 
+    private final TmdbTrendingService tmdbTrendingService;
     private final KobisBoxOfficeService kobisBoxOfficeService;
 
-    public TmdbTrendingChart(KobisBoxOfficeService kobisBoxOfficeService) {
+    public TmdbTrendingChart(TmdbTrendingService tmdbTrendingService, KobisBoxOfficeService kobisBoxOfficeService) {
+        this.tmdbTrendingService = tmdbTrendingService;
         this.kobisBoxOfficeService = kobisBoxOfficeService;
     }
 
     @Override
-    public String code() {
-        return "tmdb-trending";
-    }
+    public String code() { return "tmdb-trending"; }
 
     @Override
-    public String title() {
-        return "실시간 인기 작품";
-    }
+    public String title() { return "실시간 인기 작품"; }
 
     @Override
-    public String description() {
-        return "KOBIS 일별 박스오피스 기준 상위 10개 작품";
-    }
+    public String description() { return "TMDB 기준 오늘의 실시간 인기 작품 Top 10"; }
 
     @Override
-    public ChartCategory category() {
-        return ChartCategory.TRENDING;
-    }
+    public ChartCategory category() { return ChartCategory.TRENDING; }
 
     @Override
-    public String icon() {
-        return "trending-up";
-    }
+    public String icon() { return "trending-up"; }
 
     @Override
     public List<ChartMovieRow> fetch(int limit) {
-        List<TmdbTrendingService.TrendingMovieView> movies = kobisBoxOfficeService.fetchBoxOffice(limit).stream()
-                .filter(movie -> movie.posterImageUrl() != null && !movie.posterImageUrl().isBlank())
+        // TMDB trending 스냅샷 우선 사용
+        List<ChartMovieRow> rows = tmdbTrendingService.fetchTrendingChartRows(limit);
+        if (!rows.isEmpty()) {
+            return rows;
+        }
+        // TMDB 데이터 없으면 KOBIS 박스오피스 fallback
+        List<TmdbTrendingService.TrendingMovieView> kobisMovies = kobisBoxOfficeService.fetchBoxOffice(limit).stream()
+                .filter(m -> m.posterImageUrl() != null && !m.posterImageUrl().isBlank())
                 .toList();
-
-        return IntStream.range(0, movies.size())
-                .mapToObj(index -> toChartMovieRow(index + 1, movies.get(index)))
+        return IntStream.range(0, kobisMovies.size())
+                .mapToObj(i -> toKobisRow(i + 1, kobisMovies.get(i)))
                 .toList();
     }
 
-    private ChartMovieRow toChartMovieRow(int rankNo, TmdbTrendingService.TrendingMovieView movie) {
-        Integer productionYear = parseProductionYear(movie.subtitle());
+    private ChartMovieRow toKobisRow(int rankNo, TmdbTrendingService.TrendingMovieView movie) {
         return ChartMovieRow.of(
                 rankNo,
                 extractMovieCode(movie.detailUrl()),
@@ -68,23 +64,19 @@ public class TmdbTrendingChart implements ChartAlgorithm {
                 null,
                 movie.posterImageUrl(),
                 null,
-                productionYear,
+                parseYear(movie.subtitle()),
                 "박스오피스 순위",
                 "#" + rankNo
         );
     }
 
     private String extractMovieCode(String detailUrl) {
-        if (detailUrl == null || !detailUrl.startsWith(MOVIE_DETAIL_PREFIX)) {
-            return null;
-        }
+        if (detailUrl == null || !detailUrl.startsWith(MOVIE_DETAIL_PREFIX)) return null;
         return detailUrl.substring(MOVIE_DETAIL_PREFIX.length());
     }
 
-    private Integer parseProductionYear(String subtitle) {
-        if (subtitle == null || subtitle.isBlank()) {
-            return null;
-        }
+    private Integer parseYear(String subtitle) {
+        if (subtitle == null || subtitle.isBlank()) return null;
         try {
             return Integer.parseInt(subtitle.trim());
         } catch (NumberFormatException ignored) {
