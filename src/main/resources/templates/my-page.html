@@ -4,49 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CineMatch | My Page</title>
+    <link rel="stylesheet" href="/css/hp-theme.css">
     <style>
         :root {
-            --bg: #06101a;
-            --bg-soft: #0a1627;
-            --surface: rgba(15, 23, 42, 0.92);
-            --surface-strong: rgba(9, 17, 30, 0.96);
-            --surface-light: rgba(255, 255, 255, 0.06);
-            --border: rgba(148, 163, 184, 0.18);
-            --text: #f8fafc;
-            --sub: #9fb0c7;
-            --sub-strong: #d7e3f4;
-            --accent: #7dd3fc;
-            --accent-strong: #2563eb;
-            --purple: #8b5cf6;
-            --warning: #f59e0b;
-            --shadow: 0 24px 60px rgba(2, 6, 23, 0.32);
+            --bg: var(--hp-bg); --bg-soft: var(--hp-surface);
+            --surface: var(--hp-surface); --surface-strong: var(--hp-surface-2);
+            --surface-light: rgba(255,255,255,0.05); --border: var(--hp-border);
+            --text: var(--hp-text); --sub: var(--hp-text-sub); --sub-strong: var(--hp-text);
+            --accent: var(--hp-blue-bright); --accent-strong: var(--hp-blue);
+            --purple: #8b5cf6; --warning: #f59e0b; --shadow: var(--hp-shadow-lg);
         }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: Pretendard, 'Segoe UI', sans-serif;
-            min-height: 100vh;
-            color: var(--text);
-            background:
-                radial-gradient(circle at top right, rgba(37, 99, 235, 0.18), transparent 24%),
-                linear-gradient(180deg, #06101a 0%, #08101d 52%, #0b1422 100%);
-        }
-
         body.modal-open { overflow: hidden; }
-
         .nav {
-            position: sticky;
-            top: 0;
-            z-index: 1200;
-            isolation: isolate;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 18px 24px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-            background: rgba(6, 11, 20, 0.88);
-            backdrop-filter: blur(18px);
+            position: sticky; top: 0; z-index: 1200; isolation: isolate;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 24px; height: 64px;
+            border-bottom: 1px solid var(--hp-border);
+            background: rgba(15,15,15,0.88); backdrop-filter: blur(18px);
         }
 
         .nav a {
@@ -63,22 +37,25 @@
 
         .pill,
         .pill-button {
-            padding: 10px 14px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.08);
+            padding: 8px 14px;
+            border-radius: var(--r-md);
+            background: var(--hp-surface-2);
+            border: 1px solid var(--hp-border);
         }
 
         .pill-button {
-            border: none;
+            border: 1px solid var(--hp-border);
             color: #fff;
             font: inherit;
-            font-weight: 800;
+            font-weight: 700;
             cursor: pointer;
         }
 
         .logout {
-            background: #fff;
-            color: #0f172a !important;
+            background: var(--hp-blue) !important;
+            color: #fff !important;
+            border: none !important;
+            font-size: 12px; letter-spacing: 0.7px; text-transform: uppercase;
         }
         .post-create-btn {
             display: flex;
@@ -126,10 +103,10 @@
             position: absolute;
             top: calc(100% + 10px); right: 0;
             width: 360px; max-height: 480px;
-            border-radius: 16px;
-            background: #111827;
-            border: 1px solid rgba(148,163,184,0.15);
-            box-shadow: 0 24px 60px rgba(2,6,23,0.55);
+            border-radius: var(--r-xl);
+            background: var(--hp-surface);
+            border: 1px solid var(--hp-border);
+            box-shadow: var(--hp-shadow-lg);
             z-index: 9999;
             overflow: hidden;
             display: flex; flex-direction: column;
@@ -186,20 +163,10 @@
             position: relative;
             overflow: hidden;
             padding: 26px;
-            border-radius: 24px;
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.92), rgba(56, 189, 248, 0.72), rgba(9, 20, 37, 0.96));
-            box-shadow: 0 24px 60px rgba(2, 6, 23, 0.38);
-        }
-
-        .hero::after {
-            content: '';
-            position: absolute;
-            right: -48px;
-            bottom: -48px;
-            width: 220px;
-            height: 220px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.08);
+            border-radius: var(--r-xl);
+            background: var(--hp-surface);
+            border: 1px solid var(--hp-border);
+            border-left: 4px solid var(--hp-blue);
         }
 
         .hero p {
@@ -730,10 +697,10 @@
             max-height: min(86vh, 920px);
             overflow: auto;
             padding: 24px;
-            border-radius: 28px;
-            background: linear-gradient(180deg, rgba(10, 17, 30, 0.98), rgba(13, 22, 39, 0.96));
-            border: 1px solid rgba(148, 163, 184, 0.16);
-            box-shadow: 0 32px 70px rgba(2, 6, 23, 0.5);
+            border-radius: var(--r-xl);
+            background: var(--hp-surface);
+            border: 1px solid var(--hp-border);
+            box-shadow: var(--hp-shadow-lg);
         }
 
         .modal-head {
@@ -794,10 +761,10 @@
             display: flex;
             flex-direction: column;
             padding: 20px;
-            border-radius: 28px;
-            background: linear-gradient(180deg, rgba(10,17,30,0.98), rgba(13,22,39,0.98));
-            border: 1px solid rgba(148,163,184,0.16);
-            box-shadow: 0 32px 70px rgba(2,6,23,0.5);
+            border-radius: var(--r-xl);
+            background: var(--hp-surface);
+            border: 1px solid var(--hp-border);
+            box-shadow: var(--hp-shadow-lg);
         }
 
         .social-modal-head {
@@ -943,18 +910,21 @@
             height: 38px;
             padding: 0 14px;
             border: none;
-            border-radius: 999px;
-            background: rgba(255,255,255,0.92);
-            color: #0f172a;
+            border-radius: var(--r-md);
+            background: var(--hp-blue);
+            color: #fff;
             font: inherit;
-            font-weight: 800;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
             cursor: pointer;
         }
 
         .social-action-btn.following {
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.12);
+            background: var(--hp-surface-2);
+            color: var(--hp-text-sub);
+            border: 1px solid var(--hp-border);
         }
 
         .social-empty {
@@ -1010,11 +980,14 @@
             width: 100%;
             height: 40px;
             border: none;
-            border-radius: 12px;
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.92), rgba(56, 189, 248, 0.8));
+            border-radius: var(--r-md);
+            background: var(--hp-blue);
             color: #fff;
             cursor: pointer;
-            font-weight: 800;
+            font-weight: 700;
+            font-size: 0.84rem;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
             margin-top: 10px;
         }
 

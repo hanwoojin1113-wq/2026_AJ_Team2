@@ -4,77 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>나중에 볼래요 | CineMatch</title>
-    <link rel="stylesheet" as="style" crossorigin
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <link rel="stylesheet" href="/css/hp-theme.css">
     <style>
         :root {
-            --blue: #0048FF;
-            --blue-soft: #EEF2FF;
-            --bg: #F7F8FC;
-            --surface: #FFFFFF;
-            --text: #0F172A;
-            --text-hint: #94A3B8;
-            --border: rgba(15,23,42,0.08);
-            --shadow-sm: 0 2px 8px rgba(0,72,255,0.06);
-            --shadow-lg: 0 20px 48px rgba(0,72,255,0.14);
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Pretendard', 'Segoe UI', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
+            --blue: var(--hp-blue); --blue-soft: var(--hp-blue-soft);
+            --bg: var(--hp-bg); --surface: var(--hp-surface);
+            --text: var(--hp-text); --text-hint: var(--hp-text-hint);
+            --border: var(--hp-border); --shadow-sm: var(--hp-shadow-sm); --shadow-lg: var(--hp-shadow-lg);
         }
         body.modal-open { overflow: hidden; }
         .navbar {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 32px;
-            height: 64px;
-            background: rgba(255,255,255,0.92);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border);
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 32px; height: 64px;
+            background: rgba(15,15,15,0.88); backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--hp-border);
         }
-        .back-btn, .logout-btn {
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 0.9rem;
-        }
-        .back-btn { color: var(--blue); }
+        .back-btn, .logout-btn { text-decoration: none; font-weight: 600; font-size: 13px; }
+        .back-btn { color: var(--hp-blue-bright); }
         .navbar-right { display: flex; align-items: center; gap: 12px; }
         .user-badge {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             padding: 6px 14px;
-            background: var(--blue-soft);
-            border-radius: 999px;
+            background: var(--hp-surface-2);
+            border-radius: var(--r-md);
+            border: 1px solid var(--hp-border);
             font-size: 0.875rem;
             font-weight: 600;
-            color: var(--blue);
+            color: var(--hp-text);
             text-decoration: none;
         }
         .user-badge-btn {
-            border: none;
+            border: 1px solid var(--hp-border);
             cursor: pointer;
             font: inherit;
         }
         .logout-btn {
-            color: white;
-            background: var(--text);
+            color: #fff;
+            background: var(--hp-blue);
             padding: 8px 18px;
-            border-radius: 999px;
+            border-radius: var(--r-md);
+            font-size: 12px;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
         }
         .notif-wrap { position: relative; }
         .notif-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(255,255,255,0.08); color: white; cursor: pointer; transition: background 0.15s; }
         .notif-btn:hover { background: rgba(255,255,255,0.15); }
         .notif-badge { position: absolute; top: 4px; right: 4px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 999px; background: #EF4444; color: white; font-size: 0.65rem; font-weight: 900; display: flex; align-items: center; justify-content: center; }
         .notif-badge:empty { display: none; }
-        .notif-panel { position: absolute; top: calc(100% + 10px); right: 0; width: 360px; max-height: 480px; border-radius: 16px; background: #111827; border: 1px solid rgba(148,163,184,0.15); box-shadow: 0 24px 60px rgba(2,6,23,0.55); z-index: 9999; overflow: hidden; display: flex; flex-direction: column; }
+        .notif-panel { position: absolute; top: calc(100% + 10px); right: 0; width: 360px; max-height: 480px; border-radius: var(--r-xl); background: var(--hp-surface); border: 1px solid var(--hp-border); box-shadow: var(--hp-shadow-lg); z-index: 9999; overflow: hidden; display: flex; flex-direction: column; }
         .notif-panel[hidden] { display: none; }
         .notif-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid rgba(148,163,184,0.1); font-weight: 800; font-size: 0.95rem; flex-shrink: 0; }
         .notif-read-all-btn { border: none; background: none; color: #60A5FA; font-size: 0.78rem; font-weight: 700; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-family: inherit; }
@@ -100,8 +81,10 @@
         .hero {
             margin-bottom: 28px;
             padding: 34px;
-            border-radius: 28px;
-            background: linear-gradient(135deg, #0048FF 0%, #2563EB 60%, #0EA5E9 100%);
+            border-radius: var(--r-xl);
+            background: var(--hp-surface);
+            border: 1px solid var(--hp-border);
+            border-left: 4px solid var(--hp-blue);
             color: white;
         }
         .hero p {
@@ -143,7 +126,7 @@
         .poster-wrap {
             aspect-ratio: 2/3;
             overflow: hidden;
-            background: linear-gradient(135deg, #EEF2FF, #DBEAFE);
+            background: var(--hp-surface-2);
         }
         .poster {
             width: 100%;
@@ -186,9 +169,9 @@
             padding: 52px;
             text-align: center;
             color: var(--text-hint);
-            border: 1px dashed rgba(0,72,255,0.2);
-            border-radius: 20px;
-            background: rgba(255,255,255,0.7);
+            border: 1px dashed var(--hp-border);
+            border-radius: var(--r-xl);
+            background: var(--hp-surface);
         }
         .social-modal-backdrop { position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(2,6,23,0.76); backdrop-filter:blur(12px); opacity:0; pointer-events:none; transition:opacity .18s ease; }
         .social-modal-backdrop.open { opacity:1; pointer-events:auto; }

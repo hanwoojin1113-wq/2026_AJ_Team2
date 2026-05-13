@@ -4,46 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${post.movieTitle} + ' 게시물 | CineMatch'">게시물 상세 | CineMatch</title>
+    <link rel="stylesheet" href="/css/hp-theme.css">
     <style>
         :root {
-            --bg: #0f1117;
-            --surface: #1e2330;
-            --surface-2: #262c3b;
-            --border: rgba(255,255,255,0.08);
-            --text: #f8fafc;
-            --sub: #94a3b8;
-            --accent: #60a5fa;
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            min-height: 100vh;
-            font-family: Pretendard, "Segoe UI", sans-serif;
-            background:
-                radial-gradient(circle at top right, rgba(59,130,246,0.18), transparent 24%),
-                linear-gradient(180deg, #0b1020 0%, #0f1117 48%, #111827 100%);
-            color: var(--text);
+            --bg: var(--hp-bg); --surface: var(--hp-surface); --surface-2: var(--hp-surface-2);
+            --border: var(--hp-border); --text: var(--hp-text); --sub: var(--hp-text-sub); --accent: var(--hp-blue-bright);
         }
         .nav {
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            padding:18px 24px;
-            border-bottom:1px solid rgba(148,163,184,.12);
-            background:rgba(6,11,20,.86);
-            position:sticky;
-            top:0;
-            backdrop-filter:blur(16px);
-            z-index:20;
+            display:flex; justify-content:space-between; align-items:center;
+            padding:0 24px; height:64px;
+            border-bottom:1px solid var(--hp-border);
+            background:rgba(15,15,15,.88); position:sticky; top:0; backdrop-filter:blur(16px); z-index:20;
         }
-        .nav a { color:#fff; text-decoration:none; font-weight:800; }
+        .nav a { color:#fff; text-decoration:none; font-weight:600; }
         .nav-right { display:flex; gap:12px; align-items:center; }
-        .pill {
-            padding:10px 14px;
-            border-radius:999px;
-            background:rgba(255,255,255,.08);
-        }
-        .logout { background:#fff; color:#0f172a !important; }
+        .pill { padding:8px 14px; border-radius:var(--r-md); background:var(--hp-surface-2); border:1px solid var(--hp-border); }
+        .logout { background:var(--hp-blue) !important; color:#fff !important; border-radius:var(--r-md); font-size:12px; font-weight:600; letter-spacing:0.7px; text-transform:uppercase; border:none !important; }
         .post-create-btn {
             display: flex;
             align-items: center;
@@ -97,10 +73,10 @@
             right: 0;
             width: 360px;
             max-height: 480px;
-            border-radius: 16px;
-            background: #111827;
-            border: 1px solid rgba(148,163,184,0.15);
-            box-shadow: 0 24px 60px rgba(2,6,23,0.55);
+            border-radius: var(--r-xl);
+            background: var(--hp-surface);
+            border: 1px solid var(--hp-border);
+            box-shadow: var(--hp-shadow-lg);
             z-index: 9999;
             overflow: hidden;
             display: flex;
@@ -169,11 +145,11 @@
             padding: 28px 20px 64px;
         }
         .post-card {
-            background: linear-gradient(180deg, rgba(30,35,48,0.98), rgba(20,24,34,0.98));
+            background: var(--hp-surface);
             border: 1px solid var(--border);
-            border-radius: 24px;
+            border-radius: var(--r-xl);
             overflow: hidden;
-            box-shadow: 0 24px 60px rgba(2,6,23,0.28);
+            box-shadow: var(--hp-shadow-lg);
             transition: box-shadow 0.2s ease;
         }
         .post-header {
@@ -336,7 +312,7 @@
             justify-content:center;
             min-height: 360px;
             color: var(--sub);
-            background: #111827;
+            background: var(--hp-surface-2);
         }
         .post-body {
             display: grid;
@@ -392,17 +368,17 @@
             align-items: center;
             gap: 14px;
             padding: 14px;
-            border-radius: 16px;
-            background: #1e2330;
-            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: var(--r-xl);
+            background: var(--hp-surface-2);
+            border: 1px solid var(--hp-border);
             color: inherit;
             text-decoration: none;
             transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
         }
         .movie-tag-card:hover {
-            border-color: rgba(96,165,250,0.6);
-            background: linear-gradient(180deg, rgba(37,99,235,0.16), rgba(30,35,48,0.96));
-            box-shadow: 0 16px 30px rgba(2,6,23,0.28);
+            border-color: rgba(2,74,216,0.5);
+            background: var(--hp-card-hover);
+            box-shadow: var(--hp-shadow-md);
             transform: translateY(-2px);
         }
         .movie-tag-poster {

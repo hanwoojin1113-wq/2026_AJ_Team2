@@ -4,47 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>랭킹 차트 | CineMatch</title>
-    <link rel="stylesheet" as="style" crossorigin
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <link rel="stylesheet" href="/css/hp-theme.css">
     <style>
         :root {
-            --blue: #0048FF;
-            --bg: #070B14;
-            --surface: #0E1828;
-            --text: #F8FAFC;
-            --text-sub: #CBD5E1;
-            --text-hint: #94A3B8;
-            --border: rgba(148,163,184,0.14);
-            --shadow: 0 24px 60px rgba(2,6,23,0.42);
+            --blue: var(--hp-blue); --bg: var(--hp-bg); --surface: var(--hp-surface);
+            --text: var(--hp-text); --text-sub: var(--hp-text-sub); --text-hint: var(--hp-text-hint);
+            --border: var(--hp-border); --shadow: var(--hp-shadow-lg);
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Pretendard', 'Segoe UI', sans-serif;
-            background:
-                radial-gradient(ellipse at top right, rgba(0,72,255,0.15) 0%, transparent 50%),
-                #070B14;
-            color: var(--text);
-            min-height: 100vh;
-        }
-
-        /* ── Navbar ── */
         .navbar {
             position: sticky; top: 0; z-index: 100;
             display: flex; align-items: center; justify-content: space-between;
-            padding: 0 32px; height: 60px;
-            background: rgba(7,11,20,0.85);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(148,163,184,0.1);
+            padding: 0 32px; height: 64px;
+            background: rgba(15,15,15,0.88); backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--hp-border);
         }
         .navbar-logo {
             display: inline-flex; align-items: center; gap: 10px;
-            color: white; text-decoration: none;
-            font-size: 1.15rem; font-weight: 900; letter-spacing: -0.03em;
+            color: white; text-decoration: none; font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em;
         }
         .logo-mark {
-            width: 32px; height: 32px; border-radius: 9px;
+            width: 32px; height: 32px; border-radius: var(--r-lg);
             display: inline-flex; align-items: center; justify-content: center;
-            background: linear-gradient(135deg, #0048FF, #38BDF8);
+            background: var(--hp-blue);
         }
         .logo-mark svg { width: 16px; height: 16px; fill: white; }
         .navbar-right { display: flex; align-items: center; gap: 10px; }
@@ -57,120 +38,86 @@
         }
         .logout-btn {
             display: inline-flex; align-items: center; justify-content: center;
-            min-width: 84px; height: 36px; border-radius: 999px;
-            background: white; color: #0F172A;
-            text-decoration: none; font-size: 0.84rem; font-weight: 800;
+            min-width: 84px; height: 36px; border-radius: var(--r-md);
+            background: var(--hp-blue); color: #fff;
+            text-decoration: none; font-size: 12px; font-weight: 600;
+            letter-spacing: 0.7px; text-transform: uppercase;
         }
         .notif-wrap { position: relative; }
-        .notif-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(255,255,255,0.08); color: white; cursor: pointer; transition: background 0.15s; }
-        .notif-btn:hover { background: rgba(255,255,255,0.15); }
-        .notif-badge { position: absolute; top: 4px; right: 4px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 999px; background: #EF4444; color: white; font-size: 0.65rem; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+        .notif-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: var(--r-md); border: 1px solid var(--hp-border); background: var(--hp-surface-2); color: white; cursor: pointer; transition: background 0.15s; }
+        .notif-btn:hover { background: var(--hp-card); }
+        .notif-badge { position: absolute; top: 4px; right: 4px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 999px; background: var(--hp-blue); color: white; font-size: 0.65rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
         .notif-badge:empty { display: none; }
-        .notif-panel { position: absolute; top: calc(100% + 10px); right: 0; width: 360px; max-height: 480px; border-radius: 16px; background: #111827; border: 1px solid rgba(148,163,184,0.15); box-shadow: 0 24px 60px rgba(2,6,23,0.55); z-index: 9999; overflow: hidden; display: flex; flex-direction: column; }
+        .notif-panel { position: absolute; top: calc(100% + 10px); right: 0; width: 360px; max-height: 480px; border-radius: var(--r-xl); background: var(--hp-surface); border: 1px solid var(--hp-border-strong); box-shadow: var(--hp-shadow-lg); z-index: 9999; overflow: hidden; display: flex; flex-direction: column; }
         .notif-panel[hidden] { display: none; }
-        .notif-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid rgba(148,163,184,0.1); font-weight: 800; font-size: 0.95rem; flex-shrink: 0; }
-        .notif-read-all-btn { border: none; background: none; color: #60A5FA; font-size: 0.78rem; font-weight: 700; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-family: inherit; }
-        .notif-read-all-btn:hover { background: rgba(96,165,250,0.1); }
+        .notif-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid var(--hp-border); font-weight: 600; font-size: 0.95rem; flex-shrink: 0; }
+        .notif-read-all-btn { border: none; background: none; color: var(--hp-blue-bright); font-size: 0.78rem; font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: var(--r-md); font-family: inherit; }
+        .notif-read-all-btn:hover { background: var(--hp-blue-soft); }
         .notif-list { overflow-y: auto; flex: 1; }
-        .notif-item { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid rgba(148,163,184,0.07); text-decoration: none; color: inherit; transition: background 0.12s; }
-        .notif-item:hover { background: rgba(255,255,255,0.04); }
-        .notif-item.unread { background: rgba(0,72,255,0.07); }
-        .notif-item.unread:hover { background: rgba(0,72,255,0.12); }
-        .notif-avatar { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.12); flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1rem; color: white; }
+        .notif-item { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--hp-border); text-decoration: none; color: inherit; transition: background 0.12s; }
+        .notif-item:hover { background: var(--hp-surface-2); }
+        .notif-item.unread { background: var(--hp-blue-soft); }
+        .notif-item.unread:hover { background: rgba(2,74,216,0.22); }
+        .notif-avatar { width: 40px; height: 40px; border-radius: var(--r-md); background: var(--hp-card); flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; color: var(--hp-text-sub); }
         .notif-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .notif-content { flex: 1; min-width: 0; }
-        .notif-text { font-size: 0.83rem; line-height: 1.45; color: #CBD5E1; }
-        .notif-text strong { color: white; font-weight: 700; }
-        .notif-time { margin-top: 3px; font-size: 0.73rem; color: #64748B; }
-        .notif-movie-thumb { width: 46px; height: 64px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: rgba(255,255,255,0.06); }
-        .notif-empty { padding: 40px 20px; text-align: center; color: #64748B; font-size: 0.88rem; }
+        .notif-text { font-size: 0.83rem; line-height: 1.45; color: var(--hp-text-sub); }
+        .notif-text strong { color: var(--hp-text); font-weight: 600; }
+        .notif-time { margin-top: 3px; font-size: 0.73rem; color: var(--hp-text-hint); }
+        .notif-movie-thumb { width: 46px; height: 64px; border-radius: var(--r-md); object-fit: cover; flex-shrink: 0; background: var(--hp-card); }
+        .notif-empty { padding: 40px 20px; text-align: center; color: var(--hp-text-hint); font-size: 0.88rem; }
 
-        /* ── Page ── */
         .page { max-width: 1280px; margin: 0 auto; padding: 24px 24px 80px; }
 
-        /* ── Hero ── */
         .hero {
-            padding: 32px 40px;
-            border-radius: 24px;
-            background: linear-gradient(120deg,
-                rgba(0,72,255,0.9) 0%,
-                rgba(14,165,233,0.75) 50%,
-                rgba(10,18,34,0.95) 100%);
-            margin-bottom: 20px;
-            position: relative; overflow: hidden;
-        }
-        .hero::after {
-            content: '';
-            position: absolute; right: -20px; bottom: -20px;
-            width: 200px; height: 200px; border-radius: 50%;
-            background: rgba(255,255,255,0.06);
-            pointer-events: none;
+            padding: 32px 40px; border-radius: var(--r-xl);
+            background: var(--hp-surface); border: 1px solid var(--hp-border);
+            border-left: 4px solid var(--hp-blue);
+            margin-bottom: 24px; position: relative; overflow: hidden;
         }
         .hero-eyebrow {
             display: inline-flex; align-items: center; gap: 6px;
-            padding: 5px 12px; border-radius: 999px;
-            background: rgba(255,255,255,0.15);
-            color: rgba(255,255,255,0.9);
-            font-size: 0.76rem; font-weight: 800; letter-spacing: 0.04em;
+            padding: 5px 12px; border-radius: var(--r-lg);
+            background: var(--hp-blue-soft); border: 1px solid rgba(41,110,249,0.28);
+            color: var(--hp-blue-bright);
+            font-size: 12px; font-weight: 600; letter-spacing: 0.7px; text-transform: uppercase;
             margin-bottom: 12px;
         }
-        .hero h1 {
-            font-size: clamp(1.8rem, 4vw, 3rem);
-            line-height: 1.05; letter-spacing: -0.04em; margin-bottom: 8px;
-        }
-        .hero p {
-            max-width: 520px;
-            color: rgba(255,255,255,0.75); font-size: 0.94rem; line-height: 1.65;
-        }
+        .hero h1 { font-size: clamp(1.6rem, 3.5vw, 2.4rem); line-height: 1.1; letter-spacing: -0.01em; font-weight: 500; margin-bottom: 8px; }
+        .hero p { max-width: 520px; color: var(--hp-text-sub); font-size: 16px; line-height: 1.5; }
 
-        /* ── 뷰 토글 + 카테고리 탭 바 ── */
-        .toolbar {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 12px; margin-bottom: 24px; flex-wrap: wrap;
-        }
-        .tabs {
-            display: flex; flex-wrap: wrap; gap: 8px;
-        }
+        .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+        .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
         .tab {
             display: inline-flex; align-items: center; gap: 5px;
-            padding: 8px 16px; border-radius: 999px;
-            text-decoration: none; font-size: 0.84rem; font-weight: 700;
-            border: 1px solid rgba(148,163,184,0.15);
-            background: rgba(255,255,255,0.04);
-            color: var(--text-hint);
+            padding: 8px 16px; border-radius: var(--r-pill);
+            text-decoration: none; font-size: 13px; font-weight: 600;
+            border: 1px solid var(--hp-border); background: transparent; color: var(--hp-text-sub);
             transition: all 0.14s ease;
         }
-        .tab:hover { color: white; border-color: rgba(148,163,184,0.3); }
-        .tab.active { background: white; color: #0F172A; border-color: white; }
+        .tab:hover { color: var(--hp-text); border-color: var(--hp-border-strong); }
+        .tab.active { background: var(--hp-blue); color: #fff; border-color: var(--hp-blue); }
         .tab-count {
             display: inline-flex; align-items: center; justify-content: center;
             min-width: 18px; height: 18px; padding: 0 5px;
-            border-radius: 999px; font-size: 0.68rem; font-weight: 800;
-            background: rgba(255,255,255,0.14);
+            border-radius: 999px; font-size: 11px; font-weight: 700;
+            background: rgba(255,255,255,0.12);
         }
-        .tab.active .tab-count { background: rgba(0,0,0,0.1); }
-
-        .view-toggle {
-            display: flex; gap: 4px; flex-shrink: 0;
-        }
+        .tab.active .tab-count { background: rgba(255,255,255,0.22); }
+        .view-toggle { display: flex; gap: 4px; flex-shrink: 0; }
         .view-btn {
             display: inline-flex; align-items: center; justify-content: center;
-            width: 36px; height: 36px; border-radius: 10px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(148,163,184,0.15);
-            color: var(--text-hint); cursor: pointer;
-            transition: all 0.14s ease;
+            width: 36px; height: 36px; border-radius: var(--r-md);
+            background: var(--hp-surface-2); border: 1px solid var(--hp-border);
+            color: var(--hp-text-hint); cursor: pointer; transition: all 0.14s ease;
         }
-        .view-btn:hover { color: white; border-color: rgba(148,163,184,0.3); }
-        .view-btn.active { background: rgba(255,255,255,0.12); color: white; border-color: rgba(255,255,255,0.25); }
+        .view-btn:hover { color: var(--hp-text); border-color: var(--hp-border-strong); }
+        .view-btn.active { background: var(--hp-surface); color: var(--hp-text); border-color: var(--hp-border-strong); }
         .view-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-        /* ── 차트 섹션 ── */
         .chart-section {
-            margin-bottom: 40px;
-            border-radius: 20px;
-            background: rgba(10,17,30,0.7);
-            border: 1px solid rgba(148,163,184,0.09);
+            margin-bottom: 40px; border-radius: var(--r-xl);
+            background: var(--hp-surface); border: 1px solid var(--hp-border);
         }
 
         .chart-section-header {
