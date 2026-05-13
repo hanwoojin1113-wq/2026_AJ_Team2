@@ -159,4 +159,14 @@ public class AdminBatchController {
     ) {
         return movieDataBatchService.runPipeline(startYear, endYear, targetPerYear, tmdbLimit);
     }
+
+    @PostMapping("/run-full")
+    public MovieDataBatchService.FullPipelineRunResponse runFullPipeline(
+            @RequestParam(required = false) Integer startYear,
+            @RequestParam(required = false) Integer endYear,
+            @RequestParam(defaultValue = "50") int targetPerYear,
+            @RequestParam(defaultValue = "20") int discoverPages
+    ) {
+        return movieDataBatchService.runFullPipeline(startYear, endYear, targetPerYear, discoverPages);
+    }
 }
