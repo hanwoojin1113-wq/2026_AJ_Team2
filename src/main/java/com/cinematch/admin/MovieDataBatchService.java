@@ -100,6 +100,22 @@ public class MovieDataBatchService {
         );
     }
 
+    public JobRunResponse runTmdbTopRatedImport(int maxPages) {
+        return executeJob(
+                "TMDB_IMPORT_TOP_RATED",
+                new TmdbTopRatedImportRequest(maxPages),
+                () -> tmdbMovieImportService.importTopRatedMovies(maxPages)
+        );
+    }
+
+    public JobRunResponse runTmdbDiscoverImport(String source, int maxPages) {
+        return executeJob(
+                "TMDB_IMPORT_DISCOVER",
+                new TmdbDiscoverImportRequest(source, maxPages),
+                () -> tmdbMovieImportService.importDiscoverMovies(source, maxPages)
+        );
+    }
+
     public JobRunResponse runTmdbNormalize() {
         return executeJob("TMDB_NORMALIZE", null, tmdbMovieNormalizeService::normalizeRawMovies);
     }
@@ -335,6 +351,12 @@ public class MovieDataBatchService {
     }
 
     private record TmdbImportExistingRequest(int limit) {
+    }
+
+    private record TmdbTopRatedImportRequest(int maxPages) {
+    }
+
+    private record TmdbDiscoverImportRequest(String source, int maxPages) {
     }
 
     private record PreferenceProfileRebuildRequest(Long userId) {
