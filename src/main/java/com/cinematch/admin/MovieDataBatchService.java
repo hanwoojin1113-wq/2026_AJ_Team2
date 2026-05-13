@@ -212,6 +212,7 @@ public class MovieDataBatchService {
     public FullPipelineRunResponse runFullPipeline(Integer startYear, Integer endYear, int targetPerYear, int discoverPages) {
         JobRunResponse kobisImport = runKobisYearlyImport(startYear, endYear, targetPerYear);
         JobRunResponse kobisNormalize = kobisImport.isSuccess() ? runKobisNormalize() : null;
+        JobRunResponse tmdbExisting = runTmdbImportExisting(1000);
         JobRunResponse topRated = runTmdbTopRatedImport(discoverPages);
         JobRunResponse discoverOtt = runTmdbDiscoverImport("korean-ott", discoverPages);
         JobRunResponse discoverKorean = runTmdbDiscoverImport("korean-movies", discoverPages);
@@ -219,7 +220,7 @@ public class MovieDataBatchService {
         JobRunResponse tmdbNormalize = runTmdbNormalize();
         JobRunResponse tagRebuild = tmdbNormalize.isSuccess() ? runTagRebuild() : null;
         return new FullPipelineRunResponse(
-                kobisImport, kobisNormalize,
+                kobisImport, kobisNormalize, tmdbExisting,
                 topRated, discoverOtt, discoverKorean, discoverHighRated,
                 tmdbNormalize, tagRebuild
         );
@@ -345,6 +346,7 @@ public class MovieDataBatchService {
     public record FullPipelineRunResponse(
             JobRunResponse kobisImport,
             JobRunResponse kobisNormalize,
+            JobRunResponse tmdbExisting,
             JobRunResponse tmdbTopRated,
             JobRunResponse tmdbDiscoverOtt,
             JobRunResponse tmdbDiscoverKorean,
