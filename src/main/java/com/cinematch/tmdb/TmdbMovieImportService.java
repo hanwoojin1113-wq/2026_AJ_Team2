@@ -49,6 +49,7 @@ public class TmdbMovieImportService {
     @Transactional
     public ImportResult importPopularMovies() {
         initializeRawTable();
+        Set<Long> linked = loadLinkedTmdbIds();
 
         int requestedCount = 0;
         int savedRawCount = 0;
@@ -68,6 +69,98 @@ public class TmdbMovieImportService {
                 }
 
                 requestedCount++;
+                if (linked.contains(tmdbMovieId)) {
+                    continue;
+                }
+
+                JsonNode detailNode = readTree(tmdbRestTemplate.getForObject(buildMovieDetailUri(tmdbMovieId), String.class));
+                if (detailNode == null) {
+                    continue;
+                }
+
+                if (upsertRawMovie(tmdbMovieId, toJson(detailNode))) {
+                    savedRawCount++;
+                } else {
+                    updatedRawCount++;
+                }
+            }
+        }
+
+        return new ImportResult(requestedCount, savedRawCount, updatedRawCount);
+    }
+
+    @Transactional
+    public ImportResult importTopRatedMovies(int maxPages) {
+        initializeRawTable();
+        Set<Long> linked = loadLinkedTmdbIds();
+
+        int requestedCount = 0;
+        int savedRawCount = 0;
+        int updatedRawCount = 0;
+
+        for (int page = 1; page <= maxPages; page++) {
+            JsonNode root = readTree(tmdbRestTemplate.getForObject(buildTopRatedUri(page), String.class));
+            if (root == null || !root.path("results").isArray()) {
+                break;
+            }
+
+            for (JsonNode movieNode : root.path("results")) {
+                Long tmdbMovieId = longValue(movieNode, "id");
+                if (tmdbMovieId == null) {
+                    continue;
+                }
+
+                requestedCount++;
+                if (linked.contains(tmdbMovieId)) {
+                    continue;
+                }
+
+                JsonNode detailNode = readTree(tmdbRestTemplate.getForObject(buildMovieDetailUri(tmdbMovieId), String.class));
+                if (detailNode == null) {
+                    continue;
+                }
+
+                if (upsertRawMovie(tmdbMovieId, toJson(detailNode))) {
+                    savedRawCount++;
+                } else {
+                    updatedRawCount++;
+                }
+            }
+        }
+
+        return new ImportResult(requestedCount, savedRawCount, updatedRawCount);
+    }
+
+    /**
+     * TMDB Discover API로 영화 수집.
+     * source: "korean-ott" | "korean-movies" | "high-rated"
+     */
+    @Transactional
+    public ImportResult importDiscoverMovies(String source, int maxPages) {
+        initializeRawTable();
+        Set<Long> linked = loadLinkedTmdbIds();
+
+        int requestedCount = 0;
+        int savedRawCount = 0;
+        int updatedRawCount = 0;
+
+        for (int page = 1; page <= maxPages; page++) {
+            JsonNode root = readTree(tmdbRestTemplate.getForObject(buildDiscoverUri(source, page), String.class));
+            if (root == null || !root.path("results").isArray()) {
+                break;
+            }
+
+            for (JsonNode movieNode : root.path("results")) {
+                Long tmdbMovieId = longValue(movieNode, "id");
+                if (tmdbMovieId == null) {
+                    continue;
+                }
+
+                requestedCount++;
+                if (linked.contains(tmdbMovieId)) {
+                    continue;
+                }
+
                 JsonNode detailNode = readTree(tmdbRestTemplate.getForObject(buildMovieDetailUri(tmdbMovieId), String.class));
                 if (detailNode == null) {
                     continue;
@@ -386,6 +479,18 @@ public class TmdbMovieImportService {
         return score;
     }
 
+    private Set<Long> loadLinkedTmdbIds() {
+        List<String> keys = jdbcTemplate.queryForList(
+                "SELECT source_key FROM movie_source WHERE source_type = 'TMDB'",
+                String.class);
+        Set<Long> ids = new HashSet<>();
+        for (String key : keys) {
+            try { ids.add(Long.parseLong(key)); }
+            catch (NumberFormatException ignored) {}
+        }
+        return ids;
+    }
+
     private URI buildPopularMovieUri(int page) {
         return UriComponentsBuilder.fromUriString(baseUrl)
                 .path("/movie/popular")
@@ -394,6 +499,46 @@ public class TmdbMovieImportService {
                 .queryParam("page", page)
                 .build()
                 .toUri();
+    }
+
+    private URI buildTopRatedUri(int page) {
+        return UriComponentsBuilder.fromUriString(baseUrl)
+                .path("/movie/top_rated")
+                .queryParam("language", "ko-KR")
+                .queryParam("region", "KR")
+                .queryParam("page", page)
+                .build()
+                .toUri();
+    }
+
+    /**
+     * source:
+     *   korean-ott    — 넷플릭스·왓챠·웨이브·티빙 한국 제공 영화
+     *   korean-movies — 한국어(ko) 원작 영화
+     *   high-rated    — vote_average ≥ 7.5 & vote_count ≥ 500 (다큐·TV영화 제외)
+     */
+    private URI buildDiscoverUri(String source, int page) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl)
+                .path("/discover/movie")
+                .queryParam("language", "ko-KR")
+                .queryParam("page", page)
+                .queryParam("include_adult", "false");
+        switch (source) {
+            case "korean-ott" -> builder
+                    .queryParam("watch_region", "KR")
+                    .queryParam("with_watch_providers", "8,97,356,229")  // Netflix,Watcha,Wavve,Tving
+                    .queryParam("sort_by", "popularity.desc");
+            case "korean-movies" -> builder
+                    .queryParam("with_original_language", "ko")
+                    .queryParam("sort_by", "popularity.desc");
+            case "high-rated" -> builder
+                    .queryParam("vote_average.gte", "7.5")
+                    .queryParam("vote_count.gte", "500")
+                    .queryParam("sort_by", "vote_count.desc")
+                    .queryParam("without_genres", "99,10770");  // Documentary, TV Movie
+            default -> throw new IllegalArgumentException("Unknown discover source: " + source);
+        }
+        return builder.build().toUri();
     }
 
     private URI buildSearchMovieUri(String query) {

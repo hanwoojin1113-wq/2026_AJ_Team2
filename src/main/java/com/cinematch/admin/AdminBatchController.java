@@ -55,6 +55,24 @@ public class AdminBatchController {
         return movieDataBatchService.runTmdbImportExisting(limit);
     }
 
+    @PostMapping("/tmdb/import-top-rated")
+    public MovieDataBatchService.JobRunResponse importTmdbTopRated(
+            @RequestParam(defaultValue = "25") int maxPages
+    ) {
+        return movieDataBatchService.runTmdbTopRatedImport(maxPages);
+    }
+
+    /**
+     * source: korean-ott | korean-movies | high-rated
+     */
+    @PostMapping("/tmdb/import-discover")
+    public MovieDataBatchService.JobRunResponse importTmdbDiscover(
+            @RequestParam String source,
+            @RequestParam(defaultValue = "20") int maxPages
+    ) {
+        return movieDataBatchService.runTmdbDiscoverImport(source, maxPages);
+    }
+
     @PostMapping("/tmdb/normalize")
     public MovieDataBatchService.JobRunResponse normalizeTmdb() {
         return movieDataBatchService.runTmdbNormalize();
