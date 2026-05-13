@@ -510,40 +510,40 @@
             right: 0;
             background: linear-gradient(270deg, var(--hp-bg) 0%, transparent 100%);
         }
+        .row-clip {
+            overflow-x: clip;
+            overflow-y: visible;
+        }
         .row-track {
             display: grid;
             grid-auto-flow: column;
             grid-auto-columns: minmax(172px, 172px);
             gap: 18px;
-            overflow-x: auto;
-            padding: 8px 0 14px;
-            scrollbar-width: none;
-            scroll-behavior: smooth;
-            scroll-snap-type: x proximity;
+            overflow: visible;
+            width: 100%;
+            padding: 28px 0;
             cursor: grab;
             user-select: none;
             -webkit-user-select: none;
             touch-action: pan-y;
-        }
-        .row-track::-webkit-scrollbar {
-            display: none;
+            transition: transform 0.35s ease;
+            will-change: transform;
         }
         .row-track.is-dragging {
             cursor: grabbing;
-            scroll-snap-type: none;
+            transition: none;
         }
         .movie-card {
             display: block;
             position: relative;
             text-decoration: none;
             color: inherit;
-            scroll-snap-align: start;
             transform-origin: center center;
-            transition: transform 0.24s ease, z-index 0.24s ease;
+            transition: transform 0.22s ease;
         }
         .movie-card:hover {
-            transform: translateY(-8px) scale(1.045);
-            z-index: 4;
+            transform: scale(1.32);
+            z-index: 20;
         }
         .poster-shell {
             position: relative;
@@ -561,6 +561,32 @@
             box-shadow: var(--hp-shadow-md);
         }
         .movie-card:hover .movie-title { color: var(--hp-text); }
+        /* ── 카드 호버 액션 버튼 ── */
+        .card-hover {
+            position: absolute; inset: 0; z-index: 2;
+            display: flex; flex-direction: column;
+            justify-content: flex-end; align-items: stretch;
+            padding: 8px;
+            background: rgba(0,0,0,0.48);
+            opacity: 0;
+            transition: opacity 0.18s ease;
+            pointer-events: none;
+        }
+        .movie-card:hover .card-hover { opacity: 1; pointer-events: auto; }
+        .card-actions { display: flex; gap: 4px; }
+        .cact-btn {
+            flex: 1; height: 28px; border-radius: var(--r-md);
+            border: 1px solid var(--hp-border-strong);
+            background: rgba(15,23,42,0.82); color: white;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.13s, transform 0.1s; font-size: 0;
+        }
+        .cact-btn:hover { background: rgba(255,255,255,0.18); transform: scale(1.1); }
+        .cact-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+        .cact-btn.active[data-action="like"]       { background: rgba(244,63,94,0.7); border-color: #F43F5E; }
+        .cact-btn.active[data-action="dislike"]    { background: rgba(100,116,139,0.7); border-color: #64748B; }
+        .cact-btn.active[data-action="later"]      { background: rgba(245,158,11,0.7); border-color: #F59E0B; }
+        .cact-btn.active[data-action="collection"] { background: rgba(139,92,246,0.7); border-color: #8B5CF6; }
         .poster {
             width: 100%;
             height: 100%;
@@ -1201,7 +1227,7 @@
                         <path d="M15 18l-6-6 6-6"/>
                     </svg>
                 </button>
-                <div class="row-track">
+                <div class="row-clip"><div class="row-track">
                     <th:block th:each="movie : ${trendingMovies}">
                         <a class="movie-card"
                            th:if="${movie.detailUrl != null}"
@@ -1214,6 +1240,12 @@
                                 <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
                                     <span th:text="${movie.title}">영화 제목</span>
                                 </div>
+                                <div class="card-hover"><div class="card-actions">
+                                    <button class="cact-btn" data-action="like" title="좋아요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg></button>
+                                    <button class="cact-btn" data-action="dislike" title="별로에요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg></button>
+                                    <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
+                                    <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
+                                </div></div>
                                 <div class="poster-overlay"><span>상세 보기</span></div>
                             </div>
                             <div class="movie-title" th:text="${movie.title}">영화 제목</div>
@@ -1236,7 +1268,7 @@
                                  th:text="${#strings.isEmpty(movie.subtitle) ? 'TMDB Trending' : movie.subtitle}">TMDB Trending</div>
                         </div>
                     </th:block>
-                </div>
+                </div></div>
                 <button class="row-arrow right" type="button" data-row-direction="next" aria-label="다음 인기 작품 보기">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
                         <path d="M9 6l6 6-6 6"/>
@@ -1259,7 +1291,7 @@
                             <path d="M15 18l-6-6 6-6"/>
                         </svg>
                     </button>
-                    <div class="row-track">
+                    <div class="row-clip"><div class="row-track">
                     <a class="movie-card" th:each="movie : ${block.items}" th:href="@{|/movies/${movie.movieCode}|}">
                         <div class="poster-shell">
                             <img class="poster"
@@ -1269,13 +1301,19 @@
                             <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
                                 <span th:text="${movie.title}">영화 제목</span>
                             </div>
+                            <div class="card-hover"><div class="card-actions">
+                                <button class="cact-btn" data-action="like" title="좋아요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg></button>
+                                <button class="cact-btn" data-action="dislike" title="별로에요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg></button>
+                                <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
+                                <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
+                            </div></div>
                             <div class="poster-overlay"><span>상세 보기</span></div>
                         </div>
                         <div class="movie-title" th:text="${movie.title}">영화 제목</div>
                         <div class="movie-sub"
                              th:text="${#strings.isEmpty(movie.reasonSummary) ? movie.subtitle : movie.reasonSummary}">추천 이유</div>
                     </a>
-                    </div>
+                    </div></div>
                     <button class="row-arrow right" type="button" data-row-direction="next" aria-label="다음 추천 보기">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
                             <path d="M9 6l6 6-6 6"/>
@@ -1308,7 +1346,7 @@
                         <path d="M15 18l-6-6 6-6"/>
                     </svg>
                 </button>
-                <div class="row-track">
+                <div class="row-clip"><div class="row-track">
                 <a class="movie-card" th:each="movie : ${block.items}" th:href="@{|/movies/${movie.movieCode}|}">
                     <div class="poster-shell">
                         <img class="poster"
@@ -1318,13 +1356,19 @@
                         <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
                             <span th:text="${movie.title}">?곹솕 ?쒕ぉ</span>
                         </div>
+                        <div class="card-hover"><div class="card-actions">
+                            <button class="cact-btn" data-action="like" title="좋아요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg></button>
+                            <button class="cact-btn" data-action="dislike" title="별로에요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg></button>
+                            <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
+                            <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
+                        </div></div>
                         <div class="poster-overlay"><span>?곸꽭 蹂닿린</span></div>
                     </div>
                     <div class="movie-title" th:text="${movie.title}">?곹솕 ?쒕ぉ</div>
                     <div class="movie-sub"
                          th:text="${#strings.isEmpty(movie.reasonSummary) ? movie.subtitle : movie.reasonSummary}">異붿쿇 ?댁쑀</div>
                 </a>
-                </div>
+                </div></div>
                 <button class="row-arrow right" type="button" data-row-direction="next" aria-label="?ㅼ쓬 異붿쿇 蹂닿린">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
                         <path d="M9 6l6 6-6 6"/>
@@ -1347,7 +1391,7 @@
                             <path d="M15 18l-6-6 6-6"/>
                         </svg>
                     </button>
-                    <div class="row-track">
+                    <div class="row-clip"><div class="row-track">
                     <a class="movie-card" th:each="movie : ${block.items}" th:href="@{|/movies/${movie.movieCode}|}">
                         <div class="poster-shell">
                             <img class="poster"
@@ -1357,13 +1401,19 @@
                             <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
                                 <span th:text="${movie.title}">?곹솕 ?쒕ぉ</span>
                             </div>
+                            <div class="card-hover"><div class="card-actions">
+                                <button class="cact-btn" data-action="like" title="좋아요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg></button>
+                                <button class="cact-btn" data-action="dislike" title="별로에요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg></button>
+                                <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
+                                <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
+                            </div></div>
                             <div class="poster-overlay"><span>?곸꽭 蹂닿린</span></div>
                         </div>
                         <div class="movie-title" th:text="${movie.title}">?곹솕 ?쒕ぉ</div>
                         <div class="movie-sub"
                              th:text="${#strings.isEmpty(movie.reasonSummary) ? movie.subtitle : movie.reasonSummary}">異붿쿇 ?댁쑀</div>
                     </a>
-                    </div>
+                    </div></div>
                     <button class="row-arrow right" type="button" data-row-direction="next" aria-label="?ㅼ쓬 異붿쿇 蹂닿린">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
                             <path d="M9 6l6 6-6 6"/>
@@ -1389,7 +1439,7 @@
                     <button class="row-arrow left" type="button" data-row-direction="prev" aria-label="이전">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
-                    <div class="row-track">
+                    <div class="row-clip"><div class="row-track">
                         <a class="movie-card" th:each="row : ${section.rows()}"
                            th:href="@{|/movies/${row.movieCode()}|}">
                             <div class="poster-shell">
@@ -1400,6 +1450,12 @@
                                 <div class="poster-fallback" th:if="${#strings.isEmpty(row.posterImageUrl())}">
                                     <span th:text="${row.movieName()}">영화 제목</span>
                                 </div>
+                                <div class="card-hover"><div class="card-actions">
+                                    <button class="cact-btn" data-action="like" title="좋아요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg></button>
+                                    <button class="cact-btn" data-action="dislike" title="별로에요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg></button>
+                                    <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
+                                    <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
+                                </div></div>
                                 <div class="poster-overlay"><span>상세 보기</span></div>
                                 <span class="rank-num-badge"
                                       th:classappend="${row.rankNo() == 1} ? ' top1' : (${row.rankNo() == 2} ? ' top2' : (${row.rankNo() == 3} ? ' top3' : ''))"
@@ -1408,7 +1464,7 @@
                             <div class="movie-title" th:text="${row.movieName()}">영화 제목</div>
                             <div class="chart-metric-sub" th:text="${row.metricValue()}">지표값</div>
                         </a>
-                    </div>
+                    </div></div>
                     <button class="row-arrow right" type="button" data-row-direction="next" aria-label="다음">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>
                     </button>
@@ -1429,7 +1485,7 @@
                         <path d="M15 18l-6-6 6-6"/>
                     </svg>
                 </button>
-                <div class="row-track">
+                <div class="row-clip"><div class="row-track">
                 <a class="movie-card" th:each="movie : ${fallbackMovies}" th:href="@{|/movies/${movie.movieCode}|}">
                     <div class="poster-shell">
                         <img class="poster"
@@ -1439,13 +1495,19 @@
                         <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
                             <span th:text="${movie.movieName}">영화 제목</span>
                         </div>
+                        <div class="card-hover"><div class="card-actions">
+                            <button class="cact-btn" data-action="like" title="좋아요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg></button>
+                            <button class="cact-btn" data-action="dislike" title="별로에요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg></button>
+                            <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
+                            <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
+                        </div></div>
                         <div class="poster-overlay"><span>상세 보기</span></div>
                     </div>
                     <div class="movie-title" th:text="${movie.movieName}">영화 제목</div>
                     <div class="movie-sub"
                          th:text="${#strings.isEmpty(movie.movieNameEn) ? movie.movieCode : movie.movieNameEn}">movie</div>
                 </a>
-                </div>
+                </div></div>
                 <button class="row-arrow right" type="button" data-row-direction="next" aria-label="다음 영화 보기">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
                         <path d="M9 6l6 6-6 6"/>
@@ -1540,49 +1602,70 @@
 </div>
 
 <script>
+    function doAction(e, btn) {
+        e.preventDefault(); e.stopPropagation();
+        const href = btn.closest('a')?.href ?? '';
+        const code = href.split('/movies/').pop();
+        if (!code) return;
+        const action = btn.dataset.action;
+        fetch('/api/movies/' + code + '/' + action, { method: 'POST' })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                btn.closest('a')?.querySelectorAll('.cact-btn').forEach(b => {
+                    const act = b.dataset.action;
+                    b.classList.toggle('active',
+                        (act==='like'&&data.liked)||(act==='dislike'&&data.disliked)||
+                        (act==='later'&&data.later)||(act==='collection'&&data.collected));
+                });
+            }).catch(() => {});
+    }
+
     function initializeRecommendationRows() {
         document.querySelectorAll('[data-row-carousel]').forEach((carousel) => {
             const track = carousel.querySelector('.row-track');
             const prevButton = carousel.querySelector('[data-row-direction="prev"]');
             const nextButton = carousel.querySelector('[data-row-direction="next"]');
 
-            if (!track || !prevButton || !nextButton) {
-                return;
-            }
+            if (!track || !prevButton || !nextButton) return;
+
+            let currentX = 0;
+
+            const getMaxOffset = () => Math.max(0, track.scrollWidth - track.clientWidth);
+
+            const applyOffset = (x, animate) => {
+                currentX = Math.min(0, Math.max(-getMaxOffset(), x));
+                track.style.transition = animate ? 'transform 0.35s ease' : 'none';
+                track.style.transform = 'translateX(' + currentX + 'px)';
+                syncButtons();
+            };
 
             const getScrollAmount = () => {
                 const firstCard = track.querySelector('.movie-card');
-                if (!firstCard) {
-                    return Math.max(track.clientWidth * 0.85, 240);
-                }
-
+                if (!firstCard) return Math.max(track.clientWidth * 0.85, 240);
                 const styles = window.getComputedStyle(track);
                 const gap = parseFloat(styles.columnGap || styles.gap || '18');
                 return Math.max(firstCard.getBoundingClientRect().width + gap, Math.floor(track.clientWidth * 0.82));
             };
 
             const syncButtons = () => {
-                const maxScrollLeft = Math.max(0, track.scrollWidth - track.clientWidth - 4);
-                prevButton.disabled = track.scrollLeft <= 4;
-                nextButton.disabled = track.scrollLeft >= maxScrollLeft;
+                prevButton.disabled = currentX >= 0;
+                nextButton.disabled = currentX <= -getMaxOffset() + 4;
             };
 
             prevButton.addEventListener('click', () => {
-                track.scrollBy({ left: -getScrollAmount(), behavior: 'smooth' });
+                applyOffset(currentX + getScrollAmount(), true);
             });
 
             nextButton.addEventListener('click', () => {
-                track.scrollBy({ left: getScrollAmount(), behavior: 'smooth' });
+                applyOffset(currentX - getScrollAmount(), true);
             });
 
             let pointerState = null;
             let cancelNextClick = false;
 
             const endDrag = (event) => {
-                if (!pointerState || (event && event.pointerId !== pointerState.pointerId)) {
-                    return;
-                }
-
+                if (!pointerState || (event && event.pointerId !== pointerState.pointerId)) return;
                 const wasDragging = pointerState.dragging;
                 const anchorHref = pointerState.anchorHref;
                 const hasModifier = pointerState.hasModifier;
@@ -1594,22 +1677,16 @@
                     }
                     return;
                 }
-
                 cancelNextClick = true;
-                window.setTimeout(() => {
-                    cancelNextClick = false;
-                }, 140);
+                window.setTimeout(() => { cancelNextClick = false; }, 140);
             };
 
             track.addEventListener('pointerdown', (event) => {
-                if (event.pointerType === 'mouse' && event.button !== 0) {
-                    return;
-                }
-
+                if (event.pointerType === 'mouse' && event.button !== 0) return;
                 pointerState = {
                     pointerId: event.pointerId,
                     startX: event.clientX,
-                    startScrollLeft: track.scrollLeft,
+                    startOffset: currentX,
                     dragging: false,
                     anchorHref: event.target.closest('.movie-card')?.href ?? null,
                     hasModifier: !!(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
@@ -1619,22 +1696,15 @@
             });
 
             track.addEventListener('pointermove', (event) => {
-                if (!pointerState || event.pointerId !== pointerState.pointerId) {
-                    return;
-                }
-
+                if (!pointerState || event.pointerId !== pointerState.pointerId) return;
                 const deltaX = event.clientX - pointerState.startX;
                 if (!pointerState.dragging && Math.abs(deltaX) > 6) {
                     pointerState.dragging = true;
                     track.classList.add('is-dragging');
                 }
-
-                if (!pointerState.dragging) {
-                    return;
-                }
-
+                if (!pointerState.dragging) return;
                 event.preventDefault();
-                track.scrollLeft = pointerState.startScrollLeft - (deltaX * 1.12);
+                applyOffset(pointerState.startOffset + deltaX, false);
             });
 
             track.addEventListener('pointerup', endDrag);
@@ -1642,30 +1712,12 @@
             track.addEventListener('lostpointercapture', endDrag);
 
             track.addEventListener('click', (event) => {
-                if (!cancelNextClick) {
-                    return;
-                }
-
-                if (!event.target.closest('a')) {
-                    return;
-                }
-
+                if (!cancelNextClick) return;
+                if (!event.target.closest('a')) return;
                 event.preventDefault();
                 event.stopPropagation();
                 cancelNextClick = false;
             }, true);
-
-            let ticking = false;
-            track.addEventListener('scroll', () => {
-                if (ticking) {
-                    return;
-                }
-                ticking = true;
-                window.requestAnimationFrame(() => {
-                    syncButtons();
-                    ticking = false;
-                });
-            }, { passive: true });
 
             window.addEventListener('resize', syncButtons);
             syncButtons();

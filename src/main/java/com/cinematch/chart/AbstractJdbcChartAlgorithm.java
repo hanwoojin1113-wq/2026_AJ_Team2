@@ -52,9 +52,7 @@ public abstract class AbstractJdbcChartAlgorithm implements ChartAlgorithm {
                 badgeResolver != null ? safeResolveBadge(badgeResolver, rs) : null
         ), params);
 
-        return rows.stream()
-                .filter(row -> row.posterImageUrl() != null && !row.posterImageUrl().isBlank())
-                .toList();
+        return rows;
     }
 
     /** badge resolver 실행 중 예외 발생 시 null 반환 */
