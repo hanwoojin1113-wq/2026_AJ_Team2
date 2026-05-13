@@ -4,35 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${algorithm.title()} + ' | CineMatch'">랭킹 상세 | CineMatch</title>
-    <link rel="stylesheet" as="style" crossorigin
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <link rel="stylesheet" href="/css/hp-theme.css">
     <style>
         :root {
-            --blue: #0048FF;
-            --bg: #070B14;
-            --text: #F8FAFC;
-            --text-sub: #CBD5E1;
-            --text-hint: #94A3B8;
-            --shadow: 0 24px 60px rgba(2,6,23,0.42);
+            --blue: var(--hp-blue); --bg: var(--hp-bg); --text: var(--hp-text);
+            --text-sub: var(--hp-text-sub); --text-hint: var(--hp-text-hint); --shadow: var(--hp-shadow-lg);
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Pretendard', 'Segoe UI', sans-serif;
-            background:
-                radial-gradient(ellipse at top right, rgba(0,72,255,0.13) 0%, transparent 50%),
-                #070B14;
-            color: var(--text);
-            min-height: 100vh;
-        }
-
-        /* ── Navbar ── */
         .navbar {
             position: sticky; top: 0; z-index: 100;
             display: flex; align-items: center; justify-content: space-between;
-            padding: 0 32px; height: 60px;
-            background: rgba(7,11,20,0.85);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(148,163,184,0.1);
+            padding: 0 32px; height: 64px;
+            background: rgba(15,15,15,0.88); backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--hp-border);
         }
         .navbar-left { display: flex; align-items: center; gap: 14px; }
         .back-btn {
@@ -49,31 +32,32 @@
             font-size: 1.08rem; font-weight: 900; letter-spacing: -0.03em;
         }
         .logo-mark {
-            width: 30px; height: 30px; border-radius: 8px;
+            width: 30px; height: 30px; border-radius: var(--r-lg);
             display: inline-flex; align-items: center; justify-content: center;
-            background: linear-gradient(135deg, #0048FF, #38BDF8);
+            background: var(--hp-blue);
         }
         .logo-mark svg { width: 14px; height: 14px; fill: white; }
         .navbar-right { display: flex; align-items: center; gap: 10px; }
         .user-badge {
             display: inline-flex; align-items: center; gap: 8px;
-            padding: 7px 13px; border-radius: 999px;
-            background: rgba(255,255,255,0.07);
+            padding: 7px 13px; border-radius: var(--r-md);
+            background: var(--hp-surface-2); border: 1px solid var(--hp-border);
             color: white; text-decoration: none;
             font-size: 0.84rem; font-weight: 700;
         }
         .logout-btn {
             display: inline-flex; align-items: center; justify-content: center;
-            min-width: 84px; height: 36px; border-radius: 999px;
-            background: white; color: #0F172A;
-            text-decoration: none; font-size: 0.84rem; font-weight: 800;
+            min-width: 84px; height: 36px; border-radius: var(--r-md);
+            background: var(--hp-blue); color: #fff;
+            text-decoration: none; font-size: 0.75rem; font-weight: 700;
+            letter-spacing: 0.7px; text-transform: uppercase;
         }
         .notif-wrap { position: relative; }
         .notif-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(255,255,255,0.08); color: white; cursor: pointer; transition: background 0.15s; }
         .notif-btn:hover { background: rgba(255,255,255,0.15); }
         .notif-badge { position: absolute; top: 4px; right: 4px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 999px; background: #EF4444; color: white; font-size: 0.65rem; font-weight: 900; display: flex; align-items: center; justify-content: center; }
         .notif-badge:empty { display: none; }
-        .notif-panel { position: absolute; top: calc(100% + 10px); right: 0; width: 360px; max-height: 480px; border-radius: 16px; background: #111827; border: 1px solid rgba(148,163,184,0.15); box-shadow: 0 24px 60px rgba(2,6,23,0.55); z-index: 9999; overflow: hidden; display: flex; flex-direction: column; }
+        .notif-panel { position: absolute; top: calc(100% + 10px); right: 0; width: 360px; max-height: 480px; border-radius: var(--r-xl); background: var(--hp-surface); border: 1px solid var(--hp-border); box-shadow: var(--hp-shadow-lg); z-index: 9999; overflow: hidden; display: flex; flex-direction: column; }
         .notif-panel[hidden] { display: none; }
         .notif-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid rgba(148,163,184,0.1); font-weight: 800; font-size: 0.95rem; flex-shrink: 0; }
         .notif-read-all-btn { border: none; background: none; color: #60A5FA; font-size: 0.78rem; font-weight: 700; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-family: inherit; }
@@ -98,18 +82,12 @@
         /* ── Hero ── */
         .hero {
             padding: 32px 40px;
-            border-radius: 24px;
-            background: linear-gradient(120deg,
-                rgba(0,72,255,0.88) 0%,
-                rgba(14,165,233,0.72) 52%,
-                rgba(10,18,34,0.95) 100%);
+            border-radius: var(--r-xl);
+            background: var(--hp-surface);
+            border: 1px solid var(--hp-border);
+            border-left: 4px solid var(--hp-blue);
             margin-bottom: 28px;
             position: relative; overflow: hidden;
-        }
-        .hero::after {
-            content: ''; position: absolute; right: -20px; bottom: -20px;
-            width: 180px; height: 180px; border-radius: 50%;
-            background: rgba(255,255,255,0.06); pointer-events: none;
         }
         .hero-top {
             display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
@@ -276,9 +254,9 @@
             align-items: center;
             gap: 14px;
             padding: 13px 20px;
-            border-radius: 16px;
-            background: rgba(12,20,34,0.85);
-            border: 1px solid rgba(148,163,184,0.1);
+            border-radius: var(--r-xl);
+            background: var(--hp-surface-2);
+            border: 1px solid var(--hp-border);
             text-decoration: none; color: inherit;
             transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
         }
@@ -360,15 +338,15 @@
         .related-card {
             display: flex; flex-direction: column;
             padding: 16px 18px 14px;
-            border-radius: 14px;
-            background: rgba(12,20,34,0.85);
-            border: 1px solid rgba(148,163,184,0.1);
+            border-radius: var(--r-xl);
+            background: var(--hp-surface-2);
+            border: 1px solid var(--hp-border);
             text-decoration: none; color: inherit;
             transition: transform 0.16s ease, border-color 0.16s ease;
         }
         .related-card:hover {
             transform: translateY(-3px);
-            border-color: rgba(96,165,250,0.28);
+            border-color: rgba(2,74,216,0.4);
         }
         .related-card-title { font-size: 0.9rem; font-weight: 800; margin-bottom: 5px; }
         .related-card-desc { font-size: 0.76rem; color: var(--text-hint); line-height: 1.5; flex: 1; }

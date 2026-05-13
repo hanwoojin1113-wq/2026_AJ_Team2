@@ -4,43 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CineMatch | People</title>
-    <link rel="stylesheet" as="style" crossorigin
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <link rel="stylesheet" href="/css/hp-theme.css">
     <style>
         :root {
-            --bg: #060d18;
-            --surface: rgba(12, 19, 32, 0.94);
-            --surface-soft: rgba(255, 255, 255, 0.05);
-            --border: rgba(148, 163, 184, 0.16);
-            --text: #f8fafc;
-            --sub: #9fb0c7;
-            --blue: #3b82f6;
-            --blue-soft: rgba(59, 130, 246, 0.15);
-            --shadow: 0 28px 60px rgba(2, 6, 23, 0.42);
+            --bg: var(--hp-bg); --surface: var(--hp-surface); --surface-soft: rgba(255,255,255,0.04);
+            --border: var(--hp-border); --text: var(--hp-text); --sub: var(--hp-text-sub);
+            --blue: var(--hp-blue); --blue-soft: var(--hp-blue-soft); --shadow: var(--hp-shadow-lg);
         }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: Pretendard, 'Segoe UI', sans-serif;
-            min-height: 100vh;
-            color: var(--text);
-            background:
-                radial-gradient(circle at top right, rgba(59, 130, 246, 0.22), transparent 26%),
-                linear-gradient(180deg, #06101a 0%, #08111f 48%, #0b1627 100%);
-        }
-
         .nav {
-            position: sticky;
-            top: 0;
-            z-index: 200;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            padding: 18px 24px;
-            background: rgba(6, 11, 20, 0.88);
-            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+            position: sticky; top: 0; z-index: 200;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            padding: 0 24px; height: 64px;
+            background: rgba(15,15,15,0.88); border-bottom: 1px solid var(--hp-border);
             backdrop-filter: blur(18px);
         }
 
@@ -58,14 +33,17 @@
         }
 
         .pill {
-            padding: 10px 14px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.08);
+            padding: 8px 14px;
+            border-radius: var(--r-md);
+            background: var(--hp-surface-2);
+            border: 1px solid var(--hp-border);
         }
 
         .logout {
-            background: #fff;
-            color: #0f172a !important;
+            background: var(--hp-blue) !important;
+            color: #fff !important;
+            border: none !important;
+            font-size: 12px; letter-spacing: 0.7px; text-transform: uppercase;
         }
         .post-create-btn {
             display: flex;
@@ -86,7 +64,7 @@
         .notif-btn:hover { background: rgba(255,255,255,0.15); }
         .notif-badge { position: absolute; top: 4px; right: 4px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 999px; background: #EF4444; color: white; font-size: 0.65rem; font-weight: 900; display: flex; align-items: center; justify-content: center; }
         .notif-badge:empty { display: none; }
-        .notif-panel { position: absolute; top: calc(100% + 10px); right: 0; width: 360px; max-height: 480px; border-radius: 16px; background: #111827; border: 1px solid rgba(148,163,184,0.15); box-shadow: 0 24px 60px rgba(2,6,23,0.55); z-index: 9999; overflow: hidden; display: flex; flex-direction: column; }
+        .notif-panel { position: absolute; top: calc(100% + 10px); right: 0; width: 360px; max-height: 480px; border-radius: var(--r-xl); background: var(--hp-surface); border: 1px solid var(--hp-border); box-shadow: var(--hp-shadow-lg); z-index: 9999; overflow: hidden; display: flex; flex-direction: column; }
         .notif-panel[hidden] { display: none; }
         .notif-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid rgba(148,163,184,0.1); font-weight: 800; font-size: 0.95rem; flex-shrink: 0; }
         .notif-read-all-btn { border: none; background: none; color: #60A5FA; font-size: 0.78rem; font-weight: 700; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-family: inherit; }
@@ -118,9 +96,10 @@
             gap: 24px;
             flex-wrap: wrap;
             padding: 24px;
-            border-radius: 28px;
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.92), rgba(56, 189, 248, 0.76), rgba(10, 18, 34, 0.96));
-            box-shadow: var(--shadow);
+            border-radius: var(--r-xl);
+            background: var(--hp-surface);
+            border: 1px solid var(--hp-border);
+            border-left: 4px solid var(--hp-blue);
         }
 
         .profile-summary {
@@ -155,8 +134,8 @@
             justify-content: center;
             font-size: 2rem;
             font-weight: 900;
-            color: #eff6ff;
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.96), rgba(56, 189, 248, 0.76));
+            color: #fff;
+            background: var(--hp-surface-2);
         }
 
         .profile-copy p {
@@ -239,9 +218,9 @@
         }
 
         .action-btn.primary {
-            background: rgba(255, 255, 255, 0.92);
-            color: #0f172a;
-            border-color: rgba(255, 255, 255, 0.92);
+            background: var(--hp-blue);
+            color: #fff;
+            border-color: var(--hp-blue);
         }
 
         .action-btn.self {
@@ -307,11 +286,14 @@
             height: 48px;
             padding: 0 18px;
             border: none;
-            border-radius: 14px;
-            background: #fff;
-            color: #0f172a;
+            border-radius: var(--r-md);
+            background: var(--hp-blue);
+            color: #fff;
             font: inherit;
-            font-weight: 800;
+            font-size: 0.84rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
             cursor: pointer;
         }
 
@@ -362,8 +344,8 @@
             justify-content: center;
             font-size: 1.2rem;
             font-weight: 900;
-            color: #eff6ff;
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.96), rgba(56, 189, 248, 0.76));
+            color: #fff;
+            background: var(--hp-surface-2);
         }
 
         .user-copy {
@@ -413,18 +395,22 @@
             min-width: 92px;
             height: 40px;
             padding: 0 14px;
-            border: none;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.14);
-            color: #fff;
+            border: 1px solid var(--hp-border);
+            border-radius: var(--r-md);
+            background: var(--hp-surface-2);
+            color: var(--hp-text-sub);
             font: inherit;
-            font-weight: 800;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
             cursor: pointer;
         }
 
         .follow-btn.active {
-            background: #fff;
-            color: #0f172a;
+            background: var(--hp-blue);
+            color: #fff;
+            border-color: var(--hp-blue);
         }
 
         .empty {
