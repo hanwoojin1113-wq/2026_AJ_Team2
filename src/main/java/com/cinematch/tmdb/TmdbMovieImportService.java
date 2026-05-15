@@ -516,6 +516,7 @@ public class TmdbMovieImportService {
      *   korean-ott    — 넷플릭스·왓챠·웨이브·티빙 한국 제공 영화
      *   korean-movies — 한국어(ko) 원작 영화
      *   high-rated    — vote_average ≥ 7.5 & vote_count ≥ 500 (다큐·TV영화 제외)
+     *   blockbusters  — vote_count ≥ 5000, 평점 무관 (MCU/프랜차이즈 대작 포함)
      */
     private URI buildDiscoverUri(String source, int page) {
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl)
@@ -534,6 +535,10 @@ public class TmdbMovieImportService {
             case "high-rated" -> builder
                     .queryParam("vote_average.gte", "7.5")
                     .queryParam("vote_count.gte", "500")
+                    .queryParam("sort_by", "vote_count.desc")
+                    .queryParam("without_genres", "99,10770");  // Documentary, TV Movie
+            case "blockbusters" -> builder
+                    .queryParam("vote_count.gte", "5000")
                     .queryParam("sort_by", "vote_count.desc")
                     .queryParam("without_genres", "99,10770");  // Documentary, TV Movie
             default -> throw new IllegalArgumentException("Unknown discover source: " + source);

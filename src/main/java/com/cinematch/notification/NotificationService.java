@@ -95,6 +95,18 @@ public class NotificationService {
                 """, postOwnerId, actorUserId, postId, movieCode);
     }
 
+    public void createPostCommentNotification(Long actorUserId, Long postId, Long postOwnerId, String movieCode) {
+        initializeTable();
+        if (actorUserId == null || postOwnerId == null || actorUserId.equals(postOwnerId)) {
+            return;
+        }
+        jdbcTemplate.update("""
+                INSERT INTO user_notification
+                    (recipient_user_id, actor_user_id, notification_type, post_id, movie_cd)
+                VALUES (?, ?, 'POST_COMMENT', ?, ?)
+                """, postOwnerId, actorUserId, postId, movieCode);
+    }
+
     public void createReviewLikeNotification(Long actorUserId, Long reviewId, Long reviewOwnerId, String movieCode) {
         initializeTable();
         if (actorUserId == null || reviewOwnerId == null || actorUserId.equals(reviewOwnerId)) {

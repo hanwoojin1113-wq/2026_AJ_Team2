@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -47,6 +48,8 @@ public class PostController {
     private static final String LOGIN_NICKNAME_SESSION_KEY = "loginUserNickname";
     private static final Set<String> ALLOWED_IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "gif", "webp");
     private static final DateTimeFormatter POST_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
+    private static final int FEED_PAGE_SIZE = 10;
+    private static final int FEED_MAX_PAGE_SIZE = 20;
 
     private final JdbcTemplate jdbcTemplate;
     private final NotificationService notificationService;
@@ -62,6 +65,25 @@ public class PostController {
         model.addAttribute("loginUserNickname", session.getAttribute(LOGIN_NICKNAME_SESSION_KEY));
         model.addAttribute("loginUserId", session.getAttribute(LOGIN_SESSION_KEY));
         return "post-create";
+    }
+
+    @GetMapping("/feed")
+    public String feedPage(Model model, HttpSession session) {
+        if (!isLoggedIn(session)) {
+            return "redirect:/login";
+        }
+        initializeSocialTables();
+
+        Long currentUserId = findOptionalCurrentUserId(session);
+        FeedSlice feedSlice = loadFeedSlice(null, FEED_PAGE_SIZE, currentUserId);
+
+        model.addAttribute("posts", feedSlice.posts());
+        model.addAttribute("hasMore", feedSlice.hasMore());
+        model.addAttribute("nextCursor", feedSlice.nextCursor());
+        model.addAttribute("loginUserNickname", session.getAttribute(LOGIN_NICKNAME_SESSION_KEY));
+        model.addAttribute("loginUserId", session.getAttribute(LOGIN_SESSION_KEY));
+        model.addAttribute("currentUserId", currentUserId);
+        return "feed";
     }
 
     @GetMapping("/posts/{postId}")
@@ -205,6 +227,26 @@ public class PostController {
         }, likePattern, likePattern);
     }
 
+    @GetMapping("/api/feed/posts")
+    @ResponseBody
+    public Map<String, Object> feedPosts(@RequestParam(required = false) String cursor,
+                                         @RequestParam(required = false, defaultValue = "10") int limit,
+                                         HttpSession session) {
+        initializeSocialTables();
+        if (!isLoggedIn(session)) {
+            throw new ResponseStatusException(UNAUTHORIZED);
+        }
+
+        Long currentUserId = findOptionalCurrentUserId(session);
+        FeedSlice feedSlice = loadFeedSlice(cursor, limit, currentUserId);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("posts", feedSlice.posts());
+        result.put("hasMore", feedSlice.hasMore());
+        result.put("nextCursor", feedSlice.nextCursor());
+        return result;
+    }
+
     @PostMapping("/posts")
     @Transactional
     public String createPost(@RequestParam("images") List<MultipartFile> images,
@@ -319,6 +361,51 @@ public class PostController {
         return result;
     }
 
+    @GetMapping("/api/posts/{postId}/comments")
+    @ResponseBody
+    public List<Map<String, Object>> listPostComments(@PathVariable Long postId, HttpSession session) {
+        initializeSocialTables();
+        requireActivePost(postId);
+        Long currentUserId = findOptionalCurrentUserId(session);
+        return fetchPostComments(postId, currentUserId);
+    }
+
+    @PostMapping("/api/posts/{postId}/comments")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> createPostComment(@PathVariable Long postId,
+                                                 @RequestParam String content,
+                                                 HttpSession session) {
+        initializeSocialTables();
+        if (!isLoggedIn(session)) {
+            throw new ResponseStatusException(UNAUTHORIZED);
+        }
+
+        Long userId = requireCurrentUserId(session);
+        String normalizedContent = normalizeCommentContent(content);
+        Map<String, Object> postInfo = findActivePostInfo(postId);
+        if (postInfo == null) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+
+        Long commentId = insertPostComment(postId, userId, normalizedContent);
+        Map<String, Object> comment = fetchPostComment(commentId, userId);
+        Integer commentCount = countPostComments(postId);
+
+        try {
+            Long postOwnerId = ((Number) postInfo.get("ownerId")).longValue();
+            String movieCode = (String) postInfo.get("movieCode");
+            notificationService.createPostCommentNotification(userId, postId, postOwnerId, movieCode);
+        } catch (Exception ex) {
+            log.warn("Post comment notification failed: {}", ex.getMessage());
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("comment", comment);
+        result.put("commentCount", commentCount);
+        return result;
+    }
+
     private boolean isLoggedIn(HttpSession session) {
         return session.getAttribute(LOGIN_SESSION_KEY) != null;
     }
@@ -372,6 +459,32 @@ public class PostController {
             throw new ResponseStatusException(BAD_REQUEST);
         }
         return movieCode;
+    }
+
+    private void requireActivePost(Long postId) {
+        if (findActivePostInfo(postId) == null) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+    }
+
+    private Map<String, Object> findActivePostInfo(Long postId) {
+        return jdbcTemplate.query("""
+                SELECT
+                    sp.user_id AS ownerId,
+                    m.movie_cd AS movieCode
+                FROM social_post sp
+                JOIN movie m ON m.id = sp.movie_id
+                WHERE sp.id = ?
+                  AND sp.is_deleted = FALSE
+                """, rs -> {
+            if (!rs.next()) {
+                return null;
+            }
+            Map<String, Object> info = new LinkedHashMap<>();
+            info.put("ownerId", rs.getLong("ownerId"));
+            info.put("movieCode", rs.getString("movieCode"));
+            return info;
+        }, postId);
     }
 
     private List<MultipartFile> filterValidImages(List<MultipartFile> images) {
@@ -446,6 +559,8 @@ public class PostController {
                 """, Integer.class, postId);
         post.put("likeCount", likeCount != null ? likeCount : 0);
 
+        post.put("commentCount", countPostComments(postId));
+
         boolean likedByMe = false;
         if (currentUserId != null) {
             Integer cnt = jdbcTemplate.queryForObject("""
@@ -476,16 +591,234 @@ public class PostController {
         Object createdAt = post.get("createdAt");
         if (createdAt instanceof Timestamp timestamp) {
             post.put("createdAtLabel", timestamp.toLocalDateTime().format(POST_DATE_FORMAT));
+            post.put("createdAtMillis", timestamp.getTime());
+            post.put("cursor", buildFeedCursor(timestamp, postId));
         } else if (createdAt != null) {
             post.put("createdAtLabel", createdAt.toString());
+            post.put("createdAtMillis", null);
+            post.put("cursor", null);
         } else {
             post.put("createdAtLabel", "");
+            post.put("createdAtMillis", null);
+            post.put("cursor", null);
         }
+    }
+
+    private FeedSlice loadFeedSlice(String cursor, int limit, Long currentUserId) {
+        int normalizedLimit = Math.max(1, Math.min(limit, FEED_MAX_PAGE_SIZE));
+        FeedCursor feedCursor = parseFeedCursor(cursor);
+        List<Object> params = new ArrayList<>();
+        String cursorClause = "";
+        if (feedCursor != null) {
+            cursorClause = """
+                      AND (
+                            sp.created_at < ?
+                         OR (sp.created_at = ? AND sp.id < ?)
+                      )
+                    """;
+            Timestamp cursorTimestamp = new Timestamp(feedCursor.createdAtMillis());
+            if (feedCursor.createdAtNanos() >= 0) {
+                cursorTimestamp.setNanos(feedCursor.createdAtNanos());
+            }
+            params.add(cursorTimestamp);
+            params.add(cursorTimestamp);
+            params.add(feedCursor.postId());
+        }
+        params.add(normalizedLimit + 1);
+
+        List<Map<String, Object>> rows = jdbcTemplate.query("""
+                SELECT
+                    sp.id AS postId,
+                    sp.content,
+                    sp.created_at AS createdAt,
+                    sp.user_id AS userId,
+                    u.nickname,
+                    u.login_id AS loginId,
+                    u.profile_image_url AS profileImageUrl,
+                    m.movie_cd AS movieCode,
+                    COALESCE(m.title, m.movie_name) AS movieTitle,
+                    m.poster_image_url AS moviePosterUrl
+                FROM social_post sp
+                JOIN "USER" u ON u.id = sp.user_id
+                JOIN movie m ON m.id = sp.movie_id
+                WHERE sp.is_deleted = FALSE
+                """ + cursorClause + """
+                ORDER BY sp.created_at DESC, sp.id DESC
+                LIMIT ?
+                """, (rs, rowNum) -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("postId", rs.getLong("postId"));
+            row.put("content", rs.getString("content"));
+            row.put("createdAt", rs.getTimestamp("createdAt"));
+            row.put("userId", rs.getLong("userId"));
+            row.put("nickname", rs.getString("nickname"));
+            row.put("loginId", rs.getString("loginId"));
+            row.put("profileImageUrl", rs.getString("profileImageUrl"));
+            row.put("movieCode", rs.getString("movieCode"));
+            row.put("movieTitle", rs.getString("movieTitle"));
+            row.put("moviePosterUrl", rs.getString("moviePosterUrl"));
+            return row;
+        }, params.toArray());
+
+        boolean hasMore = rows.size() > normalizedLimit;
+        List<Map<String, Object>> posts = hasMore
+                ? new ArrayList<>(rows.subList(0, normalizedLimit))
+                : rows;
+        for (Map<String, Object> post : posts) {
+            enrichPost(post, currentUserId);
+        }
+
+        String nextCursor = posts.isEmpty() ? null : (String) posts.get(posts.size() - 1).get("cursor");
+        return new FeedSlice(posts, hasMore, nextCursor);
+    }
+
+    private FeedCursor parseFeedCursor(String cursor) {
+        if (cursor == null || cursor.isBlank()) {
+            return null;
+        }
+        String[] parts = cursor.trim().split(":");
+        if (parts.length != 2 && parts.length != 3) {
+            return null;
+        }
+        try {
+            if (parts.length == 3) {
+                return new FeedCursor(Long.parseLong(parts[0]), Integer.parseInt(parts[1]), Long.parseLong(parts[2]));
+            }
+            return new FeedCursor(Long.parseLong(parts[0]), -1, Long.parseLong(parts[1]));
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private String buildFeedCursor(Timestamp createdAt, Long postId) {
+        if (createdAt == null || postId == null) {
+            return null;
+        }
+        return createdAt.getTime() + ":" + createdAt.getNanos() + ":" + postId;
+    }
+
+    private List<Map<String, Object>> fetchPostComments(Long postId, Long currentUserId) {
+        long viewerId = currentUserId == null ? -1L : currentUserId;
+        return jdbcTemplate.query("""
+                SELECT
+                    pc.id AS commentId,
+                    pc.content,
+                    pc.created_at AS createdAt,
+                    pc.user_id AS userId,
+                    u.nickname,
+                    u.login_id AS loginId,
+                    u.profile_image_url AS profileImageUrl
+                FROM post_comment pc
+                JOIN "USER" u ON u.id = pc.user_id
+                WHERE pc.post_id = ?
+                  AND pc.is_deleted = FALSE
+                ORDER BY pc.created_at ASC, pc.id ASC
+                """, (rs, rowNum) -> mapCommentRow(rs.getLong("commentId"),
+                rs.getString("content"),
+                rs.getTimestamp("createdAt"),
+                rs.getLong("userId"),
+                rs.getString("nickname"),
+                rs.getString("loginId"),
+                rs.getString("profileImageUrl"),
+                viewerId), postId);
+    }
+
+    private Map<String, Object> fetchPostComment(Long commentId, Long currentUserId) {
+        Map<String, Object> comment = jdbcTemplate.query("""
+                SELECT
+                    pc.id AS commentId,
+                    pc.content,
+                    pc.created_at AS createdAt,
+                    pc.user_id AS userId,
+                    u.nickname,
+                    u.login_id AS loginId,
+                    u.profile_image_url AS profileImageUrl
+                FROM post_comment pc
+                JOIN "USER" u ON u.id = pc.user_id
+                WHERE pc.id = ?
+                  AND pc.is_deleted = FALSE
+                """, rs -> {
+            if (!rs.next()) {
+                return null;
+            }
+            return mapCommentRow(rs.getLong("commentId"),
+                    rs.getString("content"),
+                    rs.getTimestamp("createdAt"),
+                    rs.getLong("userId"),
+                    rs.getString("nickname"),
+                    rs.getString("loginId"),
+                    rs.getString("profileImageUrl"),
+                    currentUserId == null ? -1L : currentUserId);
+        }, commentId);
+        if (comment == null) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+        return comment;
+    }
+
+    private Map<String, Object> mapCommentRow(Long commentId,
+                                              String content,
+                                              Timestamp createdAt,
+                                              Long userId,
+                                              String nickname,
+                                              String loginId,
+                                              String profileImageUrl,
+                                              long currentUserId) {
+        Map<String, Object> comment = new LinkedHashMap<>();
+        comment.put("commentId", commentId);
+        comment.put("content", content);
+        comment.put("createdAt", createdAt == null ? "" : createdAt.toLocalDateTime().toString());
+        comment.put("userId", userId);
+        comment.put("nickname", nickname);
+        comment.put("loginId", loginId);
+        comment.put("profileImageUrl", profileImageUrl);
+        comment.put("isMyComment", userId != null && userId == currentUserId);
+        return comment;
+    }
+
+    private Long insertPostComment(Long postId, Long userId, String content) {
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement("""
+                    INSERT INTO post_comment (post_id, user_id, content)
+                    VALUES (?, ?, ?)
+                    """, new String[]{"id"});
+            ps.setLong(1, postId);
+            ps.setLong(2, userId);
+            ps.setString(3, content);
+            return ps;
+        }, keyHolder);
+        Number key = keyHolder.getKey();
+        if (key == null) {
+            throw new IllegalStateException("Comment insert failed");
+        }
+        return key.longValue();
+    }
+
+    private Integer countPostComments(Long postId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM post_comment
+                WHERE post_id = ?
+                  AND is_deleted = FALSE
+                """, Integer.class, postId);
+        return count == null ? 0 : count;
     }
 
     private String normalizeContent(String content) {
         String normalized = content == null ? "" : content.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizeCommentContent(String content) {
+        String normalized = content == null ? "" : content.trim();
+        if (normalized.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "댓글 내용을 입력해주세요.");
+        }
+        if (normalized.length() > 1000) {
+            throw new ResponseStatusException(BAD_REQUEST, "댓글은 최대 1000자까지 입력할 수 있습니다.");
+        }
+        return normalized;
     }
 
     private String extractExtension(String originalFilename) {
@@ -530,5 +863,30 @@ public class PostController {
                     CONSTRAINT uk_post_like UNIQUE (user_id, post_id)
                 )
                 """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS post_comment (
+                    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    post_id BIGINT NOT NULL,
+                    user_id BIGINT NOT NULL,
+                    content TEXT NOT NULL,
+                    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """);
+        jdbcTemplate.execute("""
+                CREATE INDEX IF NOT EXISTS idx_post_comment_post_created
+                ON post_comment (post_id, created_at)
+                """);
+        jdbcTemplate.execute("""
+                CREATE INDEX IF NOT EXISTS idx_post_comment_user_created
+                ON post_comment (user_id, created_at)
+                """);
+    }
+
+    private record FeedSlice(List<Map<String, Object>> posts, boolean hasMore, String nextCursor) {
+    }
+
+    private record FeedCursor(long createdAtMillis, int createdAtNanos, long postId) {
     }
 }

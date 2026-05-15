@@ -377,47 +377,7 @@
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="navbar-left">
-        <a class="back-btn" th:href="@{/ranking}">
-            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
-            차트 목록
-        </a>
-        <a class="navbar-logo" th:href="@{/charts}">
-            <span class="logo-mark">
-                <svg viewBox="0 0 16 16"><path d="M2 2h3v3H2zm0 4.5h3v3H2zm0 4.5h3v3H2zM6.5 2h3v3h-3zm0 4.5h3v3h-3zm0 4.5h3v3h-3zM11 2h3v3h-3zm0 4.5h3v3H11zm0 4.5h3v3H11z"/></svg>
-            </span>
-            <span>CineMatch</span>
-        </a>
-    </div>
-    <div class="navbar-right">
-        <div class="notif-wrap">
-            <button class="notif-btn" id="notifBtn" aria-label="알림">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-                <span class="notif-badge" id="notifBadge"></span>
-            </button>
-            <div class="notif-panel" id="notifPanel" hidden>
-                <div class="notif-panel-header">
-                    <span>알림</span>
-                    <button class="notif-read-all-btn" id="notifReadAll">전체 읽음</button>
-                </div>
-                <div class="notif-list" id="notifList">
-                    <div class="notif-empty">새 알림이 없습니다</div>
-                </div>
-            </div>
-        </div>
-        <a class="user-badge" th:href="@{/mypage}">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-            </svg>
-            <span th:text="${loginUserNickname}">nickname</span>
-        </a>
-        <a class="logout-btn" th:href="@{/logout}">로그아웃</a>
-    </div>
-</nav>
+<div th:replace="~{fragments/app-shell :: shell}"></div>
 
 <main class="page">
     <!-- Hero -->
