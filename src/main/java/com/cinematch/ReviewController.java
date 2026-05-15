@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +35,59 @@ public class ReviewController {
 
     private final JdbcTemplate jdbcTemplate;
     private final NotificationService notificationService;
+
+    @GetMapping("/reviews")
+    public String reviewBoard(Model model, HttpSession session) {
+        initializeReviewTables();
+
+        String loginId = (String) session.getAttribute(LOGIN_SESSION_KEY);
+        model.addAttribute("loginUserId", loginId);
+
+        List<Map<String, Object>> reviews = jdbcTemplate.query("""
+                SELECT
+                    r.id AS reviewId,
+                    r.content,
+                    r.created_at AS createdAt,
+                    u.nickname,
+                    u.login_id AS loginId,
+                    m.movie_cd AS movieCode,
+                    COALESCE(m.title, m.movie_name) AS movieTitle,
+                    m.poster_image_url AS moviePosterUrl,
+                    umw.rating,
+                    COUNT(DISTINCT rl.id) AS likeCount
+                FROM movie_review r
+                JOIN "USER" u ON u.id = r.user_id
+                JOIN movie m ON m.id = r.movie_id
+                LEFT JOIN user_movie_watched umw
+                       ON umw.user_id = r.user_id
+                      AND umw.movie_id = r.movie_id
+                LEFT JOIN review_like rl
+                       ON rl.review_id = r.id
+                GROUP BY r.id, r.content, r.created_at, u.nickname, u.login_id,
+                         m.movie_cd, m.title, m.movie_name, m.poster_image_url, umw.rating
+                ORDER BY r.created_at DESC, r.id DESC
+                """, (rs, rowNum) -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("no", rowNum + 1);
+            item.put("reviewId", rs.getLong("reviewId"));
+            item.put("content", rs.getString("content"));
+            item.put("nickname", rs.getString("nickname"));
+            item.put("loginId", rs.getString("loginId"));
+            item.put("movieCode", rs.getString("movieCode"));
+            item.put("movieTitle", rs.getString("movieTitle"));
+            item.put("moviePosterUrl", rs.getString("moviePosterUrl"));
+            item.put("rating", rs.getObject("rating", Integer.class));
+            item.put("likeCount", rs.getInt("likeCount"));
+
+            Timestamp createdAt = rs.getTimestamp("createdAt");
+            item.put("createdAt", createdAt == null ? "" : createdAt.toLocalDateTime().format(REVIEW_DATE_FORMAT));
+            return item;
+        });
+
+        model.addAttribute("reviews", reviews);
+        model.addAttribute("reviewCount", reviews.size());
+        return "review-board";
+    }
 
     @PostMapping("/api/movies/{movieCode}/reviews")
     @ResponseBody

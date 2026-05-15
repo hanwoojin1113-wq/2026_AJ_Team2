@@ -25,7 +25,7 @@
         }
         a { color: inherit; }
         .page {
-            width: min(100%, 760px);
+            width: min(100%, 1120px);
             margin: 0 auto;
             padding: 30px 20px 72px;
         }
@@ -80,7 +80,49 @@
         }
         .feed {
             display: grid;
-            gap: 28px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 3px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+        }
+        .feed-tile {
+            position: relative;
+            display: block;
+            aspect-ratio: 1 / 1;
+            overflow: hidden;
+            background: #0f1117;
+            color: #fff;
+            text-decoration: none;
+        }
+        .feed-tile img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+            transition: transform 0.2s ease, filter 0.2s ease;
+        }
+        .feed-tile:hover img {
+            transform: scale(1.035);
+            filter: brightness(0.82);
+        }
+        .feed-tile-count {
+            position: absolute;
+            top: 9px;
+            right: 9px;
+            width: 26px;
+            height: 26px;
+            color: #fff;
+            filter: drop-shadow(0 1px 4px rgba(0,0,0,0.45));
+            pointer-events: none;
+        }
+        .feed-tile-count svg {
+            width: 100%;
+            height: 100%;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linejoin: round;
         }
         .post-card {
             overflow: hidden;
@@ -88,6 +130,54 @@
             background: rgba(30,35,48,0.96);
             border: 1px solid rgba(255,255,255,0.1);
             box-shadow: 0 26px 54px rgba(2,6,23,0.34);
+        }
+        .feed .post-card {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            border: 0;
+            border-radius: 0;
+            background: #0f1117;
+            box-shadow: none;
+            cursor: pointer;
+        }
+        .feed .post-card:has(.post-image-empty) {
+            display: none;
+        }
+        .feed .post-header,
+        .feed .post-body,
+        .feed .post-image-empty,
+        .feed .carousel-prev,
+        .feed .carousel-next,
+        .feed .carousel-dots {
+            display: none;
+        }
+        .feed .post-carousel {
+            height: 100%;
+            aspect-ratio: auto;
+        }
+        .feed .carousel-img {
+            color: transparent;
+            font-size: 0;
+            transition: transform 0.2s ease, filter 0.2s ease;
+        }
+        .feed .post-card:hover .carousel-img {
+            transform: scale(1.035);
+            filter: brightness(0.82);
+        }
+        .feed .post-carousel:has(.carousel-slide:nth-child(2))::after {
+            content: "";
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 24px;
+            height: 24px;
+            background:
+                linear-gradient(#fff 0 0) 8px 2px / 14px 14px no-repeat,
+                linear-gradient(#fff 0 0) 2px 8px / 14px 14px no-repeat;
+            border-radius: 4px;
+            filter: drop-shadow(0 1px 4px rgba(0,0,0,0.45));
+            opacity: 0.96;
+            pointer-events: none;
         }
         .post-header {
             display: flex;
@@ -372,15 +462,14 @@
         }
         @media (max-width: 768px) {
             .page {
-                padding: 22px 14px 56px;
+                padding: 22px 0 56px;
             }
             .feed-hero {
+                margin: 0 14px 22px;
                 align-items: flex-start;
                 flex-direction: column;
             }
-            .post-card {
-                border-radius: 18px;
-            }
+            .feed { border-left: 0; border-right: 0; }
         }
     </style>
 </head>
@@ -435,7 +524,7 @@
             <div class="post-carousel" th:if="${post.images != null and !post.images.isEmpty()}" data-carousel>
                 <div class="carousel-track">
                     <div class="carousel-slide" th:each="img : ${post.images}">
-                        <img class="carousel-img" th:src="${img}" alt="게시물 이미지" loading="lazy">
+                        <img class="carousel-img" th:src="${img}" alt="" loading="lazy" onerror="this.closest('.post-card')?.remove()">
                     </div>
                 </div>
                 <div class="carousel-dots" th:if="${post.images.size() > 1}">
@@ -573,7 +662,7 @@
     function carouselMarkup(post) {
         const images = Array.isArray(post.images) ? post.images : [];
         if (!images.length) return '<div class="post-image-empty">업로드된 이미지가 없습니다.</div>';
-        const slides = images.map((img) => `<div class="carousel-slide"><img class="carousel-img" src="${escapeHtml(img)}" alt="게시물 이미지" loading="lazy"></div>`).join('');
+        const slides = images.map((img) => `<div class="carousel-slide"><img class="carousel-img" src="${escapeHtml(img)}" alt="" loading="lazy" onerror="this.closest('.post-card')?.remove()"></div>`).join('');
         const dots = images.length > 1
             ? `<div class="carousel-dots">${images.map((_, index) => `<button class="carousel-dot${index === 0 ? ' active' : ''}" data-index="${index}" type="button" aria-label="이미지 이동"></button>`).join('')}</div>`
             : '';
@@ -684,6 +773,13 @@
     }
 
     document.addEventListener('click', async (event) => {
+        const postTile = event.target.closest('.feed .post-card[id^="post-"]');
+        if (postTile) {
+            const postId = postTile.id.replace('post-', '');
+            if (postId) window.location.href = `/posts/${encodeURIComponent(postId)}`;
+            return;
+        }
+
         const likeButton = event.target.closest('.like-btn[data-post-id]');
         if (likeButton) {
             const response = await fetch(`/api/posts/${likeButton.dataset.postId}/like`, { method: 'POST' });

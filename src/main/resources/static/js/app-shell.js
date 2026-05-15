@@ -3,6 +3,7 @@
         if (pathname === '/charts' || pathname === '/' || pathname.startsWith('/movies/')) return 'home';
         if (pathname === '/ranking' || pathname.startsWith('/ranking/')) return 'ranking';
         if (pathname === '/feed' || pathname.startsWith('/posts/')) return 'feed';
+        if (pathname === '/reviews') return 'reviews';
         if (pathname === '/people' || pathname.startsWith('/users/')) return 'people';
         if (pathname === '/mypage' || pathname === '/stored') return 'profile';
         return '';
