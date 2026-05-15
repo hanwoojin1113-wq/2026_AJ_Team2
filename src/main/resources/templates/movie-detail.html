@@ -373,38 +373,7 @@
     </style>
 </head>
 <body>
-<nav class="nav">
-    <a th:href="@{/charts}">CineMatch</a>
-    <div class="nav-right">
-        <a th:href="@{/posts/create}" class="post-create-btn" aria-label="게시물 작성">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-        </a>
-        <div class="notif-wrap">
-            <button class="notif-btn" id="notifBtn" aria-label="알림">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-                <span class="notif-badge" id="notifBadge"></span>
-            </button>
-            <div class="notif-panel" id="notifPanel" hidden>
-                <div class="notif-panel-header">
-                    <span>알림</span>
-                    <button class="notif-read-all-btn" id="notifReadAll">전체 읽음</button>
-                </div>
-                <div class="notif-list" id="notifList">
-                    <div class="notif-empty">새 알림이 없습니다</div>
-                </div>
-            </div>
-        </div>
-        <button class="pill-button" type="button" data-social-open="suggested">People</button>
-        <a class="pill" th:href="@{/mypage}" th:text="${loginUserNickname}">nickname</a>
-        <a class="pill logout" th:href="@{/logout}">로그아웃</a>
-    </div>
-</nav>
+<div th:replace="~{fragments/app-shell :: shell}"></div>
 
 <main class="page">
     <section class="hero">
@@ -506,49 +475,6 @@
         <article class="card"><h3>심의 / 제작사</h3><div class="meta-list" th:if="${!#lists.isEmpty(audits) or !#lists.isEmpty(companies)}"><div class="meta-item" th:each="audit : ${audits}" th:text="${(audit.auditNo != null ? audit.auditNo : '심의번호 없음') + ' · ' + (audit.watchGradeName != null ? audit.watchGradeName : '등급 정보 없음')}">심의번호 · 12세 관람가</div><div class="meta-item" th:each="company : ${companies}" th:text="${company.name + ' · ' + (company.role != null ? company.role : '참여사')}">제작사 · 배급</div></div><p class="empty" th:if="${#lists.isEmpty(audits) and #lists.isEmpty(companies)}">추가 정보가 없습니다.</p></article>
     </section>
 </main>
-
-<div class="social-modal-backdrop" id="social-modal">
-    <div class="social-modal-card" role="dialog" aria-modal="true" aria-labelledby="social-modal-title">
-        <div class="social-modal-head">
-            <div class="social-modal-title" id="social-modal-title">추천 친구</div>
-            <button class="social-close" type="button" id="social-modal-close" aria-label="닫기">×</button>
-        </div>
-        <input class="social-search" id="social-search-input" type="text" placeholder="검색">
-        <div class="social-modal-body" id="social-modal-body">
-            <article class="social-user-card"
-                     th:each="userCard : ${socialSuggestedUsers}"
-                     data-social-item
-                     data-social-keywords=""
-                     th:attr="data-social-keywords=${(userCard.loginId + ' ' + userCard.nickname)}">
-                <div class="social-user-main">
-                    <a class="social-user-link" th:href="@{|/users/${userCard.loginId}|}">
-                        <div class="social-user-avatar">
-                            <img th:if="${!#strings.isEmpty(userCard.profileImageUrl)}" th:src="${userCard.profileImageUrl}" th:alt="${userCard.nickname}">
-                            <div class="social-user-fallback" th:if="${#strings.isEmpty(userCard.profileImageUrl)}">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M12 12.2c2.6 0 4.6-2 4.6-4.5S14.6 3.2 12 3.2 7.4 5.2 7.4 7.7s2 4.5 4.6 4.5Zm0 2.3c-4.1 0-7.5 2.4-8.3 5.8-.1.5.2.9.7.9h15.2c.5 0 .8-.4.7-.9-.8-3.4-4.2-5.8-8.3-5.8Z"/>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="social-user-copy">
-                            <div class="social-user-id" th:text="${userCard.loginId}">testuser01</div>
-                            <div class="social-user-name" th:text="${userCard.nickname}">nickname</div>
-                            <div class="social-user-meta" th:text="|팔로워 ${userCard.followerCount} · 팔로잉 ${userCard.followingCount}|">팔로워 0 · 팔로잉 0</div>
-                        </div>
-                    </a>
-                </div>
-                <button class="social-action-btn"
-                        type="button"
-                        data-follow-toggle
-                        th:classappend="${userCard.followingByCurrentUser} ? ' following' : ''"
-                        th:attr="data-login-id=${userCard.loginId},data-following=${userCard.followingByCurrentUser}">
-                    <span th:text="${userCard.followingByCurrentUser ? '팔로잉' : '팔로우'}">팔로우</span>
-                </button>
-            </article>
-            <div class="social-empty" id="social-empty">표시할 추천 친구가 없습니다.</div>
-        </div>
-    </div>
-</div>
 
 <script th:inline="javascript">
     const movieCode = [[${movie.movieCode}]];

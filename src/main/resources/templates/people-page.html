@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineMatch | People</title>
+    <title>친구 | CineMatch</title>
     <link rel="stylesheet" href="/css/hp-theme.css">
     <style>
         :root {
@@ -454,38 +454,7 @@
     </style>
 </head>
 <body>
-<nav class="nav">
-    <a th:href="@{/charts}">CineMatch</a>
-    <div class="nav-right">
-        <a th:href="@{/posts/create}" class="post-create-btn" aria-label="게시물 작성">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-        </a>
-        <div class="notif-wrap">
-            <button class="notif-btn" id="notifBtn" aria-label="알림">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-                <span class="notif-badge" id="notifBadge"></span>
-            </button>
-            <div class="notif-panel" id="notifPanel" hidden>
-                <div class="notif-panel-header">
-                    <span>알림</span>
-                    <button class="notif-read-all-btn" id="notifReadAll">전체 읽음</button>
-                </div>
-                <div class="notif-list" id="notifList">
-                    <div class="notif-empty">새 알림이 없습니다</div>
-                </div>
-            </div>
-        </div>
-        <a class="pill" th:href="@{/people}">People</a>
-        <a class="pill" th:href="@{/mypage}" th:text="${loginUserNickname}">nickname</a>
-        <a class="pill logout" th:href="@{/logout}">Logout</a>
-    </div>
-</nav>
+<div th:replace="~{fragments/app-shell :: shell}"></div>
 
 <main class="page">
     <section class="hero">
@@ -495,9 +464,9 @@
                 <div class="avatar-fallback" th:if="${#strings.isEmpty(targetUser.profileImageUrl)}" th:text="${#strings.substring(targetUser.nickname, 0, 1)}">C</div>
             </div>
             <div class="profile-copy">
-                <p>Social</p>
+                <p>Friends</p>
                 <h1 th:text="${targetUser.nickname}">nickname</h1>
-                <span th:text="|ID ${targetUser.loginId} · 팔로우 관계와 사용자 검색을 여기서 관리할 수 있어요.|">ID target · 팔로우 관계와 사용자 검색을 여기서 관리할 수 있어요.</span>
+                <span th:text="|ID ${targetUser.loginId} · 취향이 맞는 친구를 찾고 팔로우 관계를 관리할 수 있어요.|">ID target · 취향이 맞는 친구를 찾고 팔로우 관계를 관리할 수 있어요.</span>
                 <div class="stats">
                     <a class="stat-link" th:classappend="${selectedView == 'followers'} ? ' active' : ''"
                        th:href="@{/people(user=${targetUser.loginId}, view='followers', query=${searchQuery})}">
@@ -531,7 +500,7 @@
     <section class="section">
         <div class="section-head">
             <div>
-                <h2>사용자 검색</h2>
+                <h2>친구 검색</h2>
                 <p>로그인 ID 또는 닉네임 일부로 검색해서 바로 팔로우할 수 있습니다.</p>
             </div>
         </div>

@@ -1,0 +1,321 @@
+/* Shared CineMatch app shell: topbar, sidebar, and notifications */
+.app-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    height: 64px;
+    padding: 0 28px;
+    background: rgba(15,15,15,0.9);
+    border-bottom: 1px solid var(--hp-border, rgba(255,255,255,0.1));
+    backdrop-filter: blur(18px);
+}
+
+.app-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.08rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.app-brand-mark {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--r-lg, 8px);
+    background: var(--hp-blue, #024ad8);
+}
+
+.app-brand-mark svg {
+    width: 18px;
+    height: 18px;
+    fill: #fff;
+}
+
+.app-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.app-notif-wrap {
+    position: relative;
+}
+
+.app-notif-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--r-md, 4px);
+    border: 1px solid var(--hp-border, rgba(255,255,255,0.1));
+    background: var(--hp-surface-2, #222);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.12s;
+}
+
+.app-notif-btn:hover {
+    background: var(--hp-card, #2a2a2a);
+    transform: translateY(-1px);
+}
+
+.app-notif-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.app-notif-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.app-notif-badge:empty {
+    display: none;
+}
+
+.app-notif-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: min(360px, calc(100vw - 24px));
+    max-height: 480px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--r-xl, 16px);
+    background: var(--hp-surface, #1a1a1a);
+    border: 1px solid var(--hp-border-strong, rgba(255,255,255,0.18));
+    box-shadow: var(--hp-shadow-lg, 0 8px 32px rgba(0,0,0,0.6));
+    z-index: 9999;
+}
+
+.app-notif-panel[hidden] {
+    display: none;
+}
+
+.app-notif-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--hp-border, rgba(255,255,255,0.1));
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.app-notif-read-all-btn {
+    border: none;
+    background: transparent;
+    color: var(--hp-blue-bright, #296ef9);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 800;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: var(--r-md, 4px);
+}
+
+.app-notif-read-all-btn:hover {
+    background: var(--hp-blue-soft, rgba(2,74,216,0.18));
+}
+
+.app-notif-list {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.notif-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--hp-border, rgba(255,255,255,0.1));
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.12s;
+}
+
+.notif-item:hover {
+    background: var(--hp-surface-2, #222);
+}
+
+.notif-item.unread {
+    background: var(--hp-blue-soft, rgba(2,74,216,0.18));
+}
+
+.notif-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--hp-card, #2a2a2a);
+    flex: 0 0 auto;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    color: var(--hp-text-sub, #c2c2c2);
+}
+
+.notif-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.notif-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notif-text {
+    font-size: 0.83rem;
+    line-height: 1.45;
+    color: var(--hp-text-sub, #c2c2c2);
+}
+
+.notif-text strong {
+    color: var(--hp-text, #fff);
+    font-weight: 800;
+}
+
+.notif-time {
+    margin-top: 3px;
+    font-size: 0.73rem;
+    color: var(--hp-text-hint, #636363);
+}
+
+.notif-movie-thumb {
+    width: 46px;
+    height: 64px;
+    border-radius: var(--r-md, 4px);
+    object-fit: cover;
+    flex: 0 0 auto;
+    background: var(--hp-card, #2a2a2a);
+}
+
+.notif-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--hp-text-hint, #636363);
+    font-size: 0.88rem;
+}
+
+.app-logout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 88px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: var(--r-md, 4px);
+    background: var(--hp-blue, #024ad8);
+    color: #fff;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+}
+
+.app-login {
+    background: var(--hp-surface-2, #222);
+    border: 1px solid var(--hp-border, rgba(255,255,255,0.1));
+}
+
+.app-sidebar {
+    position: fixed;
+    left: 0;
+    top: 64px;
+    bottom: 0;
+    z-index: 260;
+    width: 86px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 18px 10px;
+    background: rgba(15,15,15,0.88);
+    border-right: 1px solid var(--hp-border, rgba(255,255,255,0.1));
+    backdrop-filter: blur(18px);
+}
+
+.app-side-item {
+    width: 62px;
+    min-height: 62px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 18px;
+    color: var(--hp-text-sub, #c2c2c2);
+    text-decoration: none;
+    font-size: 0.68rem;
+    font-weight: 800;
+    transition: background 0.15s, color 0.15s, transform 0.12s;
+}
+
+.app-side-item svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.app-side-item:hover,
+.app-side-item.active {
+    color: #fff;
+    background: var(--hp-blue-soft, rgba(2,74,216,0.18));
+}
+
+.app-side-item:hover {
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .app-topbar {
+        padding: 0 16px;
+    }
+
+    .app-brand span:last-child {
+        display: none;
+    }
+
+    .app-sidebar {
+        display: none;
+    }
+}

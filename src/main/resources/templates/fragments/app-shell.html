@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="shell">
+    <link rel="stylesheet" href="/css/app-shell.css">
+    <nav class="app-topbar">
+        <a class="app-brand" th:href="@{/charts}" aria-label="CineMatch 홈">
+            <span class="app-brand-mark">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M2 2h3v3H2zm0 4.5h3v3H2zm0 4.5h3v3H2zM6.5 2h3v3h-3zm0 4.5h3v3h-3zm0 4.5h3v3h-3zM11 2h3v3h-3zm0 4.5h3v3H11zm0 4.5h3v3H11z"/>
+                </svg>
+            </span>
+            <span>CineMatch</span>
+        </a>
+
+        <div class="app-topbar-actions">
+            <div class="notif-wrap app-notif-wrap" th:if="${loginUserId != null or session.loginUserId != null}">
+                <button class="notif-btn app-notif-btn" id="notifBtn" type="button" aria-label="알림">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    <span class="notif-badge app-notif-badge" id="notifBadge"></span>
+                </button>
+                <div class="notif-panel app-notif-panel" id="notifPanel" hidden>
+                    <div class="notif-panel-header app-notif-panel-header">
+                        <span>알림</span>
+                        <button class="notif-read-all-btn app-notif-read-all-btn" id="notifReadAll" type="button">전체 읽음</button>
+                    </div>
+                    <div class="notif-list app-notif-list" id="notifList">
+                        <div class="notif-empty">새 알림이 없습니다</div>
+                    </div>
+                </div>
+            </div>
+            <a class="app-logout" th:if="${loginUserId != null or session.loginUserId != null}" th:href="@{/logout}">로그아웃</a>
+            <a class="app-logout app-login" th:if="${loginUserId == null and session.loginUserId == null}" th:href="@{/login}">로그인</a>
+        </div>
+    </nav>
+
+    <aside class="app-sidebar" th:if="${loginUserId != null or session.loginUserId != null}" aria-label="주요 메뉴">
+        <a class="app-side-item" data-app-nav="home" th:href="@{/charts}" aria-label="홈">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5.4v-6.2H9.4V21H4a1 1 0 0 1-1-1v-9.8Z"/>
+            </svg>
+            <span>홈</span>
+        </a>
+        <a class="app-side-item" data-app-nav="ranking" th:href="@{/ranking}" aria-label="랭킹차트">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19V9h4v10H5Zm5 0V5h4v14h-4Zm5 0v-7h4v7h-4Z"/>
+            </svg>
+            <span>랭킹차트</span>
+        </a>
+        <a class="app-side-item" data-app-nav="feed" th:href="@{/feed}" aria-label="피드">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="4" y="3.5" width="16" height="17" rx="3"/>
+                <path d="M8 8h8M8 12h8M8 16h5"/>
+            </svg>
+            <span>피드</span>
+        </a>
+        <a class="app-side-item" data-app-nav="people" th:href="@{/people}" aria-label="친구">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9.5 11.2a3.7 3.7 0 1 0 0-7.4 3.7 3.7 0 0 0 0 7.4Z"/>
+                <path d="M3.3 20.2c.7-3.8 3.1-6.1 6.2-6.1s5.5 2.3 6.2 6.1"/>
+                <path d="M17.1 10.8a3 3 0 1 0 0-6"/>
+                <path d="M16.6 14.1c2.2.4 3.7 2.3 4.1 5.2"/>
+            </svg>
+            <span>친구</span>
+        </a>
+        <a class="app-side-item" data-app-nav="profile" th:href="@{/mypage}" aria-label="프로필">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 20c.9-4.1 4-6.3 8-6.3s7.1 2.2 8 6.3"/>
+            </svg>
+            <span>프로필</span>
+        </a>
+    </aside>
+    <script src="/js/app-shell.js" defer></script>
+</div>
+</body>
+</html>

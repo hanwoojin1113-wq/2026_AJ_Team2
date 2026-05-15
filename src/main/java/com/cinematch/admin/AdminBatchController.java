@@ -63,7 +63,7 @@ public class AdminBatchController {
     }
 
     /**
-     * source: korean-ott | korean-movies | high-rated
+     * source: korean-ott | korean-movies | high-rated | blockbusters
      */
     @PostMapping("/tmdb/import-discover")
     public MovieDataBatchService.JobRunResponse importTmdbDiscover(

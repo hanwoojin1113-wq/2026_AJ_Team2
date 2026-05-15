@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>피드 | CineMatch</title>
+    <link rel="stylesheet" href="/css/hp-theme.css">
+    <style>
+        :root {
+            --bg: var(--hp-bg);
+            --surface: var(--hp-surface);
+            --surface-soft: var(--hp-surface-2);
+            --border: var(--hp-border);
+            --text: var(--hp-text);
+            --sub: var(--hp-text-sub);
+            --hint: var(--hp-text-hint);
+            --accent: var(--hp-blue);
+        }
+        body {
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 18% 0%, rgba(2,74,216,0.18), transparent 28%),
+                linear-gradient(180deg, #0f1117 0%, #090b10 100%);
+            color: var(--text);
+        }
+        a { color: inherit; }
+        .page {
+            width: min(100%, 760px);
+            margin: 0 auto;
+            padding: 30px 20px 72px;
+        }
+        .feed-hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 18px;
+            margin-bottom: 22px;
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            background: linear-gradient(135deg, rgba(30,35,48,0.94), rgba(15,17,23,0.92));
+            box-shadow: 0 28px 70px rgba(2,6,23,0.34);
+        }
+        .feed-kicker {
+            font-size: 0.76rem;
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            color: #8fb3ff;
+            text-transform: uppercase;
+        }
+        .feed-title {
+            margin: 8px 0 0;
+            font-size: clamp(1.8rem, 4vw, 2.6rem);
+            letter-spacing: -0.05em;
+        }
+        .feed-copy {
+            margin-top: 8px;
+            color: var(--sub);
+            font-size: 0.95rem;
+            line-height: 1.65;
+        }
+        .create-post-cta {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 0 18px;
+            border-radius: 999px;
+            background: #fff;
+            color: #0f172a;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 900;
+            box-shadow: 0 16px 36px rgba(255,255,255,0.14);
+        }
+        .create-post-cta svg {
+            width: 17px;
+            height: 17px;
+        }
+        .feed {
+            display: grid;
+            gap: 28px;
+        }
+        .post-card {
+            overflow: hidden;
+            border-radius: 24px;
+            background: rgba(30,35,48,0.96);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 26px 54px rgba(2,6,23,0.34);
+        }
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            padding: 18px 20px;
+        }
+        .author-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            text-decoration: none;
+        }
+        .author-avatar,
+        .author-avatar-fallback {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: rgba(255,255,255,0.08);
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
+        }
+        .author-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .author-avatar-fallback svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+        .author-copy {
+            min-width: 0;
+        }
+        .author-name {
+            font-size: 0.94rem;
+            font-weight: 900;
+        }
+        .post-date {
+            margin-top: 3px;
+            color: var(--hint);
+            font-size: 0.76rem;
+        }
+        .follow-btn {
+            border: none;
+            border-radius: 999px;
+            background: #fff;
+            color: #0f172a;
+            min-width: 78px;
+            height: 34px;
+            padding: 0 14px;
+            font: inherit;
+            font-size: 0.78rem;
+            font-weight: 900;
+            cursor: pointer;
+            transition: background 0.18s, box-shadow 0.18s, transform 0.1s;
+        }
+        .follow-btn.following {
+            background: rgba(255,255,255,0.08);
+            color: #e2e8f0;
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        .follow-btn:hover:not(.following) {
+            box-shadow: 0 4px 14px rgba(255,255,255,0.18);
+        }
+        .follow-btn.following:hover {
+            background: rgba(255,255,255,0.14);
+        }
+        .follow-btn:active {
+            transform: scale(0.96);
+        }
+        .post-carousel {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            background: #0f1117;
+            overflow: hidden;
+        }
+        .carousel-track {
+            display: flex;
+            height: 100%;
+            transition: transform 0.3s ease;
+        }
+        .carousel-slide {
+            flex: 0 0 100%;
+            height: 100%;
+        }
+        .carousel-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .carousel-prev,
+        .carousel-next {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(0,0,0,0.52);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+        .carousel-prev { left: 10px; }
+        .carousel-next { right: 10px; }
+        .carousel-dots {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            z-index: 2;
+        }
+        .carousel-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            border: none;
+            background: rgba(255,255,255,0.45);
+            cursor: pointer;
+            transition: width 0.2s, background 0.2s;
+        }
+        .carousel-dot.active {
+            width: 18px;
+            background: #fff;
+        }
+        .post-image-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1 / 1;
+            color: var(--hint);
+            background: #0f1117;
+        }
+        .post-body {
+            display: grid;
+            gap: 14px;
+            padding: 18px 20px 22px;
+        }
+        .post-content {
+            margin: 0;
+            color: #e2e8f0;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 0.96rem;
+        }
+        .post-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding-top: 4px;
+        }
+        .icon-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border: none;
+            background: transparent;
+            color: #e2e8f0;
+            padding: 0;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.15s, transform 0.12s;
+        }
+        .icon-btn:hover:not(:disabled) {
+            color: #fff;
+            transform: translateY(-1px);
+        }
+        .icon-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .icon-btn svg {
+            width: 25px;
+            height: 25px;
+        }
+        .like-btn.liked {
+            color: #f87171;
+        }
+        .post-engagement {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            color: #f8fafc;
+            font-size: 0.9rem;
+            font-weight: 800;
+            margin-top: -2px;
+        }
+        .post-engagement .like-count,
+        .post-engagement .comment-count {
+            color: #fff;
+            font-weight: 900;
+        }
+        .movie-tag-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px;
+            border-radius: 16px;
+            background: rgba(15,17,23,0.52);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: inherit;
+            text-decoration: none;
+            transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
+        }
+        .movie-tag-card:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(96,165,250,0.36);
+            box-shadow: 0 12px 30px rgba(2,74,216,0.16);
+            transform: translateY(-1px);
+        }
+        .movie-tag-poster,
+        .movie-tag-poster-fallback {
+            width: 48px;
+            height: 72px;
+            border-radius: 10px;
+            flex: 0 0 auto;
+            object-fit: cover;
+            background: rgba(255,255,255,0.06);
+        }
+        .movie-tag-poster-fallback {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #475569;
+        }
+        .movie-tag-poster-fallback svg {
+            width: 22px;
+            height: 22px;
+        }
+        .movie-tag-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--hint);
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .movie-tag-label svg {
+            width: 12px;
+            height: 12px;
+        }
+        .movie-tag-title {
+            margin-top: 6px;
+            font-size: 0.98rem;
+            font-weight: 900;
+        }
+        .feed-empty,
+        .feed-status {
+            padding: 34px 20px;
+            border-radius: 22px;
+            border: 1px dashed rgba(255,255,255,0.14);
+            color: var(--hint);
+            text-align: center;
+            background: rgba(30,35,48,0.62);
+        }
+        .feed-status {
+            margin-top: 18px;
+            display: none;
+        }
+        .feed-status.visible {
+            display: block;
+        }
+        @media (max-width: 768px) {
+            .page {
+                padding: 22px 14px 56px;
+            }
+            .feed-hero {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+            .post-card {
+                border-radius: 18px;
+            }
+        }
+    </style>
+</head>
+<body data-app-shell-notif="true">
+<div th:replace="~{fragments/app-shell :: shell}"></div>
+
+<main class="page"
+      id="feedPage"
+      th:attr="data-next-cursor=${nextCursor},data-has-more=${hasMore}">
+    <section class="feed-hero">
+        <div>
+            <div class="feed-kicker">Community Feed</div>
+            <h1 class="feed-title">최신 영화 게시물</h1>
+            <p class="feed-copy">모든 사용자가 남긴 영화 게시물을 최신순으로 둘러보세요.</p>
+        </div>
+        <a class="create-post-cta" th:href="@{/posts/create}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            새 게시물 작성
+        </a>
+    </section>
+
+    <div class="feed" id="feedList" th:if="${posts != null and !posts.isEmpty()}">
+        <article class="post-card" th:each="post : ${posts}" th:id="|post-${post.postId}|">
+            <header class="post-header">
+                <a class="author-link" th:href="@{|/users/${post.loginId}|}">
+                    <div class="author-avatar" th:if="${post.profileImageUrl != null and !#strings.isEmpty(post.profileImageUrl)}">
+                        <img th:src="${post.profileImageUrl}" th:alt="${post.nickname}">
+                    </div>
+                    <div class="author-avatar-fallback" th:if="${post.profileImageUrl == null or #strings.isEmpty(post.profileImageUrl)}">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 12.2c2.6 0 4.6-2 4.6-4.5S14.6 3.2 12 3.2 7.4 5.2 7.4 7.7s2 4.5 4.6 4.5Zm0 2.3c-4.1 0-7.5 2.4-8.3 5.8-.1.5.2.9.7.9h15.2c.5 0 .8-.4.7-.9-.8-3.4-4.2-5.8-8.3-5.8Z"/>
+                        </svg>
+                    </div>
+                    <div class="author-copy">
+                        <div class="author-name" th:text="${post.nickname}">nickname</div>
+                        <div class="post-date" th:attr="data-created-at=${post.createdAt}" th:text="${post.createdAtLabel}">2026.05.15</div>
+                    </div>
+                </a>
+                <button th:if="${loginUserId != null and !post.isMyPost}"
+                        class="follow-btn"
+                        type="button"
+                        data-follow-toggle
+                        th:classappend="${post.isFollowing} ? ' following' : ''"
+                        th:attr="data-login-id=${post.loginId},data-following=${post.isFollowing}">
+                    <span th:text="${post.isFollowing ? '팔로잉' : '팔로우'}">팔로우</span>
+                </button>
+            </header>
+
+            <div class="post-carousel" th:if="${post.images != null and !post.images.isEmpty()}" data-carousel>
+                <div class="carousel-track">
+                    <div class="carousel-slide" th:each="img : ${post.images}">
+                        <img class="carousel-img" th:src="${img}" alt="게시물 이미지" loading="lazy">
+                    </div>
+                </div>
+                <div class="carousel-dots" th:if="${post.images.size() > 1}">
+                    <button class="carousel-dot active"
+                            th:each="img, stat : ${post.images}"
+                            th:classappend="${stat.index == 0} ? ' active' : ''"
+                            th:attr="data-index=${stat.index}"
+                            type="button"
+                            aria-label="이미지 이동"></button>
+                </div>
+                <button class="carousel-prev" th:if="${post.images.size() > 1}" type="button" aria-label="이전">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <button class="carousel-next" th:if="${post.images.size() > 1}" type="button" aria-label="다음">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
+            <div class="post-image-empty" th:if="${post.images == null or post.images.isEmpty()}">업로드된 이미지가 없습니다.</div>
+
+            <div class="post-body">
+                <p class="post-content" th:if="${post.content != null and !#strings.isEmpty(post.content)}" th:text="${post.content}">게시물 설명</p>
+                <div class="post-actions">
+                    <button class="icon-btn like-btn" type="button"
+                            th:classappend="${post.likedByMe} ? ' liked' : ''"
+                            th:attr="data-post-id=${post.postId},data-liked=${post.likedByMe}"
+                            aria-label="좋아요">
+                        <svg viewBox="0 0 24 24"
+                             th:attr="fill=${post.likedByMe ? 'currentColor' : 'none'}"
+                             stroke="currentColor" stroke-width="2">
+                            <path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/>
+                        </svg>
+                    </button>
+                    <a class="icon-btn comment-link" th:href="@{|/posts/${post.postId}#comments|}" aria-label="댓글">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                    </a>
+                    <button class="icon-btn" type="button" disabled aria-label="북마크">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="post-engagement">
+                    <span>좋아요 <span class="like-count" th:text="${post.likeCount}">0</span>개</span>
+                    <span>댓글 <span class="comment-count" th:text="${post.commentCount}">0</span>개</span>
+                </div>
+                <a class="movie-tag-card" th:href="@{|/movies/${post.movieCode}|}">
+                    <img class="movie-tag-poster"
+                         th:if="${post.moviePosterUrl != null and !#strings.isEmpty(post.moviePosterUrl)}"
+                         th:src="${post.moviePosterUrl}"
+                         th:alt="${post.movieTitle}">
+                    <div class="movie-tag-poster-fallback"
+                         th:if="${post.moviePosterUrl == null or #strings.isEmpty(post.moviePosterUrl)}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                            <line x1="7" y1="2" x2="7" y2="22"></line>
+                            <line x1="17" y1="2" x2="17" y2="22"></line>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <line x1="2" y1="7" x2="22" y2="7"></line>
+                            <line x1="2" y1="17" x2="22" y2="17"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="movie-tag-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                                <line x1="7" y1="2" x2="7" y2="22"></line>
+                                <line x1="17" y1="2" x2="17" y2="22"></line>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                <line x1="2" y1="7" x2="22" y2="7"></line>
+                                <line x1="2" y1="17" x2="22" y2="17"></line>
+                            </svg>
+                            <span>태그한 영화</span>
+                        </div>
+                        <div class="movie-tag-title" th:text="${post.movieTitle}">영화 제목</div>
+                    </div>
+                </a>
+            </div>
+        </article>
+    </div>
+    <div class="feed" id="feedList" th:if="${posts == null or posts.isEmpty()}"></div>
+    <div class="feed-empty" th:if="${posts == null or posts.isEmpty()}">아직 올라온 게시물이 없습니다.</div>
+    <div class="feed-status" id="feedStatus">게시물을 불러오는 중입니다.</div>
+    <div id="feedSentinel" style="height:1px"></div>
+</main>
+
+<script>
+(function () {
+    const page = document.getElementById('feedPage');
+    const feedList = document.getElementById('feedList');
+    const status = document.getElementById('feedStatus');
+    const sentinel = document.getElementById('feedSentinel');
+    if (!page || !feedList || !sentinel) return;
+
+    let nextCursor = page.dataset.nextCursor || '';
+    let hasMore = page.dataset.hasMore === 'true';
+    let loading = false;
+
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function timeAgo(value) {
+        if (!value) return '';
+        const seconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
+        if (seconds < 60) return '방금 전';
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}분 전`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)}시간 전`;
+        return `${Math.floor(seconds / 86400)}일 전`;
+    }
+
+    function avatarMarkup(post) {
+        const name = escapeHtml(post.nickname || '?');
+        const href = `/users/${encodeURIComponent(post.loginId || '')}`;
+        if (post.profileImageUrl) {
+            return `<a class="author-link" href="${href}">
+                <div class="author-avatar"><img src="${escapeHtml(post.profileImageUrl)}" alt="${name}"></div>
+                <div class="author-copy"><div class="author-name">${name}</div><div class="post-date">${timeAgo(post.createdAt)}</div></div>
+            </a>`;
+        }
+        return `<a class="author-link" href="${href}">
+            <div class="author-avatar-fallback">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.2c2.6 0 4.6-2 4.6-4.5S14.6 3.2 12 3.2 7.4 5.2 7.4 7.7s2 4.5 4.6 4.5Zm0 2.3c-4.1 0-7.5 2.4-8.3 5.8-.1.5.2.9.7.9h15.2c.5 0 .8-.4.7-.9-.8-3.4-4.2-5.8-8.3-5.8Z"/></svg>
+            </div>
+            <div class="author-copy"><div class="author-name">${name}</div><div class="post-date">${timeAgo(post.createdAt)}</div></div>
+        </a>`;
+    }
+
+    function carouselMarkup(post) {
+        const images = Array.isArray(post.images) ? post.images : [];
+        if (!images.length) return '<div class="post-image-empty">업로드된 이미지가 없습니다.</div>';
+        const slides = images.map((img) => `<div class="carousel-slide"><img class="carousel-img" src="${escapeHtml(img)}" alt="게시물 이미지" loading="lazy"></div>`).join('');
+        const dots = images.length > 1
+            ? `<div class="carousel-dots">${images.map((_, index) => `<button class="carousel-dot${index === 0 ? ' active' : ''}" data-index="${index}" type="button" aria-label="이미지 이동"></button>`).join('')}</div>`
+            : '';
+        const buttons = images.length > 1
+            ? `<button class="carousel-prev" type="button" aria-label="이전"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+               <button class="carousel-next" type="button" aria-label="다음"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>`
+            : '';
+        return `<div class="post-carousel" data-carousel><div class="carousel-track">${slides}</div>${dots}${buttons}</div>`;
+    }
+
+    function moviePosterMarkup(post) {
+        if (post.moviePosterUrl) {
+            return `<img class="movie-tag-poster" src="${escapeHtml(post.moviePosterUrl)}" alt="${escapeHtml(post.movieTitle)}">`;
+        }
+        return `<div class="movie-tag-poster-fallback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="22" y2="7"></line><line x1="2" y1="17" x2="22" y2="17"></line></svg></div>`;
+    }
+
+    function renderPost(post) {
+        const liked = post.likedByMe === true;
+        const following = post.isFollowing === true;
+        const followButton = post.isMyPost
+            ? ''
+            : `<button class="follow-btn${following ? ' following' : ''}" type="button" data-follow-toggle data-login-id="${escapeHtml(post.loginId)}" data-following="${following}"><span>${following ? '팔로잉' : '팔로우'}</span></button>`;
+        const content = post.content ? `<p class="post-content">${escapeHtml(post.content)}</p>` : '';
+        return `<article class="post-card" id="post-${post.postId}">
+            <header class="post-header">${avatarMarkup(post)}${followButton}</header>
+            ${carouselMarkup(post)}
+            <div class="post-body">
+                ${content}
+                <div class="post-actions">
+                    <button class="icon-btn like-btn${liked ? ' liked' : ''}" type="button" data-post-id="${post.postId}" data-liked="${liked}" aria-label="좋아요">
+                        <svg viewBox="0 0 24 24" fill="${liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg>
+                    </button>
+                    <a class="icon-btn comment-link" href="/posts/${post.postId}#comments" aria-label="댓글"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></a>
+                    <button class="icon-btn" type="button" disabled aria-label="북마크"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>
+                </div>
+                <div class="post-engagement">
+                    <span>좋아요 <span class="like-count">${post.likeCount || 0}</span>개</span>
+                    <span>댓글 <span class="comment-count">${post.commentCount || 0}</span>개</span>
+                </div>
+                <a class="movie-tag-card" href="/movies/${encodeURIComponent(post.movieCode || '')}">
+                    ${moviePosterMarkup(post)}
+                    <div>
+                        <div class="movie-tag-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="22" y2="7"></line><line x1="2" y1="17" x2="22" y2="17"></line></svg><span>태그한 영화</span></div>
+                        <div class="movie-tag-title">${escapeHtml(post.movieTitle || '영화')}</div>
+                    </div>
+                </a>
+            </div>
+        </article>`;
+    }
+
+    function initializeCarousel(carousel) {
+        if (!carousel || carousel.dataset.carouselReady === 'true') return;
+        carousel.dataset.carouselReady = 'true';
+        const track = carousel.querySelector('.carousel-track');
+        const dots = carousel.querySelectorAll('.carousel-dot');
+        const prev = carousel.querySelector('.carousel-prev');
+        const next = carousel.querySelector('.carousel-next');
+        if (!track) return;
+        let current = 0;
+        const total = track.children.length;
+        function goTo(index) {
+            current = (index + total) % total;
+            track.style.transform = `translateX(-${current * 100}%)`;
+            dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
+        }
+        prev?.addEventListener('click', () => goTo(current - 1));
+        next?.addEventListener('click', () => goTo(current + 1));
+        dots.forEach((dot) => dot.addEventListener('click', () => goTo(Number(dot.dataset.index))));
+        let startX = 0;
+        track.addEventListener('touchstart', (event) => { startX = event.touches[0].clientX; }, { passive: true });
+        track.addEventListener('touchend', (event) => {
+            const diff = startX - event.changedTouches[0].clientX;
+            if (Math.abs(diff) > 40) goTo(diff > 0 ? current + 1 : current - 1);
+        });
+    }
+
+    function initializeCarousels(root) {
+        root.querySelectorAll('[data-carousel]').forEach(initializeCarousel);
+    }
+
+    async function loadMore() {
+        if (!hasMore || loading || !nextCursor) return;
+        loading = true;
+        status?.classList.add('visible');
+        try {
+            const response = await fetch(`/api/feed/posts?cursor=${encodeURIComponent(nextCursor)}&limit=10`);
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+            if (!response.ok) return;
+            const data = await response.json();
+            if (Array.isArray(data.posts) && data.posts.length) {
+                feedList.insertAdjacentHTML('beforeend', data.posts.map(renderPost).join(''));
+                initializeCarousels(feedList);
+            }
+            hasMore = data.hasMore === true;
+            nextCursor = data.nextCursor || '';
+        } finally {
+            loading = false;
+            status?.classList.remove('visible');
+            if (!hasMore && status) {
+                status.textContent = '마지막 게시물입니다.';
+                status.classList.add('visible');
+            }
+        }
+    }
+
+    document.addEventListener('click', async (event) => {
+        const likeButton = event.target.closest('.like-btn[data-post-id]');
+        if (likeButton) {
+            const response = await fetch(`/api/posts/${likeButton.dataset.postId}/like`, { method: 'POST' });
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+            if (!response.ok) return;
+            const data = await response.json();
+            likeButton.classList.toggle('liked', data.liked);
+            likeButton.dataset.liked = String(data.liked);
+            const svg = likeButton.querySelector('svg');
+            if (svg) svg.setAttribute('fill', data.liked ? 'currentColor' : 'none');
+            const count = likeButton.closest('.post-card')?.querySelector('.like-count');
+            if (count) count.textContent = data.likeCount;
+            return;
+        }
+
+        const followButton = event.target.closest('[data-follow-toggle]');
+        if (!followButton) return;
+        const following = followButton.dataset.following === 'true';
+        const endpoint = following ? '/api/people/unfollow' : '/api/people/follow';
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ loginId: followButton.dataset.loginId })
+        });
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+        if (!response.ok) return;
+        const payload = await response.json();
+        document.querySelectorAll(`[data-follow-toggle][data-login-id="${payload.loginId}"]`).forEach((button) => {
+            button.dataset.following = String(payload.followingByCurrentUser);
+            button.classList.toggle('following', payload.followingByCurrentUser);
+            const label = button.querySelector('span');
+            if (label) label.textContent = payload.followingByCurrentUser ? '팔로잉' : '팔로우';
+        });
+    });
+
+    initializeCarousels(document);
+    const observer = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) loadMore();
+    }, { rootMargin: '520px 0px' });
+    observer.observe(sentinel);
+})();
+</script>
+</body>
+</html>
