@@ -25,21 +25,154 @@
         }
         a { color: inherit; }
         .page {
-            width: min(100%, 1120px);
+            width: min(100%, 920px);
             margin: 0 auto;
             padding: 30px 20px 72px;
+            display: flex;
+            gap: 28px;
+            align-items: flex-start;
         }
+        .feed-column {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+        .right-sidebar {
+            width: 268px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 84px;
+        }
+        .sidebar-widget {
+            background: rgba(22,26,38,0.97);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 14px;
+        }
+        .sidebar-widget-title {
+            font-size: 0.75rem;
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #8fb3ff;
+            margin: 0 0 16px;
+        }
+        .trending-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 9px 0;
+            text-decoration: none;
+            color: inherit;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: opacity 0.15s;
+        }
+        .trending-item:last-child { border-bottom: none; }
+        .trending-item:hover { opacity: 0.78; }
+        .trending-rank {
+            font-size: 0.78rem;
+            font-weight: 900;
+            color: #475569;
+            width: 18px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .trending-poster {
+            width: 36px;
+            height: 54px;
+            border-radius: 6px;
+            object-fit: cover;
+            flex-shrink: 0;
+            background: rgba(255,255,255,0.06);
+        }
+        .trending-poster-empty {
+            width: 36px;
+            height: 54px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: #475569;
+        }
+        .trending-info { min-width: 0; }
+        .trending-title {
+            font-size: 0.86rem;
+            font-weight: 700;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .trending-sub {
+            font-size: 0.74rem;
+            color: var(--hint);
+            margin-top: 2px;
+        }
+        .suggest-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .suggest-item:last-child { border-bottom: none; }
+        .suggest-avatar,
+        .suggest-avatar-fallback {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+        }
+        .suggest-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .suggest-avatar-fallback svg { width: 16px; height: 16px; fill: currentColor; }
+        .suggest-name {
+            flex: 1;
+            min-width: 0;
+            font-size: 0.86rem;
+            font-weight: 700;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .suggest-follow-btn {
+            flex-shrink: 0;
+            border: none;
+            border-radius: 999px;
+            background: #fff;
+            color: #0f172a;
+            height: 28px;
+            padding: 0 12px;
+            font: inherit;
+            font-size: 0.74rem;
+            font-weight: 900;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+        .suggest-follow-btn.following {
+            background: rgba(255,255,255,0.08);
+            color: #e2e8f0;
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        .suggest-follow-btn:hover { opacity: 0.85; }
+        .suggest-follow-btn:active { transform: scale(0.95); }
         .feed-hero {
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
             gap: 18px;
-            margin-bottom: 22px;
-            padding: 24px;
+            margin-bottom: 20px;
+            padding: 20px 22px;
             border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 24px;
-            background: linear-gradient(135deg, rgba(30,35,48,0.94), rgba(15,17,23,0.92));
-            box-shadow: 0 28px 70px rgba(2,6,23,0.34);
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(2,74,216,0.14) 0%, rgba(30,35,48,0.96) 60%);
+            box-shadow: 0 16px 48px rgba(2,6,23,0.3);
         }
         .feed-kicker {
             font-size: 0.76rem;
@@ -79,105 +212,17 @@
             height: 17px;
         }
         .feed {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 3px;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.1);
-            overflow: hidden;
-        }
-        .feed-tile {
-            position: relative;
-            display: block;
-            aspect-ratio: 1 / 1;
-            overflow: hidden;
-            background: #0f1117;
-            color: #fff;
-            text-decoration: none;
-        }
-        .feed-tile img {
-            width: 100%;
-            height: 100%;
-            display: block;
-            object-fit: cover;
-            transition: transform 0.2s ease, filter 0.2s ease;
-        }
-        .feed-tile:hover img {
-            transform: scale(1.035);
-            filter: brightness(0.82);
-        }
-        .feed-tile-count {
-            position: absolute;
-            top: 9px;
-            right: 9px;
-            width: 26px;
-            height: 26px;
-            color: #fff;
-            filter: drop-shadow(0 1px 4px rgba(0,0,0,0.45));
-            pointer-events: none;
-        }
-        .feed-tile-count svg {
-            width: 100%;
-            height: 100%;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2.2;
-            stroke-linejoin: round;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
         }
         .post-card {
             overflow: hidden;
-            border-radius: 24px;
-            background: rgba(30,35,48,0.96);
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 26px 54px rgba(2,6,23,0.34);
-        }
-        .feed .post-card {
-            position: relative;
-            aspect-ratio: 1 / 1;
-            border: 0;
-            border-radius: 0;
-            background: #0f1117;
-            box-shadow: none;
-            cursor: pointer;
-        }
-        .feed .post-card:has(.post-image-empty) {
-            display: none;
-        }
-        .feed .post-header,
-        .feed .post-body,
-        .feed .post-image-empty,
-        .feed .carousel-prev,
-        .feed .carousel-next,
-        .feed .carousel-dots {
-            display: none;
-        }
-        .feed .post-carousel {
-            height: 100%;
-            aspect-ratio: auto;
-        }
-        .feed .carousel-img {
-            color: transparent;
-            font-size: 0;
-            transition: transform 0.2s ease, filter 0.2s ease;
-        }
-        .feed .post-card:hover .carousel-img {
-            transform: scale(1.035);
-            filter: brightness(0.82);
-        }
-        .feed .post-carousel:has(.carousel-slide:nth-child(2))::after {
-            content: "";
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 24px;
-            height: 24px;
-            background:
-                linear-gradient(#fff 0 0) 8px 2px / 14px 14px no-repeat,
-                linear-gradient(#fff 0 0) 2px 8px / 14px 14px no-repeat;
-            border-radius: 4px;
-            filter: drop-shadow(0 1px 4px rgba(0,0,0,0.45));
-            opacity: 0.96;
-            pointer-events: none;
+            border-radius: 16px;
+            background: rgba(22,26,38,0.97);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-top-color: rgba(255,255,255,0.14);
+            box-shadow: 0 8px 32px rgba(2,6,23,0.28);
         }
         .post-header {
             display: flex;
@@ -195,8 +240,8 @@
         }
         .author-avatar,
         .author-avatar-fallback {
-            width: 44px;
-            height: 44px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             overflow: hidden;
             background: rgba(255,255,255,0.08);
@@ -204,7 +249,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
+            box-shadow: 0 0 0 2px #024ad8;
         }
         .author-avatar img {
             width: 100%;
@@ -258,7 +303,7 @@
         }
         .post-carousel {
             position: relative;
-            aspect-ratio: 1 / 1;
+            aspect-ratio: 4 / 5;
             background: #0f1117;
             overflow: hidden;
         }
@@ -319,12 +364,7 @@
             background: #fff;
         }
         .post-image-empty {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            aspect-ratio: 1 / 1;
-            color: var(--hint);
-            background: #0f1117;
+            display: none;
         }
         .post-body {
             display: grid;
@@ -368,8 +408,8 @@
             cursor: not-allowed;
         }
         .icon-btn svg {
-            width: 25px;
-            height: 25px;
+            width: 22px;
+            height: 22px;
         }
         .like-btn.liked {
             color: #f87171;
@@ -392,26 +432,24 @@
         .movie-tag-card {
             display: flex;
             align-items: center;
-            gap: 14px;
-            padding: 14px;
-            border-radius: 16px;
-            background: rgba(15,17,23,0.52);
-            border: 1px solid rgba(255,255,255,0.1);
+            gap: 12px;
+            padding: 12px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.07);
             color: inherit;
             text-decoration: none;
-            transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
+            transition: background 0.18s, border-color 0.18s;
         }
         .movie-tag-card:hover {
-            background: rgba(255,255,255,0.06);
-            border-color: rgba(96,165,250,0.36);
-            box-shadow: 0 12px 30px rgba(2,74,216,0.16);
-            transform: translateY(-1px);
+            background: rgba(255,255,255,0.07);
+            border-color: rgba(96,165,250,0.28);
         }
         .movie-tag-poster,
         .movie-tag-poster-fallback {
-            width: 48px;
-            height: 72px;
-            border-radius: 10px;
+            width: 40px;
+            height: 60px;
+            border-radius: 8px;
             flex: 0 0 auto;
             object-fit: cover;
             background: rgba(255,255,255,0.06);
@@ -460,16 +498,19 @@
         .feed-status.visible {
             display: block;
         }
+        @media (max-width: 860px) {
+            .right-sidebar { display: none; }
+        }
         @media (max-width: 768px) {
             .page {
-                padding: 22px 0 56px;
+                padding: 16px 12px 56px;
+                display: block;
             }
             .feed-hero {
-                margin: 0 14px 22px;
                 align-items: flex-start;
                 flex-direction: column;
+                margin-bottom: 14px;
             }
-            .feed { border-left: 0; border-right: 0; }
         }
     </style>
 </head>
@@ -479,6 +520,7 @@
 <main class="page"
       id="feedPage"
       th:attr="data-next-cursor=${nextCursor},data-has-more=${hasMore}">
+    <div class="feed-column">
     <section class="feed-hero">
         <div>
             <div class="feed-kicker">Community Feed</div>
@@ -524,7 +566,7 @@
             <div class="post-carousel" th:if="${post.images != null and !post.images.isEmpty()}" data-carousel>
                 <div class="carousel-track">
                     <div class="carousel-slide" th:each="img : ${post.images}">
-                        <img class="carousel-img" th:src="${img}" alt="" loading="lazy" onerror="this.closest('.post-card')?.remove()">
+                        <img class="carousel-img" th:src="${img}" alt="" loading="lazy">
                     </div>
                 </div>
                 <div class="carousel-dots" th:if="${post.images.size() > 1}">
@@ -542,7 +584,7 @@
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
             </div>
-            <div class="post-image-empty" th:if="${post.images == null or post.images.isEmpty()}">업로드된 이미지가 없습니다.</div>
+
 
             <div class="post-body">
                 <p class="post-content" th:if="${post.content != null and !#strings.isEmpty(post.content)}" th:text="${post.content}">게시물 설명</p>
@@ -610,6 +652,58 @@
     <div class="feed-empty" th:if="${posts == null or posts.isEmpty()}">아직 올라온 게시물이 없습니다.</div>
     <div class="feed-status" id="feedStatus">게시물을 불러오는 중입니다.</div>
     <div id="feedSentinel" style="height:1px"></div>
+    </div><!-- /.feed-column -->
+
+    <aside class="right-sidebar">
+        <!-- 실시간 인기 영화 -->
+        <div class="sidebar-widget" th:if="${trendingMovies != null and !trendingMovies.isEmpty()}">
+            <p class="sidebar-widget-title">실시간 인기 영화</p>
+            <a class="trending-item"
+               th:each="movie, stat : ${trendingMovies}"
+               th:href="${movie.detailUrl}"
+               th:if="${stat.index < 5}">
+                <span class="trending-rank" th:text="${stat.index + 1}">1</span>
+                <img class="trending-poster"
+                     th:if="${movie.posterImageUrl != null and !#strings.isEmpty(movie.posterImageUrl)}"
+                     th:src="${movie.posterImageUrl}"
+                     th:alt="${movie.title}"
+                     loading="lazy">
+                <div class="trending-poster-empty"
+                     th:if="${movie.posterImageUrl == null or #strings.isEmpty(movie.posterImageUrl)}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/>
+                    </svg>
+                </div>
+                <div class="trending-info">
+                    <div class="trending-title" th:text="${movie.title}">영화 제목</div>
+                    <div class="trending-sub" th:text="${movie.subtitle}">2024</div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 추천 팔로우 -->
+        <div class="sidebar-widget" th:if="${suggestedUsers != null and !suggestedUsers.isEmpty()}">
+            <p class="sidebar-widget-title">팔로우 추천</p>
+            <div class="suggest-item" th:each="su : ${suggestedUsers}">
+                <div class="suggest-avatar" th:if="${su.profileImageUrl != null and !#strings.isEmpty(su.profileImageUrl)}">
+                    <img th:src="${su.profileImageUrl}" th:alt="${su.nickname}">
+                </div>
+                <div class="suggest-avatar-fallback" th:if="${su.profileImageUrl == null or #strings.isEmpty(su.profileImageUrl)}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 12.2c2.6 0 4.6-2 4.6-4.5S14.6 3.2 12 3.2 7.4 5.2 7.4 7.7s2 4.5 4.6 4.5Zm0 2.3c-4.1 0-7.5 2.4-8.3 5.8-.1.5.2.9.7.9h15.2c.5 0 .8-.4.7-.9-.8-3.4-4.2-5.8-8.3-5.8Z"/>
+                    </svg>
+                </div>
+                <a class="suggest-name" th:href="@{|/users/${su.loginId}|}" th:text="${su.nickname}">닉네임</a>
+                <button class="suggest-follow-btn"
+                        type="button"
+                        data-follow-toggle
+                        th:classappend="${su.followingByCurrentUser} ? ' following' : ''"
+                        th:attr="data-login-id=${su.loginId},data-following=${su.followingByCurrentUser}">
+                    <span th:text="${su.followingByCurrentUser ? '팔로잉' : '팔로우'}">팔로우</span>
+                </button>
+            </div>
+        </div>
+    </aside>
 </main>
 
 <script>
@@ -661,8 +755,8 @@
 
     function carouselMarkup(post) {
         const images = Array.isArray(post.images) ? post.images : [];
-        if (!images.length) return '<div class="post-image-empty">업로드된 이미지가 없습니다.</div>';
-        const slides = images.map((img) => `<div class="carousel-slide"><img class="carousel-img" src="${escapeHtml(img)}" alt="" loading="lazy" onerror="this.closest('.post-card')?.remove()"></div>`).join('');
+        if (!images.length) return '';
+        const slides = images.map((img) => `<div class="carousel-slide"><img class="carousel-img" src="${escapeHtml(img)}" alt="" loading="lazy"></div>`).join('');
         const dots = images.length > 1
             ? `<div class="carousel-dots">${images.map((_, index) => `<button class="carousel-dot${index === 0 ? ' active' : ''}" data-index="${index}" type="button" aria-label="이미지 이동"></button>`).join('')}</div>`
             : '';
@@ -773,13 +867,6 @@
     }
 
     document.addEventListener('click', async (event) => {
-        const postTile = event.target.closest('.feed .post-card[id^="post-"]');
-        if (postTile) {
-            const postId = postTile.id.replace('post-', '');
-            if (postId) window.location.href = `/posts/${encodeURIComponent(postId)}`;
-            return;
-        }
-
         const likeButton = event.target.closest('.like-btn[data-post-id]');
         if (likeButton) {
             const response = await fetch(`/api/posts/${likeButton.dataset.postId}/like`, { method: 'POST' });

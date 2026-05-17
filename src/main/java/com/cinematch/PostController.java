@@ -37,6 +37,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.cinematch.kobis.KobisBoxOfficeService;
 import com.cinematch.notification.NotificationService;
 
 @Slf4j
@@ -53,6 +54,7 @@ public class PostController {
 
     private final JdbcTemplate jdbcTemplate;
     private final NotificationService notificationService;
+    private final KobisBoxOfficeService kobisBoxOfficeService;
 
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
@@ -83,6 +85,8 @@ public class PostController {
         model.addAttribute("loginUserNickname", session.getAttribute(LOGIN_NICKNAME_SESSION_KEY));
         model.addAttribute("loginUserId", session.getAttribute(LOGIN_SESSION_KEY));
         model.addAttribute("currentUserId", currentUserId);
+        model.addAttribute("trendingMovies", kobisBoxOfficeService.fetchBoxOffice(5));
+        model.addAttribute("suggestedUsers", fetchFeedSuggestedUsers(currentUserId, 3));
         return "feed";
     }
 
@@ -670,6 +674,25 @@ public class PostController {
 
         String nextCursor = posts.isEmpty() ? null : (String) posts.get(posts.size() - 1).get("cursor");
         return new FeedSlice(posts, hasMore, nextCursor);
+    }
+
+    private List<Map<String, Object>> fetchFeedSuggestedUsers(Long currentUserId, int limit) {
+        if (currentUserId == null) return List.of();
+        return jdbcTemplate.queryForList("""
+                SELECT
+                    u.login_id          AS loginId,
+                    u.nickname,
+                    u.profile_image_url AS profileImageUrl,
+                    EXISTS(
+                        SELECT 1 FROM user_follow uf
+                        WHERE uf.follower_user_id = ?
+                          AND uf.following_user_id = u.id
+                    ) AS followingByCurrentUser
+                FROM "USER" u
+                WHERE u.id <> ?
+                ORDER BY (SELECT COUNT(*) FROM user_follow uf WHERE uf.following_user_id = u.id) DESC, u.id DESC
+                LIMIT ?
+                """, currentUserId, currentUserId, limit);
     }
 
     private FeedCursor parseFeedCursor(String cursor) {
