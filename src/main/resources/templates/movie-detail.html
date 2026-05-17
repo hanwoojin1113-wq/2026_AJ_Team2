@@ -83,7 +83,7 @@
             box-shadow:var(--hp-shadow-sm);
         }
         .fallback { display:flex; align-items:center; justify-content:center; text-align:center; padding:24px; font-weight:600; }
-        .badges,.chips { display:flex; flex-wrap:wrap; gap:8px; }
+        .badges,.chips { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
         .badge,.chip,.meta-item { padding:6px 12px; border-radius:var(--r-lg); background:var(--hp-surface-2); border:1px solid var(--hp-border); font-size:13px; }
         .title { font-size:clamp(1.8rem,3.5vw,2.8rem); line-height:1.1; margin-top:16px; letter-spacing:-0.01em; font-weight:500; }
         .subtitle { margin-top:10px; color:var(--hp-text-sub); font-size:16px; }
@@ -386,6 +386,14 @@
                 <span class="badge" th:if="${movie.typeName != null}" th:text="${movie.typeName}">영화</span>
                 <span class="badge" th:if="${movie.nationName != null}" th:text="${movie.nationName}">국가</span>
                 <span class="badge" th:if="${movie.productionStatusName != null}" th:text="${movie.productionStatusName}">상태</span>
+                <button type="button" id="share-btn" class="share-icon-btn" th:if="${loginUserId != null}" title="친구에게 공유" aria-label="친구에게 공유">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                        <polyline points="16 6 12 2 8 6"/>
+                        <line x1="12" y1="2" x2="12" y2="15"/>
+                    </svg>
+                    <span class="share-icon-label">공유하기</span>
+                </button>
             </div>
             <h1 class="title" th:text="${movie.movieName}">영화 제목</h1>
             <p class="subtitle" th:if="${!#strings.isEmpty(movie.movieNameEn)}" th:text="${movie.movieNameEn}">English Title</p>
@@ -873,6 +881,266 @@
     }
 
     loadReviews();
+})();
+</script>
+
+<!-- 영화 공유 모달 -->
+<div class="share-overlay" id="shareOverlay" hidden aria-modal="true" role="dialog">
+    <div class="share-modal">
+        <div class="share-modal-header">
+            <span class="share-modal-title">친구에게 공유</span>
+            <button class="share-modal-close" id="shareClose" type="button" aria-label="닫기">✕</button>
+        </div>
+        <p class="share-modal-movie" id="shareMovieTitle"></p>
+        <div class="share-user-list" id="shareUserList"></div>
+        <div class="share-modal-footer">
+            <button class="share-send-btn" id="shareSend" type="button" disabled>보내기</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.share-icon-btn {
+    height: 34px;
+    width: auto;
+    padding: 0 12px 0 10px;
+    gap: 6px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: #94a3b8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    margin-left: 6px;
+}
+.share-icon-btn:hover {
+    background: rgba(2,74,216,0.2);
+    border-color: rgba(2,74,216,0.5);
+    color: #60a5fa;
+}
+.share-icon-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+.share-icon-label { font-size: 0.8rem; font-weight: 600; letter-spacing: -0.01em; }
+.share-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.share-overlay[hidden] { display: none; }
+.share-modal {
+    background: #1a1e2a;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    width: min(100%, 400px);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+.share-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 20px 0;
+    flex-shrink: 0;
+}
+.share-modal-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #f1f5f9;
+}
+.share-modal-close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+.share-modal-close:hover { color: #fff; background: rgba(255,255,255,0.08); }
+.share-modal-movie {
+    margin: 10px 20px 14px;
+    font-size: 0.84rem;
+    color: #8fb3ff;
+    font-weight: 700;
+    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.share-user-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0 12px;
+}
+.share-user-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 2px;
+}
+.share-user-item:hover { background: rgba(255,255,255,0.05); }
+.share-user-item.selected { background: rgba(2,74,216,0.18); }
+.share-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.share-avatar-fallback {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #94a3b8;
+    flex-shrink: 0;
+}
+.share-nickname {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.share-check {
+    font-size: 0.85rem;
+    color: #024ad8;
+    font-weight: 900;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+.share-user-item.selected .share-check { opacity: 1; }
+.share-empty, .share-loading {
+    padding: 30px 0;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.88rem;
+}
+.share-modal-footer {
+    padding: 16px 20px;
+    flex-shrink: 0;
+    border-top: 1px solid rgba(255,255,255,0.07);
+}
+.share-send-btn {
+    width: 100%;
+    height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: #fff;
+    color: #0f172a;
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+}
+.share-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.share-send-btn:not(:disabled):hover { opacity: 0.88; }
+.share-send-btn:not(:disabled):active { transform: scale(0.97); }
+</style>
+
+<script th:inline="javascript">
+(function () {
+    const shareBtn = document.getElementById('share-btn');
+    if (!shareBtn) return;
+
+    const overlay = document.getElementById('shareOverlay');
+    const closeBtn = document.getElementById('shareClose');
+    const userList = document.getElementById('shareUserList');
+    const sendBtn = document.getElementById('shareSend');
+    const movieTitleEl = document.getElementById('shareMovieTitle');
+    const movieCode = /*[[${movie.movieCode}]]*/ '';
+    const movieTitle = /*[[${movie.movieName}]]*/ '영화';
+
+    let selectedLoginIds = new Set();
+
+    function updateSendBtn() {
+        const n = selectedLoginIds.size;
+        sendBtn.disabled = n === 0;
+        sendBtn.textContent = n > 0 ? `보내기 (${n}명)` : '보내기';
+    }
+
+    shareBtn.addEventListener('click', async () => {
+        selectedLoginIds.clear();
+        updateSendBtn();
+        movieTitleEl.textContent = movieTitle;
+        userList.innerHTML = '<div class="share-loading">불러오는 중...</div>';
+        overlay.hidden = false;
+
+        const res = await fetch('/api/people/following');
+        if (res.status === 401) { overlay.hidden = true; window.location.href = '/login'; return; }
+        const list = await res.json();
+
+        if (!Array.isArray(list) || !list.length) {
+            userList.innerHTML = '<div class="share-empty">팔로우한 친구가 없습니다.</div>';
+            return;
+        }
+        userList.innerHTML = list.map(u => {
+            const avatar = u.profileImageUrl
+                ? `<img class="share-avatar" src="${u.profileImageUrl}" alt="">`
+                : `<div class="share-avatar-fallback">${(u.nickname || '?').charAt(0)}</div>`;
+            return `<div class="share-user-item" data-login-id="${u.loginId}">
+                ${avatar}
+                <span class="share-nickname">${u.nickname || u.loginId}</span>
+                <span class="share-check">✓</span>
+            </div>`;
+        }).join('');
+    });
+
+    userList.addEventListener('click', e => {
+        const item = e.target.closest('.share-user-item');
+        if (!item) return;
+        const id = item.dataset.loginId;
+        if (selectedLoginIds.has(id)) { selectedLoginIds.delete(id); item.classList.remove('selected'); }
+        else { selectedLoginIds.add(id); item.classList.add('selected'); }
+        updateSendBtn();
+    });
+
+    sendBtn.addEventListener('click', async () => {
+        if (selectedLoginIds.size === 0) return;
+        sendBtn.disabled = true;
+        const res = await fetch(`/api/movies/${movieCode}/share`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ loginIds: [...selectedLoginIds] })
+        });
+        if (res.ok) {
+            overlay.hidden = true;
+            const toast = document.createElement('div');
+            toast.textContent = `${selectedLoginIds.size}명에게 공유했습니다.`;
+            toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#024ad8;color:#fff;padding:10px 20px;border-radius:999px;font-size:0.88rem;font-weight:700;z-index:700;pointer-events:none;';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2800);
+        } else {
+            sendBtn.disabled = false;
+        }
+    });
+
+    closeBtn.addEventListener('click', () => { overlay.hidden = true; });
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.hidden = true; });
 })();
 </script>
 </body>
