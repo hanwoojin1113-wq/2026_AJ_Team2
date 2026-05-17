@@ -107,6 +107,55 @@ public class NotificationService {
                 """, postOwnerId, actorUserId, postId, movieCode);
     }
 
+    public void createMovieShareNotification(
+            Long actorUserId, Long movieId, String movieCode, Long recipientUserId) {
+        initializeTable();
+        if (actorUserId == null || recipientUserId == null || actorUserId.equals(recipientUserId)) {
+            return;
+        }
+        jdbcTemplate.update("""
+                INSERT INTO user_notification
+                    (recipient_user_id, actor_user_id, notification_type, movie_id, movie_cd)
+                VALUES (?, ?, 'MOVIE_SHARE', ?, ?)
+                """, recipientUserId, actorUserId, movieId, movieCode);
+    }
+
+    public void createMovieThrowNotification(Long actorUserId, Long recipientUserId, Long movieId, String movieCode) {
+        initializeTable();
+        if (actorUserId == null || recipientUserId == null || actorUserId.equals(recipientUserId)) {
+            return;
+        }
+        jdbcTemplate.update("""
+                INSERT INTO user_notification
+                    (recipient_user_id, actor_user_id, notification_type, movie_id, movie_cd)
+                VALUES (?, ?, 'MOVIE_THROW', ?, ?)
+                """, recipientUserId, actorUserId, movieId, movieCode);
+    }
+
+    public void createMovieThrowWatchingNotification(Long actorUserId, Long recipientUserId, Long movieId, String movieCode) {
+        initializeTable();
+        if (actorUserId == null || recipientUserId == null || actorUserId.equals(recipientUserId)) {
+            return;
+        }
+        jdbcTemplate.update("""
+                INSERT INTO user_notification
+                    (recipient_user_id, actor_user_id, notification_type, movie_id, movie_cd)
+                VALUES (?, ?, 'MOVIE_THROW_WATCHING', ?, ?)
+                """, recipientUserId, actorUserId, movieId, movieCode);
+    }
+
+    public void createMovieThrowWatchedNotification(Long actorUserId, Long recipientUserId, Long movieId, String movieCode) {
+        initializeTable();
+        if (actorUserId == null || recipientUserId == null || actorUserId.equals(recipientUserId)) {
+            return;
+        }
+        jdbcTemplate.update("""
+                INSERT INTO user_notification
+                    (recipient_user_id, actor_user_id, notification_type, movie_id, movie_cd)
+                VALUES (?, ?, 'MOVIE_THROW_WATCHED', ?, ?)
+                """, recipientUserId, actorUserId, movieId, movieCode);
+    }
+
     public void createReviewLikeNotification(Long actorUserId, Long reviewId, Long reviewOwnerId, String movieCode) {
         initializeTable();
         if (actorUserId == null || reviewOwnerId == null || actorUserId.equals(reviewOwnerId)) {

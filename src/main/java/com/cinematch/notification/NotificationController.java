@@ -59,8 +59,9 @@ public class NotificationController {
             item.put("isRead", row.get("IS_READ"));
             Object createdAt = row.get("CREATED_AT");
             item.put("createdAt", createdAt != null ? createdAt.toString() : null);
+            String movieName = row.get("MOVIE_NAME") instanceof String s ? s : null;
             item.put("linkUrl", buildLinkUrl(notifType, postId, movieCd, actorLoginId));
-            item.put("notifText", buildNotificationText(notifType, actor));
+            item.put("notifText", buildNotificationText(notifType, actor, movieName));
             items.add(item);
         }
 
@@ -90,11 +91,14 @@ public class NotificationController {
             case "POST_COMMENT" -> postId != null ? "/posts/" + postId + "#comments" : "#";
             case "REVIEW_LIKE" -> movieCd != null ? "/movies/" + movieCd : "#";
             case "FOLLOW" -> actorLoginId != null ? "/users/" + actorLoginId : "#";
+            case "MOVIE_THROW" -> movieCd != null ? "/movies/" + movieCd : "#";
+            case "MOVIE_THROW_WATCHING" -> movieCd != null ? "/movies/" + movieCd : "#";
+            case "MOVIE_THROW_WATCHED" -> movieCd != null ? "/movies/" + movieCd : "#";
             default -> movieCd != null ? "/movies/" + movieCd : "#";
         };
     }
 
-    private String buildNotificationText(String notifType, String actor) {
+    private String buildNotificationText(String notifType, String actor, String movieName) {
         return switch (notifType != null ? notifType : "") {
             case "NEW_POST" -> actor + "님이 새 게시물을 올렸습니다.";
             case "POST_LIKE" -> actor + "님이 내 게시물에 좋아요를 눌렀습니다.";
@@ -102,8 +106,32 @@ public class NotificationController {
             case "REVIEW_LIKE" -> actor + "님이 내 리뷰에 좋아요를 남겼습니다.";
             case "FOLLOW" -> actor + "님이 팔로우하기 시작했습니다.";
             case "LIFE_MOVIE" -> actor + "님이 인생영화를 추가했습니다.";
+            case "MOVIE_SHARE" -> {
+                String title = movieName != null ? movieName : "영화";
+                String particle = eulReul(title);
+                yield actor + "님이 " + title + particle + " 공유했습니다.";
+            }
+            case "MOVIE_THROW" -> {
+                String title = movieName != null ? movieName : "영화";
+                yield actor + "님이 " + title + eulReul(title) + " 던졌습니다.";
+            }
+            case "MOVIE_THROW_WATCHING" -> {
+                String title = movieName != null ? movieName : "영화";
+                yield actor + "님이 " + title + eulReul(title) + " 보는중입니다.";
+            }
+            case "MOVIE_THROW_WATCHED" -> {
+                String title = movieName != null ? movieName : "영화";
+                yield actor + "님이 " + title + eulReul(title) + " 봤습니다!";
+            }
             default -> actor + "님이 활동했습니다.";
         };
+    }
+
+    private static String eulReul(String text) {
+        if (text == null || text.isBlank()) return "을(를)";
+        char last = text.charAt(text.length() - 1);
+        if (last < 0xAC00 || last > 0xD7A3) return "을(를)";
+        return (last - 0xAC00) % 28 == 0 ? "를" : "을";
     }
 
     private Long resolveCurrentUserId(HttpSession session) {

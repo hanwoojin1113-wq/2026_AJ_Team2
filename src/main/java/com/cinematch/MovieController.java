@@ -95,6 +95,7 @@ public class MovieController {
     private final ChartRegistry chartRegistry;
     private final KobisBoxOfficeService kobisBoxOfficeService;
     private final NotificationService notificationService;
+    private final MovieThrowService movieThrowService;
 
     public MovieController(JdbcTemplate jdbcTemplate,
                            RecommendationRefreshStateService recommendationRefreshStateService,
@@ -103,7 +104,8 @@ public class MovieController {
                            CollaborativeLifeMovieRecommendationService collaborativeLifeMovieRecommendationService,
                            ChartRegistry chartRegistry,
                            KobisBoxOfficeService kobisBoxOfficeService,
-                           NotificationService notificationService) {
+                           NotificationService notificationService,
+                           MovieThrowService movieThrowService) {
         this.jdbcTemplate = jdbcTemplate;
         this.recommendationRefreshStateService = recommendationRefreshStateService;
         this.recommendationMaintenanceService = recommendationMaintenanceService;
@@ -112,6 +114,7 @@ public class MovieController {
         this.chartRegistry = chartRegistry;
         this.kobisBoxOfficeService = kobisBoxOfficeService;
         this.notificationService = notificationService;
+        this.movieThrowService = movieThrowService;
     }
 
     @GetMapping("/")
@@ -436,8 +439,27 @@ public class MovieController {
             throw new ResponseStatusException(NOT_FOUND);
         }
 
+        // 영화 던지기 활성화 조건 확인
+        boolean targetFollowsMe = Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+                "SELECT EXISTS(SELECT 1 FROM user_follow WHERE follower_user_id = ? AND following_user_id = ?)",
+                Boolean.class, targetUser.userId(), currentUserId));
+        boolean isMutualFollow = targetUser.followedByCurrentUser() && targetFollowsMe;
+        int myActivity    = countDistinctMovieActivity(currentUserId);
+        int theirActivity = countDistinctMovieActivity(targetUser.userId());
+
+        String throwDisabledReason = null;
+        if (!isMutualFollow) {
+            throwDisabledReason = "서로 팔로우한 친구에게만 영화를 던질 수 있어요";
+        } else if (myActivity < 5) {
+            throwDisabledReason = "내 영화 기록이 5편 미만이에요. 더 감상하면 활성화돼요";
+        } else if (theirActivity < 5) {
+            throwDisabledReason = targetUser.nickname() + "님의 영화 기록이 부족해 아직 활성화되지 않아요";
+        }
+
         addCurrentUserAttributes(model, session);
         model.addAttribute("targetUser", targetUser);
+        model.addAttribute("throwEligible", throwDisabledReason == null);
+        model.addAttribute("throwDisabledReason", throwDisabledReason);
         model.addAttribute("lifeMovies", fetchLifeMovies(targetUser.userId(), LIFE_MOVIE_LIMIT));
         model.addAttribute("lifeMovieCount", countLifeMovies(targetUser.userId()));
         model.addAttribute("watchingMovies", fetchWatchedMovies(targetUser.userId(), "WATCHING", LIFE_MOVIE_LIMIT));
@@ -506,6 +528,8 @@ public class MovieController {
         model.addAttribute("lifeSelectionSlots", Math.max(0, LIFE_MOVIE_LIMIT - lifeMovieCount));
         model.addAttribute("lifePickerCandidates", fetchLifeMovieSearchResults(userId));
         model.addAttribute("tasteChart", fetchUserGenreChart(userId));
+        model.addAttribute("sentThrows", movieThrowService.getSentThrows(userId));
+        model.addAttribute("receivedThrows", movieThrowService.getReceivedThrows(userId));
         return "my-page";
     }
 
@@ -858,7 +882,15 @@ public class MovieController {
     public Map<String, Object> cycleWatchStateApi(@PathVariable String movieCode, HttpSession session) {
         Long userId = requireCurrentUserId(session);
         Long movieId = findMovieId(movieCode);
-        cycleWatchState(userId, movieId);
+        String newStatus = cycleWatchState(userId, movieId);
+        Long senderUserId = movieThrowService.findThrowSender(userId, movieId);
+        if (senderUserId != null) {
+            if ("WATCHING".equals(newStatus)) {
+                notificationService.createMovieThrowWatchingNotification(userId, senderUserId, movieId, movieCode);
+            } else if ("WATCHED".equals(newStatus)) {
+                notificationService.createMovieThrowWatchedNotification(userId, senderUserId, movieId, movieCode);
+            }
+        }
         return buildMovieActionPayload(userId, movieId);
     }
 
@@ -918,6 +950,53 @@ public class MovieController {
                 WHERE follower_user_id = ? AND following_user_id = ?
                 """, currentUserId, targetUserId);
         return buildSocialActionPayload(currentUserId, targetUserId, loginId);
+    }
+
+    @GetMapping("/api/people/following")
+    @ResponseBody
+    public List<Map<String, Object>> myFollowingApi(HttpSession session) {
+        Long currentUserId = requireCurrentUserId(session);
+        return jdbcTemplate.query("""
+                SELECT u.login_id, u.nickname, u.profile_image_url
+                FROM user_follow uf
+                JOIN "USER" u ON u.id = uf.following_user_id
+                WHERE uf.follower_user_id = ?
+                ORDER BY uf.created_at DESC
+                """, (rs, rowNum) -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("loginId", rs.getString("login_id"));
+            row.put("nickname", rs.getString("nickname"));
+            row.put("profileImageUrl", rs.getString("profile_image_url"));
+            return row;
+        }, currentUserId);
+    }
+
+    @PostMapping("/api/movies/{movieCode}/share")
+    @ResponseBody
+    public Map<String, Object> shareMovieApi(
+            @PathVariable String movieCode,
+            @org.springframework.web.bind.annotation.RequestBody Map<String, List<String>> body,
+            HttpSession session) {
+        Long actorUserId = requireCurrentUserId(session);
+        List<String> loginIds = body.getOrDefault("loginIds", List.of());
+        if (loginIds.isEmpty()) {
+            throw new ResponseStatusException(BAD_REQUEST);
+        }
+        Long movieId = jdbcTemplate.query(
+                "SELECT id FROM movie WHERE movie_cd = ?",
+                rs -> rs.next() ? rs.getLong("id") : null, movieCode);
+        if (movieId == null) {
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+        for (String loginId : loginIds) {
+            Long recipientId = jdbcTemplate.query(
+                    "SELECT id FROM \"USER\" WHERE login_id = ?",
+                    rs -> rs.next() ? rs.getLong("id") : null, loginId);
+            if (recipientId != null) {
+                notificationService.createMovieShareNotification(actorUserId, movieId, movieCode, recipientId);
+            }
+        }
+        return Map.of("shared", loginIds.size());
     }
 
     @PostMapping("/mypage/life")
@@ -1765,6 +1844,19 @@ public class MovieController {
                 FROM user_movie_life
                 WHERE user_id = ?
                 """, Integer.class, userId);
+        return count == null ? 0 : count;
+    }
+
+    private int countDistinctMovieActivity(Long userId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(DISTINCT movie_id) FROM (
+                    SELECT movie_id FROM user_movie_watched WHERE user_id = ?
+                    UNION
+                    SELECT movie_id FROM user_movie_like  WHERE user_id = ?
+                    UNION
+                    SELECT movie_id FROM user_movie_life  WHERE user_id = ?
+                ) t
+                """, Integer.class, userId, userId, userId);
         return count == null ? 0 : count;
     }
 
