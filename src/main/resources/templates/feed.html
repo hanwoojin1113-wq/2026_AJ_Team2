@@ -414,6 +414,14 @@
         .like-btn.liked {
             color: #f87171;
         }
+        @keyframes likePopBtn { 0%{transform:scale(1)} 25%{transform:scale(0.72)} 60%{transform:scale(1.38)} 100%{transform:scale(1)} }
+        .like-pop { animation: likePopBtn 0.42s cubic-bezier(0.36,0.07,0.19,0.97) forwards; }
+        @keyframes likeParticle { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0} }
+        .like-particle { position:fixed; width:7px; height:7px; border-radius:50%; pointer-events:none; z-index:9999; animation:likeParticle 0.6s ease-out forwards; }
+        .rollup-wrap { display:inline-block; overflow:hidden; height:1.15em; vertical-align:middle; position:relative; }
+        .rollup-old, .rollup-new { display:block; position:absolute; width:100%; transition:transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94); }
+        @keyframes dblHeart { 0%{transform:translate(-50%,-50%) scale(0);opacity:1} 50%{transform:translate(-50%,-50%) scale(1.25);opacity:1} 100%{transform:translate(-50%,-50%) scale(1);opacity:0} }
+        .dbl-heart { position:absolute; font-size:80px; pointer-events:none; z-index:10; animation:dblHeart 0.75s ease-out forwards; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
         .post-engagement {
             display: flex;
             align-items: center;
@@ -498,6 +506,56 @@
         .feed-status.visible {
             display: block;
         }
+        /* ── 스토리링 ── */
+        .story-bar {
+            display: flex;
+            gap: 18px;
+            padding: 14px 2px 18px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .story-bar::-webkit-scrollbar { display: none; }
+        .story-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+            text-decoration: none;
+            color: inherit;
+            width: 64px;
+        }
+        .story-ring {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            padding: 2.5px;
+            background: var(--hp-surface-2);
+        }
+        .story-ring.active {
+            background: linear-gradient(135deg, #024ad8, #8b5cf6, #f43f5e);
+        }
+        .story-avatar {
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            background: var(--hp-card);
+            border: 2px solid var(--hp-bg);
+            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; font-weight: 700; color: var(--hp-text-sub);
+        }
+        .story-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .story-name {
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--hint);
+            text-align: center;
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .story-item:hover .story-name { color: var(--text); }
+
         @media (max-width: 860px) {
             .right-sidebar { display: none; }
         }
@@ -535,6 +593,22 @@
             새 게시물 작성
         </a>
     </section>
+
+    <div class="story-bar" th:if="${storyUsers != null and !storyUsers.isEmpty()}">
+        <a class="story-item"
+           th:each="u : ${storyUsers}"
+           th:href="@{|/users/${u.loginId}|}">
+            <div th:class="${u.hasRecentPost} ? 'story-ring active' : 'story-ring'">
+                <div class="story-avatar">
+                    <img th:if="${u.profileImageUrl != null and !#strings.isEmpty(u.profileImageUrl.toString())}"
+                         th:src="${u.profileImageUrl}" th:alt="${u.nickname}">
+                    <span th:if="${u.profileImageUrl == null or #strings.isEmpty(u.profileImageUrl.toString())}"
+                          th:text="${#strings.substring(u.nickname, 0, 1)}">U</span>
+                </div>
+            </div>
+            <span class="story-name" th:text="${u.nickname}">닉네임</span>
+        </a>
+    </div>
 
     <div class="feed" id="feedList" th:if="${posts != null and !posts.isEmpty()}">
         <article class="post-card" th:each="post : ${posts}" th:id="|post-${post.postId}|">
@@ -838,10 +912,33 @@
         root.querySelectorAll('[data-carousel]').forEach(initializeCarousel);
     }
 
+    function makeSkelPost() {
+        return `<div class="post-card" style="pointer-events:none">
+            <header class="post-header" style="margin-bottom:14px">
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div class="skel" style="width:40px;height:40px;border-radius:50%;flex-shrink:0"></div>
+                    <div style="flex:1">
+                        <div class="skel" style="width:90px;height:13px;margin-bottom:6px"></div>
+                        <div class="skel" style="width:55px;height:11px"></div>
+                    </div>
+                </div>
+            </header>
+            <div class="skel" style="width:100%;aspect-ratio:1;border-radius:12px;margin-bottom:14px"></div>
+            <div class="skel" style="width:65%;height:13px;margin-bottom:8px"></div>
+            <div class="skel" style="width:38%;height:11px"></div>
+        </div>`;
+    }
+
     async function loadMore() {
         if (!hasMore || loading || !nextCursor) return;
         loading = true;
-        status?.classList.add('visible');
+        const skelCards = [makeSkelPost(), makeSkelPost()].map((html) => {
+            const el = document.createElement('div');
+            el.innerHTML = html;
+            const card = el.firstElementChild;
+            feedList.appendChild(card);
+            return card;
+        });
         try {
             const response = await fetch(`/api/feed/posts?cursor=${encodeURIComponent(nextCursor)}&limit=10`);
             if (response.status === 401) {
@@ -857,6 +954,7 @@
             hasMore = data.hasMore === true;
             nextCursor = data.nextCursor || '';
         } finally {
+            skelCards.forEach((card) => card.remove());
             loading = false;
             status?.classList.remove('visible');
             if (!hasMore && status) {
@@ -865,6 +963,86 @@
             }
         }
     }
+
+    function popLike(btn) {
+        btn.classList.remove('like-pop');
+        void btn.offsetWidth;
+        btn.classList.add('like-pop');
+        btn.addEventListener('animationend', () => btn.classList.remove('like-pop'), { once: true });
+        const colors = ['#f43f5e','#fb923c','#facc15','#f87171','#fda4af','#fb7185'];
+        const r = btn.getBoundingClientRect();
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * 2 * Math.PI;
+            const dist = 28 + Math.random() * 14;
+            const p = document.createElement('div');
+            p.className = 'like-particle';
+            p.style.cssText = `left:${cx-3.5}px;top:${cy-3.5}px;background:${colors[i]};--dx:${Math.cos(angle)*dist}px;--dy:${Math.sin(angle)*dist}px`;
+            document.body.appendChild(p);
+            p.addEventListener('animationend', () => p.remove(), { once: true });
+        }
+    }
+
+    function rollupCount(el, newVal) {
+        const oldStr = el.textContent.trim();
+        const newStr = String(newVal);
+        if (oldStr === newStr) return;
+        const going = parseInt(newStr) > parseInt(oldStr) ? 1 : -1;
+        const wrap = document.createElement('span');
+        wrap.className = 'rollup-wrap';
+        wrap.style.minWidth = el.offsetWidth + 'px';
+        const oldSpan = document.createElement('span');
+        oldSpan.className = 'rollup-old';
+        oldSpan.textContent = oldStr;
+        const newSpan = document.createElement('span');
+        newSpan.className = 'rollup-new';
+        newSpan.style.transform = `translateY(${going > 0 ? '100%' : '-100%'})`;
+        newSpan.textContent = newStr;
+        wrap.appendChild(oldSpan);
+        wrap.appendChild(newSpan);
+        el.textContent = '';
+        el.appendChild(wrap);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            oldSpan.style.transform = `translateY(${going > 0 ? '-100%' : '100%'})`;
+            newSpan.style.transform = 'translateY(0)';
+        }));
+        setTimeout(() => { el.textContent = newStr; }, 320);
+    }
+
+    function showDblHeart(carousel, x, y) {
+        const heart = document.createElement('span');
+        heart.className = 'dbl-heart';
+        heart.textContent = '❤️';
+        heart.style.left = x + 'px';
+        heart.style.top  = y + 'px';
+        carousel.appendChild(heart);
+        heart.addEventListener('animationend', () => heart.remove(), { once: true });
+    }
+
+    document.addEventListener('dblclick', async (event) => {
+        const carousel = event.target.closest('.post-carousel');
+        if (!carousel) return;
+        const card = carousel.closest('.post-card');
+        if (!card) return;
+
+        const rect = carousel.getBoundingClientRect();
+        showDblHeart(carousel, event.clientX - rect.left, event.clientY - rect.top);
+
+        const likeBtn = card.querySelector('.like-btn[data-post-id]');
+        if (!likeBtn || likeBtn.classList.contains('liked')) return;
+
+        const response = await fetch(`/api/posts/${likeBtn.dataset.postId}/like`, { method: 'POST' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!data.liked) return;
+        likeBtn.classList.add('liked');
+        likeBtn.dataset.liked = 'true';
+        const svg = likeBtn.querySelector('svg');
+        if (svg) svg.setAttribute('fill', 'currentColor');
+        const count = card.querySelector('.like-count');
+        if (count) rollupCount(count, data.likeCount);
+        popLike(likeBtn);
+    });
 
     document.addEventListener('click', async (event) => {
         const likeButton = event.target.closest('.like-btn[data-post-id]');
@@ -878,10 +1056,11 @@
             const data = await response.json();
             likeButton.classList.toggle('liked', data.liked);
             likeButton.dataset.liked = String(data.liked);
+            if (data.liked) popLike(likeButton);
             const svg = likeButton.querySelector('svg');
             if (svg) svg.setAttribute('fill', data.liked ? 'currentColor' : 'none');
             const count = likeButton.closest('.post-card')?.querySelector('.like-count');
-            if (count) count.textContent = data.likeCount;
+            if (count) rollupCount(count, data.likeCount);
             return;
         }
 

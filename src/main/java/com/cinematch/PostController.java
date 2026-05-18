@@ -87,6 +87,7 @@ public class PostController {
         model.addAttribute("currentUserId", currentUserId);
         model.addAttribute("trendingMovies", kobisBoxOfficeService.fetchBoxOffice(5));
         model.addAttribute("suggestedUsers", fetchFeedSuggestedUsers(currentUserId, 3));
+        model.addAttribute("storyUsers", fetchStoryUsers(currentUserId, 15));
         return "feed";
     }
 
@@ -693,6 +694,25 @@ public class PostController {
                 ORDER BY (SELECT COUNT(*) FROM user_follow uf WHERE uf.following_user_id = u.id) DESC, u.id DESC
                 LIMIT ?
                 """, currentUserId, currentUserId, limit);
+    }
+
+    private List<Map<String, Object>> fetchStoryUsers(Long currentUserId, int limit) {
+        if (currentUserId == null) return List.of();
+        return jdbcTemplate.queryForList("""
+                SELECT u.login_id          AS loginId,
+                       u.nickname,
+                       u.profile_image_url AS profileImageUrl,
+                       EXISTS(
+                           SELECT 1 FROM social_post sp
+                           WHERE sp.user_id = u.id
+                             AND sp.created_at >= DATEADD('DAY', -3, CURRENT_TIMESTAMP)
+                       ) AS hasRecentPost
+                FROM "USER" u
+                JOIN user_follow uf ON uf.following_user_id = u.id
+                WHERE uf.follower_user_id = ?
+                ORDER BY hasRecentPost DESC, u.nickname
+                LIMIT ?
+                """, currentUserId, limit);
     }
 
     private FeedCursor parseFeedCursor(String cursor) {

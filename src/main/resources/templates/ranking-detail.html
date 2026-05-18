@@ -316,6 +316,16 @@
         body.list-view .movie-grid { display: none; }
         body.list-view .rank-list { display: flex; }
 
+        /* ── 순위 변동 배지 ── */
+        .rank-change {
+            display: inline-block; font-size: 0.58rem; font-weight: 900;
+            padding: 2px 5px; border-radius: 4px; margin-left: 5px;
+            vertical-align: middle; letter-spacing: 0;
+        }
+        .rank-change.up   { background: rgba(34,197,94,0.18);  color: #4ade80; }
+        .rank-change.down { background: rgba(239,68,68,0.18);  color: #f87171; }
+        .rank-change.new  { background: rgba(2,74,216,0.22);   color: #60a5fa; }
+
         /* ── 빈 결과 ── */
         .empty {
             padding: 52px; text-align: center;
@@ -448,7 +458,8 @@
     <div class="rank-list" th:if="${!#lists.isEmpty(rows)}">
         <a class="rank-card"
            th:each="row : ${rows}"
-           th:href="${row.movieCode() != null ? '/movies/' + row.movieCode() : null}">
+           th:href="${row.movieCode() != null ? '/movies/' + row.movieCode() : null}"
+           th:attr="data-code=${row.movieCode()}">
 
             <!-- 순위 번호 -->
             <div class="rank-no" th:text="${row.rankNo()}">1</div>
@@ -626,6 +637,92 @@ function setView(mode) {
 
     function doAction(e,btn){e.preventDefault();e.stopPropagation();const code=btn.dataset.code,action=btn.dataset.action;if(!code||!action)return;fetch('/api/movies/'+code+'/'+action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>{if(r.status===401){window.location.href='/login';return null;}return r.ok?r.json():null;}).then(data=>{if(!data)return;document.querySelectorAll('.cact-btn[data-code="'+code+'"]').forEach(b=>{const act=b.dataset.action;b.classList.toggle('active',(act==='like'&&data.liked)||(act==='dislike'&&data.disliked)||(act==='later'&&data.later)||(act==='collection'&&data.collected));});}).catch(()=>{});}
     window.doAction=doAction;
+})();
+
+(function () {
+    function countUp(el, target, suffix, duration, delay) {
+        const original = el.textContent;
+        el.textContent = suffix ? '0' + suffix : '0';
+        setTimeout(function () {
+            const start = performance.now();
+            (function step(now) {
+                const p = Math.min((now - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - p, 3);
+                const val = Math.round(eased * target);
+                el.textContent = suffix
+                    ? val.toLocaleString('ko-KR') + suffix
+                    : String(val);
+                if (p < 1) requestAnimationFrame(step);
+                else el.textContent = original;
+            })(start);
+        }, delay);
+    }
+
+    // 순위 번호 카운트업 (.card-rank: 그리드, .rank-no: 리스트)
+    document.querySelectorAll('.card-rank, .rank-no').forEach(function (el, i) {
+        const target = parseInt(el.textContent, 10);
+        if (isNaN(target) || target <= 0) return;
+        countUp(el, target, '', 500, i * 35);
+    });
+
+    // 지표 숫자 카운트업 (.rank-metric-value: 리스트뷰)
+    document.querySelectorAll('.rank-metric-value').forEach(function (el, i) {
+        const text = el.textContent.trim();
+        const match = text.match(/^([\d,]+)(.*)/);
+        if (!match) return;
+        const target = parseInt(match[1].replace(/,/g, ''), 10);
+        const suffix = match[2] || '';
+        if (isNaN(target) || target <= 0) return;
+        countUp(el, target, suffix, 900, i * 25 + 150);
+    });
+})();
+
+(function () {
+    const chartCode = '[[${algorithm.code()}]]';
+    const storageKey = 'cm-rank-' + chartCode;
+    let prevRanks = {};
+    try { prevRanks = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (_) {}
+
+    const currentRanks = {};
+
+    function insertBadge(rankEl, code, rank) {
+        const prev = prevRanks[code];
+        const badge = document.createElement('span');
+        if (prev === undefined) {
+            badge.className = 'rank-change new';
+            badge.textContent = 'NEW';
+        } else {
+            const diff = prev - rank;
+            if (diff === 0) return;
+            badge.className = 'rank-change ' + (diff > 0 ? 'up' : 'down');
+            badge.textContent = (diff > 0 ? '▲' : '▼') + Math.abs(diff);
+        }
+        rankEl.appendChild(badge);
+    }
+
+    // 그리드뷰: .movie-card[data-code] > .card-poster > .card-rank
+    document.querySelectorAll('.movie-card[data-code]').forEach(function (card) {
+        const code = card.dataset.code;
+        const rankEl = card.querySelector('.card-rank');
+        if (!code || !rankEl) return;
+        const rank = parseInt(rankEl.textContent, 10);
+        if (isNaN(rank)) return;
+        currentRanks[code] = rank;
+        insertBadge(rankEl, code, rank);
+    });
+
+    // 리스트뷰: .rank-card[data-code] > .rank-no
+    document.querySelectorAll('.rank-card[data-code]').forEach(function (card) {
+        const code = card.dataset.code;
+        const rankEl = card.querySelector('.rank-no');
+        if (!code || !rankEl) return;
+        const rank = parseInt(rankEl.textContent, 10);
+        if (isNaN(rank)) return;
+        currentRanks[code] = rank;
+        insertBadge(rankEl, code, rank);
+    });
+
+    try { localStorage.setItem(storageKey, JSON.stringify(currentRanks)); } catch (_) {}
 })();
 </script>
 </body>

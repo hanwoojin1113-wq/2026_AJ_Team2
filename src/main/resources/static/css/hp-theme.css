@@ -207,6 +207,23 @@ body {
   font-weight: 700;
 }
 
+/* ── Skeleton shimmer ── */
+@keyframes hp-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.img-loading {
+  background: linear-gradient(90deg, #1a1a1a 25%, #252525 50%, #1a1a1a 75%) !important;
+  background-size: 200% 100% !important;
+  animation: hp-shimmer 1.5s linear infinite;
+}
+.skel {
+  background: linear-gradient(90deg, #1a1a1a 25%, #252525 50%, #1a1a1a 75%);
+  background-size: 200% 100%;
+  animation: hp-shimmer 1.5s linear infinite;
+  border-radius: 4px;
+}
+
 /* ── Inputs ── */
 .hp-input {
   width: 100%;

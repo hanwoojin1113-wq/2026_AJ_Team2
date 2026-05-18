@@ -909,8 +909,22 @@
 
     cancelBtn.addEventListener('click', showStep1);
 
+    function flyPoster(posterEl) {
+        if (!posterEl || !posterEl.src) return;
+        const rect = posterEl.getBoundingClientRect();
+        const clone = posterEl.cloneNode(true);
+        clone.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;border-radius:16px;pointer-events:none;z-index:9999;transition:transform 0.72s cubic-bezier(0.25,0.46,0.45,0.94),opacity 0.72s ease;transform-origin:center center;`;
+        document.body.appendChild(clone);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            clone.style.transform = 'translateX(100vw) translateY(-50vh) rotate(30deg) scale(0.2)';
+            clone.style.opacity = '0';
+        }));
+        setTimeout(() => clone.remove(), 800);
+    }
+
     confirmBtn.addEventListener('click', async () => {
         confirmBtn.disabled = true;
+        flyPoster(confirmPoster);
         try {
             const res = await fetch('/api/throw', {
                 method: 'POST',

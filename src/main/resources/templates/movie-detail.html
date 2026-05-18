@@ -333,6 +333,23 @@
             cursor: not-allowed;
         }
         .review-like-btn svg { width: 16px; height: 16px; }
+        @keyframes likePopBtn { 0%{transform:scale(1)} 30%{transform:scale(0.90)} 65%{transform:scale(1.12)} 100%{transform:scale(1)} }
+        .like-pop { animation: likePopBtn 0.35s ease-out forwards; }
+        @keyframes likeParticle { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0} }
+        .like-particle { position:fixed; width:7px; height:7px; border-radius:50%; pointer-events:none; z-index:9999; animation:likeParticle 0.6s ease-out forwards; }
+        @keyframes toastIn  { from{transform:translateX(-50%) translateY(16px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
+        @keyframes toastOut { from{opacity:1} to{opacity:0} }
+        .cm-toast {
+            position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+            background: rgba(22,26,38,0.97); color: #fff;
+            padding: 11px 22px; border-radius: 999px;
+            font-size: 0.88rem; font-weight: 700;
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+            pointer-events: none; z-index: 8000; white-space: nowrap;
+            animation: toastIn 0.28s ease forwards;
+        }
+        .cm-toast.out { animation: toastOut 0.28s ease forwards; }
         .review-empty {
             text-align: center;
             padding: 32px 0;
@@ -544,6 +561,19 @@
         return response.json();
     }
 
+    function showToast(msg) {
+        const old = document.querySelector('.cm-toast');
+        if (old) old.remove();
+        const el = document.createElement('div');
+        el.className = 'cm-toast';
+        el.textContent = msg;
+        document.body.appendChild(el);
+        setTimeout(() => {
+            el.classList.add('out');
+            el.addEventListener('animationend', () => el.remove(), { once: true });
+        }, 2200);
+    }
+
     function paintStars(value) {
         stars.forEach((star) => star.classList.toggle('active', Number(star.dataset.rating) <= value));
     }
@@ -580,11 +610,54 @@
         paintStars(movieState.rating || 0);
     }
 
-    dislikeBtn.addEventListener('click', async () => updateState(await postAction(`/api/movies/${movieCode}/dislike`)));
-    likeBtn.addEventListener('click', async () => updateState(await postAction(`/api/movies/${movieCode}/like`)));
-    laterBtn.addEventListener('click', async () => updateState(await postAction(`/api/movies/${movieCode}/later`)));
-    collectionBtn.addEventListener('click', async () => updateState(await postAction(`/api/movies/${movieCode}/collection`)));
-    watchBtn.addEventListener('click', async () => updateState(await postAction(`/api/movies/${movieCode}/watch-state`)));
+    function popLike(btn) {
+        btn.classList.remove('like-pop');
+        void btn.offsetWidth;
+        btn.classList.add('like-pop');
+        btn.addEventListener('animationend', () => btn.classList.remove('like-pop'), { once: true });
+        const colors = ['#f43f5e','#fb923c','#facc15','#f87171','#fda4af','#fb7185'];
+        const r = btn.getBoundingClientRect();
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * 2 * Math.PI;
+            const dist = 28 + Math.random() * 14;
+            const p = document.createElement('div');
+            p.className = 'like-particle';
+            p.style.cssText = `left:${cx-3.5}px;top:${cy-3.5}px;background:${colors[i]};--dx:${Math.cos(angle)*dist}px;--dy:${Math.sin(angle)*dist}px`;
+            document.body.appendChild(p);
+            p.addEventListener('animationend', () => p.remove(), { once: true });
+        }
+    }
+
+    dislikeBtn.addEventListener('click', async () => {
+        const next = await postAction(`/api/movies/${movieCode}/dislike`);
+        showToast(next.disliked ? '😑 별로에요 표시했어요' : '별로에요를 취소했어요');
+        updateState(next);
+    });
+    likeBtn.addEventListener('click', async () => {
+        const next = await postAction(`/api/movies/${movieCode}/like`);
+        if (next.liked) popLike(likeBtn);
+        showToast(next.liked ? '❤️ 좋아요 표시했어요' : '좋아요를 취소했어요');
+        updateState(next);
+    });
+    laterBtn.addEventListener('click', async () => {
+        const next = await postAction(`/api/movies/${movieCode}/later`);
+        showToast(next.later ? '🕓 보관함에 추가했어요' : '보관함에서 제거했어요');
+        updateState(next);
+    });
+    collectionBtn.addEventListener('click', async () => {
+        const next = await postAction(`/api/movies/${movieCode}/collection`);
+        showToast(next.collected ? '🔖 컬렉션에 추가했어요' : '컬렉션에서 제거했어요');
+        updateState(next);
+    });
+    watchBtn.addEventListener('click', async () => {
+        const next = await postAction(`/api/movies/${movieCode}/watch-state`);
+        const msg = next.watchStatus === 'WATCHING' ? '▶ 보는중으로 기록했어요'
+                  : next.watchStatus === 'WATCHED'  ? '✓ 봤어요로 기록했어요'
+                  : '시청 기록을 해제했어요';
+        showToast(msg);
+        updateState(next);
+    });
 
     stars.forEach((star) => {
         const value = Number(star.dataset.rating);
@@ -593,7 +666,9 @@
             if (movieState.watchStatus !== 'WATCHED') {
                 return;
             }
-            updateState(await postAction(`/api/movies/${movieCode}/watched/rating`, `rating=${value}`));
+            const next = await postAction(`/api/movies/${movieCode}/watched/rating`, `rating=${value}`);
+            showToast(`⭐ ${value}점으로 저장했어요`);
+            updateState(next);
         });
     });
 
@@ -834,6 +909,7 @@
         const countEl = button.querySelector('.review-like-count');
         const svg = button.querySelector('svg');
         button.classList.toggle('liked', payload.liked);
+        if (payload.liked) popLike(button);
         if (countEl) countEl.textContent = payload.likeCount;
         if (svg) svg.setAttribute('fill', payload.liked ? 'currentColor' : 'none');
     });

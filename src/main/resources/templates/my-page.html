@@ -555,6 +555,19 @@
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(148, 163, 184, 0.14);
         }
+        .poster-wrap::after {
+            content: '상세 보기 →';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 32px 12px 10px;
+            background: linear-gradient(to top, rgba(0,0,0,0.82), transparent);
+            color: rgba(255,255,255,0.92);
+            font-size: 0.73rem; font-weight: 700; letter-spacing: 0.3px;
+            opacity: 0;
+            transition: opacity 0.22s ease;
+            pointer-events: none;
+        }
+        .poster-wrap:hover::after { opacity: 1; }
 
         .poster {
             width: 100%;
@@ -1619,26 +1632,39 @@
     bg.setAttribute('stroke-width', SW);
     svg.appendChild(bg);
 
+    function animateSlice(el, targetDash, duration, delay) {
+        el.setAttribute('stroke-dasharray', '0 ' + C);
+        setTimeout(function () {
+            var start = performance.now();
+            (function step(now) {
+                var t = Math.min((now - start) / duration, 1);
+                var eased = 1 - Math.pow(1 - t, 3);
+                var cur = eased * targetDash;
+                el.setAttribute('stroke-dasharray', cur + ' ' + (C - cur));
+                if (t < 1) requestAnimationFrame(step);
+            })(start);
+        }, delay);
+    }
+
     // slices
     var cumFrac = 0;
     data.forEach(function(item, i) {
         var frac = item.count / total;
         var dash = Math.max(0, frac * C - 1.5);
-        var gap  = C - dash;
         var angle = -90 + cumFrac * 360;
         var c = document.createElementNS(NS, 'circle');
         c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', R);
         c.setAttribute('fill', 'none');
         c.setAttribute('stroke', COLORS[i % COLORS.length]);
         c.setAttribute('stroke-width', SW);
-        c.setAttribute('stroke-dasharray', dash + ' ' + gap);
         c.setAttribute('transform', 'rotate(' + angle + ' ' + cx + ' ' + cy + ')');
         c.setAttribute('stroke-linecap', 'butt');
         svg.appendChild(c);
+        animateSlice(c, dash, 700, i * 110);
         cumFrac += frac;
     });
 
-    // center: total
+    // center: total (카운트업)
     var t1 = document.createElementNS(NS, 'text');
     t1.setAttribute('x', cx); t1.setAttribute('y', cy + 7);
     t1.setAttribute('text-anchor', 'middle');
@@ -1646,8 +1672,20 @@
     t1.setAttribute('font-size', '17');
     t1.setAttribute('font-weight', '900');
     t1.setAttribute('font-family', 'Pretendard,sans-serif');
-    t1.textContent = total + '편';
+    t1.textContent = '0편';
     svg.appendChild(t1);
+    (function () {
+        var delay = data.length * 110;
+        setTimeout(function () {
+            var start = performance.now();
+            (function step(now) {
+                var t = Math.min((now - start) / 600, 1);
+                var eased = 1 - Math.pow(1 - t, 3);
+                t1.textContent = Math.round(eased * total) + '편';
+                if (t < 1) requestAnimationFrame(step);
+            })(start);
+        }, delay);
+    }());
 
     var t2 = document.createElementNS(NS, 'text');
     t2.setAttribute('x', cx); t2.setAttribute('y', cy + 20);
@@ -1671,6 +1709,25 @@
         });
         legend.innerHTML = rows.join('');
     }
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script>
+(function () {
+    document.querySelectorAll('.picker-btn:not(:disabled)').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const form = this.closest('form');
+            confetti({
+                particleCount: 120,
+                spread: 80,
+                origin: { y: 0.55 },
+                colors: ['#024ad8', '#8b5cf6', '#f43f5e', '#fbbf24', '#ffffff', '#34d399']
+            });
+            setTimeout(function () { form.submit(); }, 380);
+        });
+    });
 })();
 </script>
 </body>

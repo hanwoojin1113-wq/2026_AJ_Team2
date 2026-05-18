@@ -106,6 +106,38 @@
         });
     }
 
+    function initSkeletons() {
+        document.querySelectorAll('.poster-shell, .rank-poster-wrap, .hp-poster-wrap').forEach((wrap) => {
+            const img = wrap.querySelector('img');
+            if (!img) return;
+            if (img.complete && img.naturalWidth > 0) return;
+            wrap.classList.add('img-loading');
+            const done = () => wrap.classList.remove('img-loading');
+            img.addEventListener('load', done, { once: true });
+            img.addEventListener('error', done, { once: true });
+        });
+    }
+
+    function initScrollHeader() {
+        const topbar = document.querySelector('.app-topbar');
+        if (!topbar) return;
+        topbar.style.transition = 'transform 0.3s ease';
+        let lastY = 0;
+        let ticking = false;
+        window.addEventListener('scroll', () => {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(() => {
+                const y = window.scrollY;
+                topbar.style.transform = (y > lastY && y > 80) ? 'translateY(-100%)' : 'translateY(0)';
+                lastY = y;
+                ticking = false;
+            });
+        }, { passive: true });
+    }
+
     activateSidebar();
     initializeNotifications();
+    initSkeletons();
+    initScrollHeader();
 })();
