@@ -1,6 +1,7 @@
 package com.cinematch;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -86,6 +87,8 @@ public class MovieController {
 
     private static final List<String> HOME_CHART_CODES = List.of("top-sales", "million-club", "flash-hit");
     private static final List<String> ONBOARDING_TAGS = List.of("funny", "tense", "dark", "emotional", "romantic");
+
+    public record HeroSlide(String backdropUrl, String title, List<String> genres) {}
 
     private final JdbcTemplate jdbcTemplate;
     private final RecommendationRefreshStateService recommendationRefreshStateService;
@@ -370,6 +373,8 @@ public class MovieController {
             model.addAttribute("fallbackMovies", List.of());
             model.addAttribute("homeChartSections", List.of());
             model.addAttribute("trendingMovies", List.of());
+            model.addAttribute("heroSlides", List.of());
+            model.addAttribute("homeKeywordsByMovieCd", Map.of());
         } else {
             Long userId = getCurrentUserId(session);
             recommendationMaintenanceService.ensureRecommendations(userId, 200);
@@ -403,9 +408,67 @@ public class MovieController {
                     collaborativeLifeSection == null ? null : collaborativeLifeSection.representativeUser());
             model.addAttribute("secondaryRecommendationBlocks", secondaryRecommendationBlocks);
             model.addAttribute("fallbackMovies", recommendationBlocks.isEmpty() ? fetchPopularMovies(12) : List.of());
-            model.addAttribute("trendingMovies", kobisBoxOfficeService.fetchBoxOffice(10).stream()
+            var trendingMovies = kobisBoxOfficeService.fetchBoxOffice(10).stream()
                     .filter(movie -> movie.posterImageUrl() != null && !movie.posterImageUrl().isBlank())
-                    .toList());
+                    .toList();
+            model.addAttribute("trendingMovies", trendingMovies);
+
+            List<HeroSlide> heroSlides = new ArrayList<>();
+            for (var movie : trendingMovies) {
+                String backdrop = movie.backdropImageUrl();
+                if (backdrop == null || backdrop.isBlank()) continue;
+                String detailUrl = movie.detailUrl();
+                List<String> genres = List.of();
+                if (detailUrl != null && detailUrl.startsWith("/movies/")) {
+                    String movieCd = detailUrl.substring("/movies/".length());
+                    genres = jdbcTemplate.queryForList("""
+                            SELECT g.name
+                            FROM movie m
+                            JOIN movie_genre mg ON mg.movie_id = m.id
+                            JOIN genre g ON g.id = mg.genre_id
+                            WHERE m.movie_cd = ?
+                            ORDER BY mg.display_order
+                            LIMIT 2
+                            """, String.class, movieCd);
+                }
+                heroSlides.add(new HeroSlide(backdrop, movie.title(), genres));
+            }
+            model.addAttribute("heroSlides", heroSlides);
+
+            Map<String, List<String>> homeKeywordsByMovieCd = new LinkedHashMap<>();
+            java.util.function.Function<String, List<String>> lookupGenres = movieCd -> jdbcTemplate.queryForList("""
+                    SELECT g.name
+                    FROM movie m
+                    JOIN movie_genre mg ON mg.movie_id = m.id
+                    JOIN genre g ON g.id = mg.genre_id
+                    WHERE m.movie_cd = ?
+                    ORDER BY mg.display_order
+                    LIMIT 2
+                    """, String.class, movieCd);
+            java.util.function.Consumer<RecommendationBlockService.RecommendationBlock> addBlockKeywords = block -> {
+                if (block == null) return;
+                for (var bm : block.items()) {
+                    if (bm.movieCode() == null) continue;
+                    if (homeKeywordsByMovieCd.containsKey(bm.movieCode())) continue;
+                    List<String> kws = parseReasonKeywords(bm.reasonSummary());
+                    if (kws.isEmpty()) {
+                        kws = lookupGenres.apply(bm.movieCode());
+                    }
+                    homeKeywordsByMovieCd.put(bm.movieCode(), kws);
+                }
+            };
+            addBlockKeywords.accept(primaryRecommendationBlock);
+            addBlockKeywords.accept(collaborativeLifeBlock);
+            secondaryRecommendationBlocks.forEach(addBlockKeywords);
+
+            for (var movie : trendingMovies) {
+                String detailUrl = movie.detailUrl();
+                if (detailUrl == null || !detailUrl.startsWith("/movies/")) continue;
+                String movieCd = detailUrl.substring("/movies/".length());
+                if (homeKeywordsByMovieCd.containsKey(movieCd)) continue;
+                homeKeywordsByMovieCd.put(movieCd, lookupGenres.apply(movieCd));
+            }
+            model.addAttribute("homeKeywordsByMovieCd", homeKeywordsByMovieCd);
 
             List<HomeChartSectionView> homeChartSections = HOME_CHART_CODES.stream()
                     .flatMap(code -> chartRegistry.find(code).stream())
@@ -414,6 +477,21 @@ public class MovieController {
             model.addAttribute("homeChartSections", homeChartSections);
         }
         return "index";
+    }
+
+    private static List<String> parseReasonKeywords(String reasonSummary) {
+        if (reasonSummary == null || reasonSummary.isBlank()) return List.of();
+        String body = reasonSummary.startsWith("추천 이유: ")
+                ? reasonSummary.substring("추천 이유: ".length())
+                : reasonSummary;
+        return Arrays.stream(body.split("\\s*\\+\\s*"))
+                .map(s -> s
+                        .replaceAll("\\s*일치\\s*$", "")
+                        .replaceAll("\\s*(태그|장르|감독|배우|키워드|시청 가능)\\s*$", "")
+                        .trim())
+                .filter(s -> !s.isBlank())
+                .limit(3)
+                .toList();
     }
 
     @GetMapping("/users/{loginId}")
@@ -536,7 +614,6 @@ public class MovieController {
     @GetMapping("/people")
     public String peoplePage(@RequestParam(required = false) String user,
                              @RequestParam(required = false) String query,
-                             @RequestParam(required = false, defaultValue = "followers") String view,
                              Model model, HttpSession session) {
         if (!isLoggedIn(session)) {
             return "redirect:/login";
@@ -546,7 +623,6 @@ public class MovieController {
         Long currentUserId = getCurrentUserId(session);
         String currentLoginId = (String) session.getAttribute(LOGIN_SESSION_KEY);
         String targetLoginId = (user == null || user.isBlank()) ? currentLoginId : user.trim();
-        String normalizedView = normalizePeopleView(view);
         String normalizedQuery = query == null ? "" : query.trim();
 
         SocialProfileView targetUser = fetchSocialProfile(targetLoginId, currentUserId);
@@ -556,15 +632,12 @@ public class MovieController {
 
         addCurrentUserAttributes(model, session);
         model.addAttribute("targetUser", targetUser);
-        model.addAttribute("selectedView", normalizedView);
         model.addAttribute("searchQuery", normalizedQuery);
         model.addAttribute("searchResults", normalizedQuery.isBlank()
                 ? fetchSuggestedUsers(currentUserId, targetUser.userId(), SOCIAL_PAGE_LIMIT)
                 : searchUsers(currentUserId, normalizedQuery, SOCIAL_PAGE_LIMIT));
-        model.addAttribute("relationshipUsers", "following".equals(normalizedView)
-                ? fetchFollowingUsers(targetUser.userId(), currentUserId, SOCIAL_PAGE_LIMIT)
-                : fetchFollowerUsers(targetUser.userId(), currentUserId, SOCIAL_PAGE_LIMIT));
-        model.addAttribute("relationshipTitle", "following".equals(normalizedView) ? "팔로잉" : "팔로워");
+        model.addAttribute("followerUsers", fetchFollowerUsers(targetUser.userId(), currentUserId, SOCIAL_PAGE_LIMIT));
+        model.addAttribute("followingUsers", fetchFollowingUsers(targetUser.userId(), currentUserId, SOCIAL_PAGE_LIMIT));
         model.addAttribute("searchSectionTitle", normalizedQuery.isBlank() ? "추천할 만한 사용자" : "검색 결과");
         return "people-page";
     }
@@ -1304,7 +1377,8 @@ public class MovieController {
                         FROM user_follow uf
                         WHERE uf.follower_user_id = ?
                           AND uf.following_user_id = u.id
-                    ) AS followed_by_current_user
+                    ) AS followed_by_current_user,
+                    FALSE AS follows_current_user
                 FROM "USER" u
                 WHERE u.id <> ?
                   AND (
@@ -1330,7 +1404,7 @@ public class MovieController {
     }
 
     private List<SocialUserCardView> fetchSuggestedUsers(Long currentUserId, Long targetUserId, int limit) {
-        return jdbcTemplate.query("""
+        List<SocialUserCardView> candidates = jdbcTemplate.query("""
                 SELECT
                     u.id,
                     u.login_id,
@@ -1338,23 +1412,86 @@ public class MovieController {
                     u.profile_image_url,
                     (SELECT COUNT(*) FROM user_follow uf WHERE uf.following_user_id = u.id) AS follower_count,
                     (SELECT COUNT(*) FROM user_follow uf WHERE uf.follower_user_id = u.id) AS following_count,
+                    FALSE AS followed_by_current_user,
                     EXISTS(
+                        SELECT 1
+                        FROM user_follow uf
+                        WHERE uf.follower_user_id = u.id
+                          AND uf.following_user_id = ?
+                    ) AS follows_current_user
+                FROM "USER" u
+                WHERE u.id <> ?
+                  AND NOT EXISTS(
                         SELECT 1
                         FROM user_follow uf
                         WHERE uf.follower_user_id = ?
                           AND uf.following_user_id = u.id
-                    ) AS followed_by_current_user
-                FROM "USER" u
-                WHERE u.id <> ?
-                ORDER BY
-                    CASE WHEN u.id = ? THEN 0 ELSE 1 END,
-                    u.id DESC
-                LIMIT ?
+                  )
                 """, this::mapSocialUserCard,
                 currentUserId,
                 currentUserId,
-                targetUserId,
-                limit);
+                currentUserId);
+
+        Map<String, Double> myProfile = loadSocialPreferenceProfile(currentUserId);
+        if (myProfile.isEmpty()) {
+            return candidates.stream()
+                    .sorted((a, b) -> Boolean.compare(!b.followsCurrentUser(), !a.followsCurrentUser()))
+                    .limit(limit)
+                    .toList();
+        }
+
+        List<Long> candidateIds = candidates.stream().map(SocialUserCardView::userId).toList();
+        Map<Long, Map<String, Double>> otherProfiles = loadSocialPreferenceProfiles(candidateIds);
+
+        return candidates.stream()
+                .map(u -> Map.entry(u, computeSocialCosineSimilarity(myProfile, otherProfiles.getOrDefault(u.userId(), Map.of()))))
+                .sorted((a, b) -> {
+                    boolean af = a.getKey().followsCurrentUser();
+                    boolean bf = b.getKey().followsCurrentUser();
+                    if (af != bf) return af ? -1 : 1;
+                    return Double.compare(b.getValue(), a.getValue());
+                })
+                .limit(limit)
+                .map(Map.Entry::getKey)
+                .toList();
+    }
+
+    private Map<String, Double> loadSocialPreferenceProfile(Long userId) {
+        Map<String, Double> profile = new java.util.LinkedHashMap<>();
+        jdbcTemplate.query("""
+                SELECT feature_type, feature_name, score
+                FROM user_preference_profile
+                WHERE user_id = ? AND feature_type <> 'CAUTION' AND score > 0
+                """, (org.springframework.jdbc.core.RowCallbackHandler) rs ->
+                profile.put(rs.getString("feature_type") + "|" + rs.getString("feature_name"), rs.getDouble("score")),
+                userId);
+        return profile;
+    }
+
+    private Map<Long, Map<String, Double>> loadSocialPreferenceProfiles(List<Long> userIds) {
+        if (userIds.isEmpty()) return Map.of();
+        Map<Long, Map<String, Double>> profiles = new java.util.LinkedHashMap<>();
+        String placeholders = userIds.stream().map(x -> "?").collect(java.util.stream.Collectors.joining(", "));
+        jdbcTemplate.query(
+                "SELECT user_id, feature_type, feature_name, score FROM user_preference_profile WHERE user_id IN (" + placeholders + ") AND feature_type <> 'CAUTION' AND score > 0",
+                (org.springframework.jdbc.core.RowCallbackHandler) rs -> profiles
+                        .computeIfAbsent(rs.getLong("user_id"), k -> new java.util.LinkedHashMap<>())
+                        .put(rs.getString("feature_type") + "|" + rs.getString("feature_name"), rs.getDouble("score")),
+                userIds.toArray());
+        return profiles;
+    }
+
+    private double computeSocialCosineSimilarity(Map<String, Double> a, Map<String, Double> b) {
+        if (a.isEmpty() || b.isEmpty()) return 0.0;
+        double dot = 0.0;
+        for (Map.Entry<String, Double> e : a.entrySet()) {
+            Double bv = b.get(e.getKey());
+            if (bv != null) dot += e.getValue() * bv;
+        }
+        if (dot <= 0.0) return 0.0;
+        double normA = Math.sqrt(a.values().stream().mapToDouble(v -> v * v).sum());
+        double normB = Math.sqrt(b.values().stream().mapToDouble(v -> v * v).sum());
+        return (normA == 0.0 || normB == 0.0) ? 0.0 : dot / (normA * normB);
     }
 
     private List<SocialUserCardView> fetchFollowerUsers(Long targetUserId, Long currentUserId, int limit) {
@@ -1371,7 +1508,8 @@ public class MovieController {
                         FROM user_follow current_rel
                         WHERE current_rel.follower_user_id = ?
                           AND current_rel.following_user_id = u.id
-                    ) AS followed_by_current_user
+                    ) AS followed_by_current_user,
+                    FALSE AS follows_current_user
                 FROM user_follow uf
                 JOIN "USER" u ON u.id = uf.follower_user_id
                 WHERE uf.following_user_id = ?
@@ -1394,7 +1532,8 @@ public class MovieController {
                         FROM user_follow current_rel
                         WHERE current_rel.follower_user_id = ?
                           AND current_rel.following_user_id = u.id
-                    ) AS followed_by_current_user
+                    ) AS followed_by_current_user,
+                    FALSE AS follows_current_user
                 FROM user_follow uf
                 JOIN "USER" u ON u.id = uf.following_user_id
                 WHERE uf.follower_user_id = ?
@@ -1413,6 +1552,7 @@ public class MovieController {
                 rs.getLong("follower_count"),
                 rs.getLong("following_count"),
                 rs.getBoolean("followed_by_current_user"),
+                rs.getBoolean("follows_current_user"),
                 false
         );
     }
@@ -2156,6 +2296,7 @@ public class MovieController {
             long followerCount,
             long followingCount,
             boolean followingByCurrentUser,
+            boolean followsCurrentUser,
             boolean self
     ) {
     }

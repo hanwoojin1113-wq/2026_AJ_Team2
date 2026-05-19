@@ -27,6 +27,7 @@ public class KobisBoxOfficeService {
 
     private static final DateTimeFormatter KOBIS_DATE = DateTimeFormatter.BASIC_ISO_DATE;
     private static final String TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
+    private static final String TMDB_BACKDROP_BASE = "https://image.tmdb.org/t/p/w1280";
 
     private volatile List<TrendingMovieView> cache = null;
     private volatile LocalDate cacheDate = null;
@@ -124,12 +125,17 @@ public class KobisBoxOfficeService {
             }
 
             String posterImageUrl = null;
+            String backdropImageUrl = null;
             String detailUrl = null;
             JsonNode tmdbMatch = tmdbMovieImportService.findBestTmdbMatch(movieNm, releaseDate);
             if (tmdbMatch != null) {
                 String posterPath = tmdbMatch.path("poster_path").asText(null);
                 if (posterPath != null && !posterPath.isBlank()) {
                     posterImageUrl = TMDB_IMAGE_BASE + posterPath;
+                }
+                String backdropPath = tmdbMatch.path("backdrop_path").asText(null);
+                if (backdropPath != null && !backdropPath.isBlank()) {
+                    backdropImageUrl = TMDB_BACKDROP_BASE + backdropPath;
                 }
                 long tmdbId = tmdbMatch.path("id").asLong(0);
                 if (tmdbId > 0) {
@@ -140,7 +146,7 @@ public class KobisBoxOfficeService {
                 }
             }
 
-            views.add(new TrendingMovieView(detailUrl, movieNm, releaseYear, posterImageUrl));
+            views.add(new TrendingMovieView(detailUrl, movieNm, releaseYear, posterImageUrl, backdropImageUrl));
         }
         return views;
     }
