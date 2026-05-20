@@ -375,6 +375,7 @@ public class MovieController {
             model.addAttribute("trendingMovies", List.of());
             model.addAttribute("heroSlides", List.of());
             model.addAttribute("homeKeywordsByMovieCd", Map.of());
+            model.addAttribute("trendingKeywordsByDetailUrl", Map.of());
         } else {
             Long userId = getCurrentUserId(session);
             recommendationMaintenanceService.ensureRecommendations(userId, 200);
@@ -408,9 +409,7 @@ public class MovieController {
                     collaborativeLifeSection == null ? null : collaborativeLifeSection.representativeUser());
             model.addAttribute("secondaryRecommendationBlocks", secondaryRecommendationBlocks);
             model.addAttribute("fallbackMovies", recommendationBlocks.isEmpty() ? fetchPopularMovies(12) : List.of());
-            var trendingMovies = kobisBoxOfficeService.fetchBoxOffice(10).stream()
-                    .filter(movie -> movie.posterImageUrl() != null && !movie.posterImageUrl().isBlank())
-                    .toList();
+            var trendingMovies = kobisBoxOfficeService.fetchBoxOffice(10);
             model.addAttribute("trendingMovies", trendingMovies);
 
             List<HeroSlide> heroSlides = new ArrayList<>();
@@ -465,10 +464,37 @@ public class MovieController {
                 String detailUrl = movie.detailUrl();
                 if (detailUrl == null || !detailUrl.startsWith("/movies/")) continue;
                 String movieCd = detailUrl.substring("/movies/".length());
-                if (homeKeywordsByMovieCd.containsKey(movieCd)) continue;
-                homeKeywordsByMovieCd.put(movieCd, lookupGenres.apply(movieCd));
+                List<String> existingKws = homeKeywordsByMovieCd.get(movieCd);
+                if (existingKws != null && !existingKws.isEmpty()) continue;
+                List<String> kws = lookupGenres.apply(movieCd);
+                if (kws.isEmpty()) {
+                    kws = jdbcTemplate.queryForList("""
+                            SELECT t.tag_name
+                            FROM movie m
+                            JOIN movie_tag mt ON mt.movie_id = m.id
+                            JOIN tag t ON t.id = mt.tag_id
+                            WHERE m.movie_cd = ?
+                              AND t.tag_type = 'MOOD'
+                            LIMIT 2
+                            """, String.class, movieCd)
+                            .stream()
+                            .map(n -> TAG_LABELS.getOrDefault(n, n))
+                            .toList();
+                }
+                homeKeywordsByMovieCd.put(movieCd, kws);
+            }
+            Map<String, List<String>> trendingKeywordsByDetailUrl = new LinkedHashMap<>();
+            for (var movie : trendingMovies) {
+                String detailUrl = movie.detailUrl();
+                if (detailUrl == null || !detailUrl.startsWith("/movies/")) continue;
+                String movieCd = detailUrl.substring("/movies/".length());
+                List<String> kws = homeKeywordsByMovieCd.get(movieCd);
+                if (kws != null && !kws.isEmpty()) {
+                    trendingKeywordsByDetailUrl.put(detailUrl, kws);
+                }
             }
             model.addAttribute("homeKeywordsByMovieCd", homeKeywordsByMovieCd);
+            model.addAttribute("trendingKeywordsByDetailUrl", trendingKeywordsByDetailUrl);
 
             List<HomeChartSectionView> homeChartSections = HOME_CHART_CODES.stream()
                     .flatMap(code -> chartRegistry.find(code).stream())

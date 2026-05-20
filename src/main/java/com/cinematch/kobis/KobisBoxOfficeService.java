@@ -14,6 +14,9 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.URI;
 import java.util.LinkedHashSet;
 import java.time.LocalDate;
@@ -24,6 +27,8 @@ import java.util.Set;
 
 @Service
 public class KobisBoxOfficeService {
+
+    private static final Logger log = LoggerFactory.getLogger(KobisBoxOfficeService.class);
 
     private static final DateTimeFormatter KOBIS_DATE = DateTimeFormatter.BASIC_ISO_DATE;
     private static final String TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
@@ -82,6 +87,7 @@ public class KobisBoxOfficeService {
             }
             return result;
         } catch (Exception e) {
+            log.error("fetchBoxOffice failed: {}", e.getMessage(), e);
             return cache != null ? cache.subList(0, Math.min(normalized, cache.size())) : List.of();
         }
     }
@@ -111,9 +117,9 @@ public class KobisBoxOfficeService {
             if (views.size() >= limit) break;
 
             String movieNm = entry.path("movieNm").asText(null);
-            String openDt = entry.path("openDt").asText(null);
             if (movieNm == null || movieNm.isBlank()) continue;
 
+            String openDt = entry.path("openDt").asText(null);
             LocalDate releaseDate = null;
             String releaseYear = null;
             if (openDt != null && !openDt.isBlank()) {
@@ -127,23 +133,27 @@ public class KobisBoxOfficeService {
             String posterImageUrl = null;
             String backdropImageUrl = null;
             String detailUrl = null;
-            JsonNode tmdbMatch = tmdbMovieImportService.findBestTmdbMatch(movieNm, releaseDate);
-            if (tmdbMatch != null) {
-                String posterPath = tmdbMatch.path("poster_path").asText(null);
-                if (posterPath != null && !posterPath.isBlank()) {
-                    posterImageUrl = TMDB_IMAGE_BASE + posterPath;
-                }
-                String backdropPath = tmdbMatch.path("backdrop_path").asText(null);
-                if (backdropPath != null && !backdropPath.isBlank()) {
-                    backdropImageUrl = TMDB_BACKDROP_BASE + backdropPath;
-                }
-                long tmdbId = tmdbMatch.path("id").asLong(0);
-                if (tmdbId > 0) {
-                    String movieCode = ensureLocalMovieCode(tmdbId);
-                    if (movieCode != null) {
-                        detailUrl = "/movies/" + movieCode;
+            try {
+                JsonNode tmdbMatch = tmdbMovieImportService.findBestTmdbMatch(movieNm, releaseDate);
+                if (tmdbMatch != null) {
+                    String posterPath = tmdbMatch.path("poster_path").asText(null);
+                    if (posterPath != null && !posterPath.isBlank()) {
+                        posterImageUrl = TMDB_IMAGE_BASE + posterPath;
+                    }
+                    String backdropPath = tmdbMatch.path("backdrop_path").asText(null);
+                    if (backdropPath != null && !backdropPath.isBlank()) {
+                        backdropImageUrl = TMDB_BACKDROP_BASE + backdropPath;
+                    }
+                    long tmdbId = tmdbMatch.path("id").asLong(0);
+                    if (tmdbId > 0) {
+                        String movieCode = ensureLocalMovieCode(tmdbId);
+                        if (movieCode != null) {
+                            detailUrl = "/movies/" + movieCode;
+                        }
                     }
                 }
+            } catch (Exception e) {
+                log.warn("박스오피스 영화 '{}' TMDB 매칭 실패: {}", movieNm, e.getMessage());
             }
 
             views.add(new TrendingMovieView(detailUrl, movieNm, releaseYear, posterImageUrl, backdropImageUrl));

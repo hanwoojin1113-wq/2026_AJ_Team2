@@ -1391,12 +1391,10 @@
                                     <div class="poster-overlay"><span>상세 보기</span></div>
                                 </div>
                                 <div class="movie-title" th:text="${movie.title}">영화 제목</div>
-                                <th:block th:with="cd=${#strings.substringAfter(movie.detailUrl, '/movies/')}">
-                                    <th:block th:with="kws=${homeKeywordsByMovieCd[cd]}">
-                                        <div class="movie-keywords" th:if="${not #lists.isEmpty(kws)}">
-                                            <span class="kw-chip" th:each="k : ${kws}" th:text="${k}">장르</span>
-                                        </div>
-                                    </th:block>
+                                <th:block th:with="kws=${trendingKeywordsByDetailUrl[movie.detailUrl]}">
+                                    <div class="movie-keywords" th:if="${not #lists.isEmpty(kws)}">
+                                        <span class="kw-chip" th:each="k : ${kws}" th:text="${k}">장르</span>
+                                    </div>
                                 </th:block>
                             </div>
                         </a>
@@ -1413,7 +1411,7 @@
                                     <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
                                         <span th:text="${movie.title}">영화 제목</span>
                                     </div>
-                                    <div class="poster-overlay"><span>TMDB Trending</span></div>
+                                    <div class="poster-overlay"><span>상세 보기</span></div>
                                 </div>
                                 <div class="movie-title" th:text="${movie.title}">영화 제목</div>
                             </div>
