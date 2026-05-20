@@ -32,6 +32,7 @@ public class TmdbTrendingService {
     private static final Logger log = LoggerFactory.getLogger(TmdbTrendingService.class);
 
     private static final String TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
+    private static final String TMDB_BACKDROP_BASE_URL = "https://image.tmdb.org/t/p/w1280";
     private static final int MAX_TRENDING_MOVIES = 10;
     private static final long REFRESH_STALE_HOURS = 24L;
 
@@ -302,6 +303,7 @@ public class TmdbTrendingService {
                     COALESCE(m.title, m.movie_name) AS movie_name,
                     COALESCE(m.movie_name_en, m.original_title, m.movie_name_original) AS movie_name_en,
                     m.poster_image_url,
+                    m.backdrop_path,
                     COALESCE(m.release_date, m.movie_info_open_date, m.box_office_open_date) AS release_date,
                     m.production_year
                 FROM tmdb_trending_chart tc
@@ -310,16 +312,23 @@ public class TmdbTrendingService {
                   AND m.poster_image_url <> ''
                 ORDER BY tc.rank_no
                 LIMIT ?
-                """, (rs, rowNum) -> new TrendingMovieView(
-                "/movies/" + rs.getString("movie_cd"),
-                rs.getString("movie_name"),
-                buildStoredSubtitle(
-                        rs.getString("movie_name_en"),
-                        rs.getObject("release_date", LocalDate.class),
-                        rs.getObject("production_year", Integer.class)
-                ),
-                rs.getString("poster_image_url")
-        ), limit);
+                """, (rs, rowNum) -> {
+                    String backdropPath = rs.getString("backdrop_path");
+                    String backdropUrl = (backdropPath == null || backdropPath.isBlank())
+                            ? null
+                            : TMDB_BACKDROP_BASE_URL + backdropPath;
+                    return new TrendingMovieView(
+                            "/movies/" + rs.getString("movie_cd"),
+                            rs.getString("movie_name"),
+                            buildStoredSubtitle(
+                                    rs.getString("movie_name_en"),
+                                    rs.getObject("release_date", LocalDate.class),
+                                    rs.getObject("production_year", Integer.class)
+                            ),
+                            rs.getString("poster_image_url"),
+                            backdropUrl
+                    );
+                }, limit);
     }
 
     private boolean hasMovieTags(Long movieId) {
@@ -434,7 +443,8 @@ public class TmdbTrendingService {
             String detailUrl,
             String title,
             String subtitle,
-            String posterImageUrl
+            String posterImageUrl,
+            String backdropImageUrl
     ) {
     }
 

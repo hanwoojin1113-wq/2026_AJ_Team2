@@ -230,28 +230,151 @@
             font-size: 0.88rem;
         }
         .page {
-            max-width: 1440px;
+            max-width: 1760px;
             margin: 0 auto;
             padding: 28px 24px 72px;
         }
         .hero {
-            padding: 38px 40px;
+            padding: 0;
             border-radius: var(--r-xl);
-            background: var(--hp-surface);
-            border: 1px solid var(--hp-border);
+            background-color: var(--hp-surface);
+            background-size: cover;
+            background-position: center 30%;
+            background-repeat: no-repeat;
             box-shadow: var(--hp-shadow-md);
             margin-bottom: 24px;
             overflow: hidden;
             position: relative;
+            min-height: clamp(380px, 41vw, 640px);
         }
-        .hero::before {
+        .hero-has-backdrop::after {
             content: '';
             position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 6px;
-            background: var(--hp-blue);
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.78) 100%),
+                linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 55%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero-carousel { user-select: none; }
+        .hero-carousel.hero-has-backdrop::after { content: none; }
+        .hero-slides { position: absolute; inset: 0; }
+        .hero-slide {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center 30%;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transition: opacity 600ms ease;
+            z-index: 0;
+        }
+        .hero-slide.is-active { opacity: 1; z-index: 1; }
+        .hero-slide::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.78) 100%),
+                linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 55%);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .hero-slide .hero-caption { z-index: 2; }
+        .hero-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.45);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.18);
+            cursor: pointer;
+            z-index: 3;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            transition: background 150ms ease, transform 150ms ease;
+        }
+        .hero-arrow:hover {
+            background: rgba(0,0,0,0.72);
+            transform: translateY(-50%) scale(1.06);
+        }
+        .hero-arrow svg { width: 22px; height: 22px; }
+        .hero-arrow-prev { left: 16px; }
+        .hero-arrow-next { right: 16px; }
+        .hero-dots {
+            position: absolute;
+            bottom: 18px;
+            right: clamp(20px, 4vw, 56px);
+            display: flex;
+            gap: 8px;
+            z-index: 3;
+        }
+        .hero-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.38);
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            transition: background 150ms ease, transform 150ms ease;
+        }
+        .hero-dot:hover { background: rgba(255,255,255,0.7); }
+        .hero-dot.is-active {
+            background: #fff;
+            transform: scale(1.3);
+        }
+        .hero-caption {
+            position: absolute;
+            left: clamp(20px, 3.5vw, 56px);
+            bottom: clamp(20px, 3vw, 44px);
+            right: clamp(20px, 6vw, 80px);
+            z-index: 1;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .hero-genre-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .hero-genre-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.14);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 1px solid rgba(255,255,255,0.22);
+            color: #fff;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+        }
+        .hero-title {
+            font-size: clamp(2.1rem, 5.2vw, 4.2rem);
+            line-height: 1.05;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #fff;
+            text-shadow: 0 4px 24px rgba(0,0,0,0.55);
+            margin: 0;
+            max-width: 80%;
+        }
+        @media (max-width: 768px) {
+            .hero { min-height: 240px; }
+            .hero-title { font-size: 1.8rem; }
+            .hero-genre-chip { font-size: 0.75rem; padding: 4px 10px; }
         }
         .hero-badge {
             display: inline-flex;
@@ -283,7 +406,7 @@
         }
         .search-panel {
             margin-bottom: 26px;
-            padding: 22px 24px;
+            padding: 14px 18px;
             border-radius: var(--r-xl);
             background: var(--hp-surface);
             border: 1px solid var(--hp-border);
@@ -517,8 +640,8 @@
         .row-track {
             display: grid;
             grid-auto-flow: column;
-            grid-auto-columns: minmax(172px, 172px);
-            gap: 18px;
+            grid-auto-columns: minmax(210px, 210px);
+            gap: 22px;
             overflow: visible;
             width: 100%;
             padding: 28px 0;
@@ -561,6 +684,55 @@
             box-shadow: var(--hp-shadow-md);
         }
         .movie-card:hover .movie-title { color: var(--hp-text); }
+
+        /* ── 실시간 인기 Top10: 큰 순위 숫자 + 포스터 ── */
+        .rank-card {
+            display: flex;
+            align-items: flex-end;
+            gap: 0;
+            overflow: visible;
+        }
+        .rank-card:hover { transform: none; }
+        .rank-card:hover .poster-shell {
+            transform: scale(1.04);
+            border-color: var(--hp-blue);
+            box-shadow: var(--hp-shadow-md);
+        }
+        .rank-card .rank-number {
+            font-size: clamp(72px, 7vw, 130px);
+            font-weight: 900;
+            line-height: 0.82;
+            letter-spacing: -0.06em;
+            color: #fff;
+            text-shadow: 0 6px 26px rgba(0,0,0,0.6);
+            font-family: "Inter", "Pretendard", "Noto Sans KR", sans-serif;
+            flex-shrink: 0;
+            transform: translate(-4px, 24px);
+            pointer-events: none;
+        }
+        .rank-card .rank-number.is-two-digit {
+            font-size: clamp(56px, 5.4vw, 100px);
+            letter-spacing: -0.09em;
+            transform: translate(-2px, 24px);
+        }
+        .rank-card-body {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 0;
+        }
+        .rank-card-body .poster-shell { aspect-ratio: 2/3; }
+        .rank-row .row-track {
+            grid-auto-columns: calc((100% - 22px * 4) / 5);
+            gap: 22px;
+        }
+        @media (max-width: 768px) {
+            .rank-row .row-track {
+                grid-auto-columns: calc((100% - 14px) / 2);
+                gap: 14px;
+            }
+        }
+
         /* ── 카드 호버 액션 버튼 ── */
         .card-hover {
             position: absolute; inset: 0; z-index: 2;
@@ -641,6 +813,25 @@
             overflow: hidden;
         }
         .movie-card:hover .movie-sub { color: var(--hp-text-sub); }
+        .movie-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .kw-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 9px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.16);
+            color: var(--hp-text-sub);
+            font-size: 0.74rem;
+            font-weight: 600;
+            white-space: nowrap;
+            line-height: 1.2;
+        }
         .row-arrow {
             position: absolute;
             top: 50%;
@@ -1074,23 +1265,38 @@
 <div th:replace="~{fragments/app-shell :: shell}"></div>
 
 <main class="page">
-    <section class="hero">
-        <div class="hero-badge">PERSONALIZED HOME</div>
-        <h1 th:text="${hasActiveSearch} ? '영화 검색 결과' : '오늘 보고 싶은 영화를 바로 만나는 홈 화면'">오늘 보고 싶은 영화를 바로 만나는 홈 화면</h1>
-        <p th:text="${hasActiveSearch}
-                ? '검색이나 필터로 탐색 결과를 확인하고, 다시 홈으로 돌아오면 개인화 추천 블록 중심 화면을 볼 수 있습니다.'
-                : '메인 화면은 전체 영화 게시판이 아니라 추천 중심으로 구성했습니다. 개인화 추천, 장르 추천, 배우/감독 추천 블록을 가로형 섹션으로 둘러볼 수 있습니다.'">
-            메인 화면은 추천 중심 홈입니다.
-        </p>
+    <section class="hero hero-has-backdrop hero-carousel"
+             th:if="${heroSlides != null and !heroSlides.isEmpty()}">
+        <div class="hero-slides">
+            <div class="hero-slide"
+                 th:each="slide, iter : ${heroSlides}"
+                 th:classappend="${iter.first} ? ' is-active' : ''"
+                 th:style="'background-image: url(' + ${slide.backdropUrl} + ');'">
+                <div class="hero-caption">
+                    <div class="hero-genre-row" th:if="${slide.genres != null and !slide.genres.isEmpty()}">
+                        <span class="hero-genre-chip" th:each="g : ${slide.genres}" th:text="${g}">장르</span>
+                    </div>
+                    <h1 class="hero-title" th:text="${slide.title}">영화 제목</h1>
+                </div>
+            </div>
+        </div>
+        <th:block th:if="${heroSlides.size() > 1}">
+            <button class="hero-arrow hero-arrow-prev" type="button" aria-label="이전 슬라이드">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"></polyline></svg>
+            </button>
+            <button class="hero-arrow hero-arrow-next" type="button" aria-label="다음 슬라이드">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            </button>
+            <div class="hero-dots">
+                <button type="button" class="hero-dot"
+                        th:each="slide, iter : ${heroSlides}"
+                        th:classappend="${iter.first} ? ' is-active' : ''"
+                        th:attr="data-index=${iter.index}, aria-label='슬라이드 ' + ${iter.index + 1}"></button>
+            </div>
+        </th:block>
     </section>
 
     <section class="search-panel">
-        <div class="search-panel-head">
-            <div>
-                <div class="search-panel-title">탐색이 필요할 때만 검색 결과를 보세요</div>
-                <div class="search-panel-sub">메인 화면은 추천 중심, 검색은 탐색 중심으로 역할을 분리했습니다.</div>
-            </div>
-        </div>
         <form class="search-form" th:action="@{/charts}" method="get">
             <div class="search-input-wrap">
                 <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2">
@@ -1106,6 +1312,7 @@
             <button class="search-detail" type="button" onclick="openGenrePopup()">상세 필터</button>
         </form>
     </section>
+
 
     <div class="genre-popup" id="genrePopup" th:classappend="${showAdvanced} ? ' open' : ''" onclick="closeGenrePopup(event)">
         <div class="genre-popup-card" onclick="event.stopPropagation()">
@@ -1150,54 +1357,64 @@
             <div class="section-head">
                 <div class="section-head-main">
                     <h2>실시간 인기 작품</h2>
-                    <p>KOBIS 일별 박스오피스 기준 상위 10개 작품입니다.</p>
                 </div>
             </div>
-            <div class="row-carousel" data-row-carousel>
+            <div class="row-carousel rank-row" data-row-carousel>
                 <button class="row-arrow left" type="button" data-row-direction="prev" aria-label="이전 인기 작품 보기">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
                         <path d="M15 18l-6-6 6-6"/>
                     </svg>
                 </button>
                 <div class="row-clip"><div class="row-track">
-                    <th:block th:each="movie : ${trendingMovies}">
-                        <a class="movie-card"
+                    <th:block th:each="movie, iter : ${trendingMovies}">
+                        <a class="movie-card rank-card"
                            th:if="${movie.detailUrl != null}"
                            th:href="${movie.detailUrl}">
-                            <div class="poster-shell">
-                                <img class="poster"
-                                     th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
-                                     th:src="${movie.posterImageUrl}"
-                                     th:alt="${movie.title}">
-                                <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
-                                    <span th:text="${movie.title}">영화 제목</span>
+                            <span class="rank-number"
+                                  th:classappend="${iter.index >= 9} ? ' is-two-digit' : ''"
+                                  th:text="${iter.index + 1}">1</span>
+                            <div class="rank-card-body">
+                                <div class="poster-shell">
+                                    <img class="poster"
+                                         th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                                         th:src="${movie.posterImageUrl}"
+                                         th:alt="${movie.title}">
+                                    <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                                        <span th:text="${movie.title}">영화 제목</span>
+                                    </div>
+                                    <div class="card-hover"><div class="card-actions">
+                                        <button class="cact-btn" data-action="like" title="좋아요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg></button>
+                                        <button class="cact-btn" data-action="dislike" title="별로에요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg></button>
+                                        <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
+                                        <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
+                                    </div></div>
+                                    <div class="poster-overlay"><span>상세 보기</span></div>
                                 </div>
-                                <div class="card-hover"><div class="card-actions">
-                                    <button class="cact-btn" data-action="like" title="좋아요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg></button>
-                                    <button class="cact-btn" data-action="dislike" title="별로에요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg></button>
-                                    <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
-                                    <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
-                                </div></div>
-                                <div class="poster-overlay"><span>상세 보기</span></div>
+                                <div class="movie-title" th:text="${movie.title}">영화 제목</div>
+                                <th:block th:with="kws=${trendingKeywordsByDetailUrl[movie.detailUrl]}">
+                                    <div class="movie-keywords" th:if="${not #lists.isEmpty(kws)}">
+                                        <span class="kw-chip" th:each="k : ${kws}" th:text="${k}">장르</span>
+                                    </div>
+                                </th:block>
                             </div>
-                            <div class="movie-title" th:text="${movie.title}">영화 제목</div>
-                            <div class="movie-sub"
-                                 th:text="${#strings.isEmpty(movie.subtitle) ? 'TMDB Trending' : movie.subtitle}">TMDB Trending</div>
                         </a>
-                        <div class="movie-card" th:unless="${movie.detailUrl != null}">
-                            <div class="poster-shell">
-                                <img class="poster"
-                                     th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
-                                     th:src="${movie.posterImageUrl}"
-                                     th:alt="${movie.title}">
-                                <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
-                                    <span th:text="${movie.title}">영화 제목</span>
+                        <div class="movie-card rank-card" th:unless="${movie.detailUrl != null}">
+                            <span class="rank-number"
+                                  th:classappend="${iter.index >= 9} ? ' is-two-digit' : ''"
+                                  th:text="${iter.index + 1}">1</span>
+                            <div class="rank-card-body">
+                                <div class="poster-shell">
+                                    <img class="poster"
+                                         th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                                         th:src="${movie.posterImageUrl}"
+                                         th:alt="${movie.title}">
+                                    <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                                        <span th:text="${movie.title}">영화 제목</span>
+                                    </div>
+                                    <div class="poster-overlay"><span>상세 보기</span></div>
                                 </div>
-                                <div class="poster-overlay"><span>TMDB Trending</span></div>
+                                <div class="movie-title" th:text="${movie.title}">영화 제목</div>
                             </div>
-                            <div class="movie-title" th:text="${movie.title}">영화 제목</div>
-                            <div class="movie-sub"
-                                 th:text="${#strings.isEmpty(movie.subtitle) ? 'TMDB Trending' : movie.subtitle}">TMDB Trending</div>
                         </div>
                     </th:block>
                 </div></div>
@@ -1214,7 +1431,6 @@
                 <div class="section-head">
                     <div class="section-head-main">
                         <h2 th:text="${block.title}">추천 블록</h2>
-                        <p th:text="${block.description}">설명</p>
                     </div>
                 </div>
                 <div class="row-carousel" data-row-carousel>
@@ -1242,8 +1458,11 @@
                             <div class="poster-overlay"><span>상세 보기</span></div>
                         </div>
                         <div class="movie-title" th:text="${movie.title}">영화 제목</div>
-                        <div class="movie-sub"
-                             th:text="${#strings.isEmpty(movie.reasonSummary) ? movie.subtitle : movie.reasonSummary}">추천 이유</div>
+                        <th:block th:with="kws=${homeKeywordsByMovieCd[movie.movieCode]}">
+                            <div class="movie-keywords" th:if="${not #lists.isEmpty(kws)}">
+                                <span class="kw-chip" th:each="k : ${kws}" th:text="${k}">키워드</span>
+                            </div>
+                        </th:block>
                     </a>
                     </div></div>
                     <button class="row-arrow right" type="button" data-row-direction="next" aria-label="다음 추천 보기">
@@ -1269,7 +1488,6 @@
                            th:text="${block.title}">512님의 인생영화</a>
                     </h2>
                     <h2 th:unless="${collaborativeLifeRepresentative != null}" th:text="${block.title}">나와 취향이 비슷한 사람들이 고른 인생영화</h2>
-                    <p th:text="${block.description}">유사 취향 사용자의 인생영화만 모은 추천입니다.</p>
                 </div>
             </div>
             <div class="row-carousel" data-row-carousel>
@@ -1297,8 +1515,11 @@
                         <div class="poster-overlay"><span>?곸꽭 蹂닿린</span></div>
                     </div>
                     <div class="movie-title" th:text="${movie.title}">?곹솕 ?쒕ぉ</div>
-                    <div class="movie-sub"
-                         th:text="${#strings.isEmpty(movie.reasonSummary) ? movie.subtitle : movie.reasonSummary}">異붿쿇 ?댁쑀</div>
+                    <th:block th:with="kws=${homeKeywordsByMovieCd[movie.movieCode]}">
+                        <div class="movie-keywords" th:if="${not #lists.isEmpty(kws)}">
+                            <span class="kw-chip" th:each="k : ${kws}" th:text="${k}">키워드</span>
+                        </div>
+                    </th:block>
                 </a>
                 </div></div>
                 <button class="row-arrow right" type="button" data-row-direction="next" aria-label="?ㅼ쓬 異붿쿇 蹂닿린">
@@ -1314,7 +1535,6 @@
                 <div class="section-head">
                     <div class="section-head-main">
                         <h2 th:text="${block.title}">異붿쿇 釉붾줉</h2>
-                        <p th:text="${block.description}">?ㅻ챸</p>
                     </div>
                 </div>
                 <div class="row-carousel" data-row-carousel>
@@ -1342,8 +1562,11 @@
                             <div class="poster-overlay"><span>?곸꽭 蹂닿린</span></div>
                         </div>
                         <div class="movie-title" th:text="${movie.title}">?곹솕 ?쒕ぉ</div>
-                        <div class="movie-sub"
-                             th:text="${#strings.isEmpty(movie.reasonSummary) ? movie.subtitle : movie.reasonSummary}">異붿쿇 ?댁쑀</div>
+                        <th:block th:with="kws=${homeKeywordsByMovieCd[movie.movieCode]}">
+                            <div class="movie-keywords" th:if="${not #lists.isEmpty(kws)}">
+                                <span class="kw-chip" th:each="k : ${kws}" th:text="${k}">키워드</span>
+                            </div>
+                        </th:block>
                     </a>
                     </div></div>
                     <button class="row-arrow right" type="button" data-row-direction="next" aria-label="?ㅼ쓬 異붿쿇 蹂닿린">
@@ -1408,7 +1631,6 @@
             <div class="section-head">
                 <div class="section-head-main">
                     <h2>지금 많이 보는 영화</h2>
-                    <p>아직 개인화 추천이 준비되지 않았을 때 보여주는 기본 홈 섹션입니다.</p>
                 </div>
             </div>
             <div class="row-carousel" data-row-carousel>
@@ -1529,11 +1751,16 @@
                 syncButtons();
             };
 
+            const isPaged = carousel.classList.contains('rank-row');
+
             const getScrollAmount = () => {
-                const firstCard = track.querySelector('.movie-card');
-                if (!firstCard) return Math.max(track.clientWidth * 0.85, 240);
                 const styles = window.getComputedStyle(track);
                 const gap = parseFloat(styles.columnGap || styles.gap || '18');
+                if (isPaged) {
+                    return track.clientWidth + gap;
+                }
+                const firstCard = track.querySelector('.movie-card');
+                if (!firstCard) return Math.max(track.clientWidth * 0.85, 240);
                 return Math.max(firstCard.getBoundingClientRect().width + gap, Math.floor(track.clientWidth * 0.82));
             };
 
@@ -1856,6 +2083,49 @@
             if (!sbPanel.hidden && !sbPanel.contains(e.target) && e.target !== sbBtn) sbPanel.hidden = true;
         });
     }
+})();
+</script>
+<script>
+(function initHeroCarousel() {
+    const root = document.querySelector('.hero-carousel');
+    if (!root) return;
+    const slides = root.querySelectorAll('.hero-slide');
+    const dots = root.querySelectorAll('.hero-dot');
+    if (slides.length < 2) return;
+
+    let idx = 0;
+    let timerId = null;
+    const AUTOPLAY_MS = 5000;
+
+    function show(next) {
+        const total = slides.length;
+        slides[idx].classList.remove('is-active');
+        if (dots[idx]) dots[idx].classList.remove('is-active');
+        idx = ((next % total) + total) % total;
+        slides[idx].classList.add('is-active');
+        if (dots[idx]) dots[idx].classList.add('is-active');
+    }
+    function play() {
+        stop();
+        timerId = setInterval(function () { show(idx + 1); }, AUTOPLAY_MS);
+    }
+    function stop() {
+        if (timerId) { clearInterval(timerId); timerId = null; }
+    }
+
+    const prev = root.querySelector('.hero-arrow-prev');
+    const next = root.querySelector('.hero-arrow-next');
+    if (prev) prev.addEventListener('click', function () { show(idx - 1); play(); });
+    if (next) next.addEventListener('click', function () { show(idx + 1); play(); });
+    dots.forEach(function (dot) {
+        dot.addEventListener('click', function () {
+            const i = Number(dot.dataset.index);
+            if (!Number.isNaN(i)) { show(i); play(); }
+        });
+    });
+    root.addEventListener('mouseenter', stop);
+    root.addEventListener('mouseleave', play);
+    play();
 })();
 </script>
 </body>
