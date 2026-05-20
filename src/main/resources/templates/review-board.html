@@ -45,10 +45,10 @@
             font-size: 0.95rem;
         }
         .board-search {
-            flex: 0 0 auto;
             display: flex;
             align-items: center;
-            width: min(270px, 100%);
+            flex: 1;
+            min-width: 210px;
             height: 42px;
             border: 1px solid var(--hp-border);
             border-radius: var(--r-md);
@@ -80,6 +80,34 @@
             stroke: currentColor;
             fill: none;
             stroke-width: 2;
+        }
+        .board-controls {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: min(430px, 100%);
+        }
+        .sort-filter {
+            flex: 0 0 140px;
+            height: 42px;
+            border: 1px solid var(--hp-border);
+            border-radius: var(--r-md);
+            background: rgba(255,255,255,0.06);
+            color: var(--hp-text);
+            padding: 0 12px;
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 800;
+            outline: none;
+        }
+        .sort-filter:focus {
+            border-color: rgba(96,165,250,0.55);
+            box-shadow: 0 0 0 3px rgba(2,74,216,0.18);
+        }
+        .sort-filter option {
+            background: #151923;
+            color: #fff;
         }
         .review-table-wrap {
             overflow: hidden;
@@ -117,10 +145,10 @@
         .review-table tbody tr:hover {
             background: rgba(255,255,255,0.04);
         }
-        .col-no { width: 68px; text-align: center; color: var(--hp-text-hint); }
-        .col-title { width: auto; }
-        .col-author { width: 128px; text-align: center; color: var(--hp-text-sub); }
         .col-date { width: 128px; text-align: center; color: var(--hp-text-hint); }
+        .col-title { width: auto; }
+        .col-views { width: 92px; text-align: center; color: var(--hp-text-sub); }
+        .col-author { width: 128px; text-align: center; color: var(--hp-text-sub); }
         .review-link {
             display: grid;
             grid-template-columns: 44px minmax(0, 1fr);
@@ -177,6 +205,18 @@
             font-size: 0.86rem;
             line-height: 1.45;
         }
+        .view-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 54px;
+            height: 28px;
+            border-radius: var(--r-md);
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            font-size: 0.82rem;
+            font-weight: 900;
+        }
         .board-empty {
             padding: 58px 20px;
             border: 1px solid var(--hp-border);
@@ -184,6 +224,36 @@
             text-align: center;
             color: var(--hp-text-hint);
             background: rgba(30,35,48,0.72);
+        }
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 22px;
+        }
+        .page-link,
+        .page-current {
+            min-width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--r-md);
+            border: 1px solid var(--hp-border);
+            color: var(--hp-text-sub);
+            text-decoration: none;
+            font-size: 0.86rem;
+            font-weight: 900;
+        }
+        .page-link:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.08);
+        }
+        .page-current {
+            color: #fff;
+            background: var(--hp-blue);
+            border-color: var(--hp-blue);
         }
         @media (max-width: 768px) {
             .board-page {
@@ -193,15 +263,26 @@
                 align-items: stretch;
                 flex-direction: column;
             }
+            .board-controls,
             .board-search {
                 width: 100%;
             }
-            .col-no,
+            .board-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .sort-filter {
+                flex-basis: auto;
+                width: 100%;
+            }
             .col-author {
                 display: none;
             }
             .col-date {
-                width: 88px;
+                width: 86px;
+            }
+            .col-views {
+                width: 72px;
             }
             .review-table th,
             .review-table td {
@@ -217,6 +298,10 @@
                 width: 32px;
                 height: 46px;
             }
+            .view-count {
+                min-width: 42px;
+                font-size: 0.78rem;
+            }
         }
     </style>
 </head>
@@ -230,30 +315,36 @@
             <h1 class="board-title">리뷰 게시판</h1>
             <p class="board-copy">사용자가 남긴 영화 리뷰를 최신순으로 확인하세요.</p>
         </div>
-        <label class="board-search">
-            <input id="reviewSearch" type="search" placeholder="리뷰 검색" autocomplete="off">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="11" cy="11" r="7"></circle>
-                <path d="m16.5 16.5 4 4"></path>
-            </svg>
-        </label>
+        <div class="board-controls">
+            <label class="board-search">
+                <input id="reviewSearch" type="search" placeholder="리뷰 검색" autocomplete="off">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="m16.5 16.5 4 4"></path>
+                </svg>
+            </label>
+            <select class="sort-filter" id="reviewSort" aria-label="리뷰 정렬">
+                <option value="latest" th:selected="${selectedSort == 'latest'}">날짜순</option>
+                <option value="views" th:selected="${selectedSort == 'views'}">조회수순</option>
+            </select>
+        </div>
     </header>
 
     <div class="review-table-wrap" th:if="${reviews != null and !reviews.isEmpty()}">
         <table class="review-table">
             <thead>
             <tr>
-                <th class="col-no">No</th>
-                <th class="col-title">리뷰</th>
-                <th class="col-author">작성자</th>
                 <th class="col-date">작성일</th>
+                <th class="col-title">리뷰</th>
+                <th class="col-views">조회수</th>
+                <th class="col-author">작성자</th>
             </tr>
             </thead>
             <tbody>
             <tr th:each="review : ${reviews}">
-                <td class="col-no" th:text="${reviewCount - review.no + 1}">16</td>
+                <td class="col-date" th:text="${review.createdAt}">2026.05.21</td>
                 <td class="col-title">
-                    <a class="review-link" th:href="@{|/movies/${review.movieCode}|}">
+                    <a class="review-link" th:href="@{|/reviews/${review.reviewId}|}">
                         <img class="review-poster"
                              th:if="${review.moviePosterUrl != null and !#strings.isEmpty(review.moviePosterUrl)}"
                              th:src="${review.moviePosterUrl}"
@@ -273,12 +364,32 @@
                         </span>
                     </a>
                 </td>
+                <td class="col-views"><span class="view-count" th:text="${review.viewCount}">0</span></td>
                 <td class="col-author" th:text="${review.nickname}">CineMatch</td>
-                <td class="col-date" th:text="${review.createdAt}">2026.05.16</td>
             </tr>
             </tbody>
         </table>
     </div>
+
+    <nav class="pagination"
+         th:if="${reviews != null and !reviews.isEmpty() and totalPages > 1}"
+         aria-label="리뷰 게시판 페이지">
+        <a class="page-link"
+           th:if="${hasPrevPage}"
+           th:href="@{/reviews(page=${currentPage - 1},sort=${selectedSort})}">이전</a>
+        <span th:each="pageNo : ${#numbers.sequence(1, totalPages)}">
+            <span class="page-current"
+                  th:if="${pageNo == currentPage}"
+                  th:text="${pageNo}">1</span>
+            <a class="page-link"
+               th:if="${pageNo != currentPage}"
+               th:href="@{/reviews(page=${pageNo},sort=${selectedSort})}"
+               th:text="${pageNo}">2</a>
+        </span>
+        <a class="page-link"
+           th:if="${hasNextPage}"
+           th:href="@{/reviews(page=${currentPage + 1},sort=${selectedSort})}">다음</a>
+    </nav>
 
     <div class="board-empty" th:if="${reviews == null or reviews.isEmpty()}">
         아직 작성된 리뷰가 없습니다.
@@ -287,11 +398,18 @@
 
 <script>
     const reviewSearch = document.getElementById('reviewSearch');
+    const reviewSort = document.getElementById('reviewSort');
     reviewSearch?.addEventListener('input', () => {
         const query = reviewSearch.value.trim().toLowerCase();
         document.querySelectorAll('.review-table tbody tr').forEach((row) => {
             row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
         });
+    });
+    reviewSort?.addEventListener('change', () => {
+        const params = new URLSearchParams(window.location.search);
+        params.set('sort', reviewSort.value);
+        params.set('page', '1');
+        window.location.href = `${window.location.pathname}?${params.toString()}`;
     });
 </script>
 </body>
