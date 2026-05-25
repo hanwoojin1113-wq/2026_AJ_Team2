@@ -387,6 +387,45 @@
         @media (max-width:768px) { .movie-posts-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width:720px) { .row.two,.row.three,.stats { grid-template-columns:1fr; } }
         @media (max-width:480px) { .movie-posts-grid { grid-template-columns: repeat(2, 1fr); } }
+        /* 예고편 섹션 */
+        .trailer-section { margin: 24px 0; }
+        .trailer-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .trailer-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
+        .trailer-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .trailer-tab { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--hp-border); background: var(--hp-surface-2); color: var(--hp-text-sub); font: inherit; font-size: 0.82rem; cursor: pointer; transition: background 0.15s, color 0.15s; }
+        .trailer-tab.active { background: var(--hp-blue); border-color: var(--hp-blue); color: #fff; }
+        .trailer-embed { position: relative; aspect-ratio: 16/9; border-radius: var(--r-xl); overflow: hidden; background: #000; }
+        .trailer-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+        /* OTT 로고 */
+        .provider-logos { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .provider-badge { display: flex; align-items: center; gap: 7px; padding: 5px 10px 5px 6px; border-radius: var(--r-lg); background: var(--hp-card); border: 1px solid var(--hp-border); font-size: 0.8rem; color: var(--hp-text-sub); }
+        .provider-badge img { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; }
+        .provider-type-tag { font-size: 0.7rem; color: var(--hp-text-hint); margin-left: 2px; }
+        /* 이미지 섹션 */
+        .movie-images-section { margin: 24px 0; }
+        .movie-images-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .movie-images-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
+        .movie-images-count { color: var(--hp-text-hint); font-size: 0.85rem; }
+        .movie-images-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        @media (max-width: 640px) { .movie-images-grid { grid-template-columns: repeat(2, 1fr); } }
+        .img-item { cursor: pointer; border-radius: var(--r-lg); overflow: hidden; aspect-ratio: 16/9; background: var(--hp-surface-2); }
+        .img-item img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.2s; }
+        .img-item:hover img { transform: scale(1.04); }
+        .img-item.portrait { aspect-ratio: 2/3; }
+        .img-skeleton { border-radius: var(--r-lg); aspect-ratio: 16/9; background: var(--hp-surface-2); }
+        @keyframes imgShimmer { 0%,100% { opacity:0.45; } 50% { opacity:0.9; } }
+        .img-skeleton { animation: imgShimmer 1.4s infinite; }
+        /* 라이트박스 */
+        .img-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 800; display: flex; align-items: center; justify-content: center; }
+        .img-lightbox[hidden] { display: none; }
+        .img-lightbox-img { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: var(--r-lg); }
+        .img-lightbox-close { position: absolute; top: 16px; right: 20px; background: rgba(255,255,255,0.12); border: none; color: #fff; font-size: 1.2rem; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .img-lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.12); border: none; color: #fff; font-size: 2rem; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .img-lightbox-prev { left: 12px; }
+        .img-lightbox-next { right: 12px; }
+        .img-more-btn { display: none; width: 100%; margin-top: 12px; padding: 11px; border-radius: var(--r-lg); border: 1px solid var(--hp-border); background: var(--hp-surface-2); color: var(--hp-text-sub); font: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s; }
+        .img-more-btn:hover { background: var(--hp-card); color: var(--hp-text); }
+        .img-more-btn.visible { display: block; }
     </style>
 </head>
 <body>
@@ -492,15 +531,71 @@
         </div>
     </section>
 
+    <!-- 예고편 섹션 -->
+    <section class="trailer-section" th:if="${!#lists.isEmpty(videos)}">
+        <div class="trailer-header">
+            <h2 class="trailer-title">예고편 / 영상</h2>
+        </div>
+        <div class="trailer-tabs" id="trailerTabs">
+            <button class="trailer-tab active" th:each="v, vStat : ${videos}"
+                    th:attr="data-key=${v.video_key}"
+                    th:text="${vStat.index == 0 ? (v.video_name != null ? v.video_name : '예고편 1') : (v.video_name != null ? v.video_name : '영상 ' + (vStat.index + 1))}">
+                예고편
+            </button>
+        </div>
+        <div class="trailer-embed">
+            <iframe id="trailerIframe"
+                    th:src="'https://www.youtube.com/embed/' + ${videos[0].video_key} + '?rel=0'"
+                    allowfullscreen
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
+            </iframe>
+        </div>
+    </section>
+
+    <section class="movie-images-section" id="imageSection">
+        <div class="movie-images-header">
+            <h2 class="movie-images-title">이미지</h2>
+            <span class="movie-images-count" id="imageCount"></span>
+        </div>
+        <div class="movie-images-grid" id="imageGrid">
+            <div class="img-skeleton"></div>
+            <div class="img-skeleton"></div>
+            <div class="img-skeleton"></div>
+        </div>
+        <button type="button" class="img-more-btn" id="imgMoreBtn"></button>
+    </section>
+
+    <!-- 이미지 라이트박스 -->
+    <div class="img-lightbox" id="imgLightbox" hidden>
+        <button class="img-lightbox-close" id="imgLightboxClose" type="button">✕</button>
+        <img class="img-lightbox-img" id="imgLightboxImg" src="" alt="영화 이미지">
+        <button class="img-lightbox-nav img-lightbox-prev" id="imgLightboxPrev" type="button">‹</button>
+        <button class="img-lightbox-nav img-lightbox-next" id="imgLightboxNext" type="button">›</button>
+    </div>
+
     <section class="sections">
         <article class="card"><h3>장르</h3><div class="chips" th:if="${!#lists.isEmpty(genres)}"><span class="chip" th:each="genre : ${genres}" th:text="${genre}">장르</span></div><p class="empty" th:if="${#lists.isEmpty(genres)}">장르 정보가 없습니다.</p></article>
         <article class="card"><h3>추천 태그</h3><div class="chips" th:if="${!#lists.isEmpty(recommendationTags)}"><span class="chip" th:each="tag : ${recommendationTags}" th:text="${tag.tagTypeLabel + ' · ' + tag.tagLabel}">태그</span></div><p class="empty" th:if="${#lists.isEmpty(recommendationTags)}">추천 태그가 없습니다.</p></article>
         <article class="card"><h3>감독 / 배우</h3><div class="chips" th:if="${!#lists.isEmpty(directors)}"><span class="chip" th:each="director : ${directors}" th:text="${director}">감독</span></div><div class="chips" style="margin-top:10px" th:if="${!#lists.isEmpty(actors)}"><span class="chip" th:each="actor : ${actors}" th:text="${actor}">배우</span></div><p class="empty" th:if="${#lists.isEmpty(directors) and #lists.isEmpty(actors)}">감독/배우 정보가 없습니다.</p></article>
-        <article class="card"><h3>제공 서비스</h3><div class="meta-list" th:if="${!#lists.isEmpty(providers)}"><div class="meta-item" th:each="provider : ${providers}" th:text="${provider.name + ' · ' + provider.type}">Netflix · 구독</div></div><p class="empty" th:if="${#lists.isEmpty(providers)}">제공 서비스 정보가 없습니다.</p></article>
+        <article class="card"><h3>제공 서비스</h3><div class="provider-logos" th:if="${!#lists.isEmpty(providers)}"><div class="provider-badge" th:each="provider : ${providers}"><img th:if="${provider.logoUrl() != null}" th:src="${provider.logoUrl()}" th:alt="${provider.name}"><span th:text="${provider.name}">Netflix</span><span class="provider-type-tag" th:text="${provider.type}">구독</span></div></div><p class="empty" th:if="${#lists.isEmpty(providers)}">제공 서비스 정보가 없습니다.</p></article>
         <article class="card"><h3>심의 / 제작사</h3><div class="meta-list" th:if="${!#lists.isEmpty(audits) or !#lists.isEmpty(companies)}"><div class="meta-item" th:each="audit : ${audits}" th:text="${(audit.auditNo != null ? audit.auditNo : '심의번호 없음') + ' · ' + (audit.watchGradeName != null ? audit.watchGradeName : '등급 정보 없음')}">심의번호 · 12세 관람가</div><div class="meta-item" th:each="company : ${companies}" th:text="${company.name + ' · ' + (company.role != null ? company.role : '참여사')}">제작사 · 배급</div></div><p class="empty" th:if="${#lists.isEmpty(audits) and #lists.isEmpty(companies)}">추가 정보가 없습니다.</p></article>
     </section>
 </main>
 
+<script>
+    (function () {
+        const tabs = document.getElementById('trailerTabs');
+        const iframe = document.getElementById('trailerIframe');
+        if (!tabs || !iframe) return;
+        tabs.addEventListener('click', function (e) {
+            const btn = e.target.closest('.trailer-tab');
+            if (!btn) return;
+            tabs.querySelectorAll('.trailer-tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            iframe.src = 'https://www.youtube.com/embed/' + btn.dataset.key + '?rel=0&autoplay=1';
+        });
+    })();
+</script>
 <script th:inline="javascript">
     const movieCode = [[${movie.movieCode}]];
     let movieState = {
@@ -957,6 +1052,80 @@
     }
 
     loadReviews();
+})();
+</script>
+
+<script th:inline="javascript">
+(function () {
+    const movieCode = /*[[${movie.movieCode}]]*/ '';
+    const section = document.getElementById('imageSection');
+    const grid = document.getElementById('imageGrid');
+    const countEl = document.getElementById('imageCount');
+    const lightbox = document.getElementById('imgLightbox');
+    const lightboxImg = document.getElementById('imgLightboxImg');
+
+    let images = [];
+    let currentIndex = 0;
+
+    function openLightbox(index) {
+        currentIndex = index;
+        lightboxImg.src = images[index].url;
+        lightbox.hidden = false;
+        document.body.classList.add('modal-open');
+    }
+
+    function closeLightbox() {
+        lightbox.hidden = true;
+        document.body.classList.remove('modal-open');
+    }
+
+    document.getElementById('imgLightboxClose').addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+    document.getElementById('imgLightboxPrev').addEventListener('click', () => openLightbox((currentIndex - 1 + images.length) % images.length));
+    document.getElementById('imgLightboxNext').addEventListener('click', () => openLightbox((currentIndex + 1) % images.length));
+    document.addEventListener('keydown', e => {
+        if (lightbox.hidden) return;
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') openLightbox((currentIndex - 1 + images.length) % images.length);
+        if (e.key === 'ArrowRight') openLightbox((currentIndex + 1) % images.length);
+    });
+
+    const INITIAL_LIMIT = 6;
+    const moreBtn = document.getElementById('imgMoreBtn');
+
+    function renderImages(data, limit) {
+        grid.innerHTML = data.slice(0, limit).map((img, i) =>
+            `<div class="img-item${img.type === 'poster' ? ' portrait' : ''}" data-index="${i}">
+                <img src="${img.url}" alt="영화 이미지" loading="lazy" onerror="this.closest('.img-item').style.display='none'">
+            </div>`
+        ).join('');
+    }
+
+    fetch(`/api/movies/${movieCode}/images`)
+        .then(r => r.ok ? r.json() : [])
+        .then(data => {
+            images = data;
+            if (!data.length) { section.hidden = true; return; }
+            countEl.textContent = data.length + '장';
+            renderImages(data, INITIAL_LIMIT);
+            grid.addEventListener('click', e => {
+                const item = e.target.closest('.img-item');
+                if (item) openLightbox(Number(item.dataset.index));
+            });
+            if (data.length > INITIAL_LIMIT) {
+                let expanded = false;
+                moreBtn.textContent = `이미지 더보기 (${data.length - INITIAL_LIMIT}장 더)`;
+                moreBtn.classList.add('visible');
+                moreBtn.addEventListener('click', () => {
+                    expanded = !expanded;
+                    renderImages(data, expanded ? data.length : INITIAL_LIMIT);
+                    moreBtn.textContent = expanded
+                        ? '이미지 접기'
+                        : `이미지 더보기 (${data.length - INITIAL_LIMIT}장 더)`;
+                });
+            }
+        })
+        .catch(() => { section.hidden = true; });
 })();
 </script>
 

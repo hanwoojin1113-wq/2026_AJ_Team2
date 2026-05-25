@@ -2,6 +2,81 @@
 
 ---
 
+## 05-26 구현 사항
+
+### 영화 배틀 기능
+
+두 영화를 맞붙여 사용자가 투표하는 배틀 시스템을 추가했습니다.
+
+#### 배틀 자동 생성 (5가지 타입)
+
+| 타입 | 기준 | 조건 |
+|------|------|------|
+| GENRE | 같은 장르의 영화 2편 | 평점 7.0+, 유사 평점대 (±1.5), popularity 5.0+ |
+| DIRECTOR | 같은 감독의 작품 2편 | 평점 7.0+ |
+| ACTOR | 같은 배우(주연 3위 이내) 출연작 2편 | 평점 7.0+ |
+| TAG | 같은 MOOD 태그를 가진 영화 2편 | 평점 7.0+ |
+| ERA | 같은 10년대 영화 2편 | 평점 7.5+, 평점 차 ±1.0 이내 |
+
+- 이미 존재하는 페어는 UNIQUE 제약으로 자동 무시
+- `/battles` 진입 시 배틀이 없으면 자동 생성
+
+#### 투표 방식
+
+- 첫 투표 → 저장
+- 같은 영화 재클릭 → 취소
+- 다른 영화 클릭 → 변경
+- 득표 수와 비율(%)을 실시간으로 응답
+
+#### 05-26 영화 배틀 변경 파일
+
+| 파일 | 유형 | 설명 |
+|------|------|------|
+| `battle/MovieBattleService.java` | 신규 | 배틀 생성·투표·조회 핵심 로직, `movie_battle`/`battle_vote` 테이블 자동 생성 |
+| `battle/MovieBattleController.java` | 신규 | `GET /battles`, `POST /api/battles/generate`, `POST /api/battles/{id}/vote` |
+| `templates/battle.html` | 신규 | 배틀 목록 및 투표 UI 페이지 |
+| `templates/fragments/app-shell.html` | 수정 | 좌측 사이드 네비게이션에 "영화 배틀" 메뉴 추가 |
+
+---
+
+### 영화 상세 페이지 — 이미지 갤러리 + 예고편
+
+#### 이미지 갤러리
+
+- `GET /api/movies/{movieCode}/images` 엔드포인트 신규 추가
+- TMDB API 실시간 호출로 backdrop 최대 8장 + poster 최대 4장 수집
+- TMDB 이미지가 없으면 DB에 저장된 `backdrop_path` / `poster_path`로 폴백
+- 3열 그리드로 표시, 로딩 중 shimmer 스켈레톤 3개 노출
+- 기본 6장만 표시 후 "더 보기" 버튼으로 전체 노출
+- 이미지 클릭 시 라이트박스 전체화면 뷰: ‹ › 버튼 및 키보드 방향키로 탐색, Esc로 닫기
+
+#### 예고편 / 영상
+
+- TMDB 정규화 단계에서 YouTube 영상을 `movie_video` 테이블에 저장 (Trailer → Teaser → Clip 우선순위 정렬)
+- 영상이 있는 경우 영화 상세 페이지에 YouTube iframe 탭 UI 표시
+- 여러 영상이 있을 경우 탭 전환 가능, 탭 클릭 시 autoplay
+
+#### YouTube 트레일러 보완 배치
+
+- TMDB에 영상이 없는 영화를 대상으로 YouTube Data API v3로 트레일러 검색
+- 한국어 제목 → 원제(영어) 순으로 재시도
+- `POST /youtube/fill-trailers?limit=50` 배치 엔드포인트로 수동 실행
+- `GET /tmdb/video-stats`로 영상 보유 현황 통계 확인 가능
+
+#### 05-26 영화 상세 변경 파일
+
+| 파일 | 유형 | 설명 |
+|------|------|------|
+| `MovieController.java` | 수정 | `GET /api/movies/{movieCode}/images` 추가, `videos` model attribute 주입 |
+| `templates/movie-detail.html` | 수정 | 이미지 갤러리(3열 그리드 + 라이트박스), 예고편 탭 UI 추가 |
+| `tmdb/TmdbMovieNormalizeService.java` | 수정 | `normalizeVideos()` 추가 — TMDB YouTube 영상 정규화 및 `movie_video` 저장 |
+| `tmdb/TmdbTestController.java` | 수정 | `GET /tmdb/video-stats` 추가 |
+| `youtube/YoutubeTrailerService.java` | 신규 | YouTube API로 트레일러 검색 후 `movie_video`에 저장 |
+| `youtube/YoutubeTrailerController.java` | 신규 | `POST /youtube/fill-trailers` 배치 엔드포인트 |
+| `application.properties` | 수정 | `youtube.api-key` 환경변수 설정 추가 |
+
+---
+
 ## 05-18 UI/UX 인터랙션 개선
 
 토스증권·인스타그램 스타일의 애니메이션 및 인터랙션 효과를 전반적으로 추가했습니다.
