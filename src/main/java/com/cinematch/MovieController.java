@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.net.URLEncoder;
@@ -90,6 +91,46 @@ public class MovieController {
 
     private static final List<String> HOME_CHART_CODES = List.of("top-sales", "million-club", "flash-hit");
     private static final List<String> ONBOARDING_TAGS = List.of("funny", "tense", "dark", "emotional", "romantic");
+    private static final String TMDB_PROVIDER_LOGO_BASE = "https://image.tmdb.org/t/p/w92";
+    private static final String COUPANG_PLAY_LOGO_URL = "/images/providers/coupang-play.png";
+    private static final String LAFTEL_LOGO_URL = "/images/providers/laftel.svg";
+    private static final String CGV_LOGO_URL = "/images/providers/cgv.svg";
+    private static final String LOTTE_CINEMA_LOGO_URL = "/images/providers/lotte-cinema.svg";
+    private static final String MEGABOX_LOGO_URL = "/images/providers/megabox.svg";
+    private static final List<WatchLinkSeed> WATCH_LINK_SEEDS = List.of(
+            watchLink("기생충", "Netflix", "https://www.netflix.com/kr/title/81221938"),
+            watchLink("기생충", "TVING", "https://www.tving.com/contents/M000244233"),
+            watchLink("기생충", "Wavve", "https://www.wavve.com/player/movie?movieid=MV_EN01_EN000000008"),
+            watchLink("기생충", "Watcha", "https://watcha.com/contents/mdRL4eL"),
+            watchLink("공조2: 인터내셔날", "Netflix", "https://www.netflix.com/kr/title/81650130", "공조 2", "공조2", "공조2: 인터내셔널"),
+            watchLink("공조2: 인터내셔날", "TVING", "https://www.tving.com/contents/M000370011", "공조 2", "공조2", "공조2: 인터내셔널"),
+            watchLink("공조2: 인터내셔날", "Wavve", "https://www.wavve.com/player/movie?movieid=MV_EN01_EN000001021", "공조 2", "공조2", "공조2: 인터내셔널"),
+            watchLink("공조2: 인터내셔날", "Watcha", "https://watcha.com/contents/m5agQGD", "공조 2", "공조2", "공조2: 인터내셔널"),
+            watchLink("스파이더맨: 노 웨이 홈", "Wavve", "https://www.wavve.com/player/movie?movieid=MV_CF01_SY0000011741", "스파이더맨 노 웨이 홈", "Spider-Man: No Way Home"),
+            watchLink("스파이더맨: 노 웨이 홈", "Watcha", "https://watcha.com/contents/mOVP23Z", "스파이더맨 노 웨이 홈", "Spider-Man: No Way Home"),
+            watchLink("스파이더맨: 노 웨이 홈", "Apple TV", "https://tv.apple.com/kr/movie/%E1%84%89%E1%85%B3%E1%84%91%E1%85%A1%E1%84%8B%E1%85%B5%E1%84%83%E1%85%A5%E1%84%86%E1%85%A2%E1%86%AB-%E1%84%82%E1%85%A9-%E1%84%8B%E1%85%B0%E1%84%8B%E1%85%B5-%E1%84%92%E1%85%A9%E1%86%B7/umc.cmc.2qf7xc5hds0m5jgx4roago580", "스파이더맨 노 웨이 홈", "Spider-Man: No Way Home"),
+            watchLink("명량", "Netflix", "https://www.netflix.com/kr/title/80011706"),
+            watchLink("명량", "TVING", "https://www.tving.com/contents/M000316042"),
+            watchLink("명량", "Wavve", "https://www.wavve.com/player/movie?movieid=MV_EN01_EN000000011"),
+            watchLink("명량", "Watcha", "https://watcha.com/contents/mWzM9D5"),
+            watchLink("탑건: 매버릭", "Wavve", "https://www.wavve.com/player/movie?movieid=MV_CQ01_PT0000011377", "탑건 매버릭", "Top Gun: Maverick"),
+            watchLink("탑건: 매버릭", "Coupang Play", "https://www.coupangplay.com/titles/65dcb74f-2557-498d-b644-5f41c1b71ab4", "탑건 매버릭", "Top Gun: Maverick"),
+            watchLink("극장판 귀멸의 칼날: 무한열차편", "Netflix", "https://www.netflix.com/kr/title/81504496", "귀멸의 칼날 무한열차편", "Demon Slayer Mugen Train"),
+            watchLink("극장판 귀멸의 칼날: 무한열차편", "TVING", "https://www.tving.com/contents/M000361348", "귀멸의 칼날 무한열차편", "Demon Slayer Mugen Train"),
+            watchLink("극장판 귀멸의 칼날: 무한열차편", "Wavve", "https://www.wavve.com/player/movie?movieid=MV_CR01_DN0000011239", "귀멸의 칼날 무한열차편", "Demon Slayer Mugen Train"),
+            watchLink("극장판 귀멸의 칼날: 무한열차편", "Watcha", "https://watcha.com/contents/mdEmAbg", "귀멸의 칼날 무한열차편", "Demon Slayer Mugen Train"),
+            watchLink("극장판 귀멸의 칼날: 무한열차편", "Laftel", "https://laftel.net/item/40847", "귀멸의 칼날 무한열차편", "Demon Slayer Mugen Train"),
+            watchLink("포레스트 검프", "Wavve", "https://www.wavve.com/player/movie?movieid=MV_CQ01_PT0000011145", "Forrest Gump"),
+            watchLink("쇼생크 탈출", "Coupang Play", "https://www.coupangplay.com/titles/6719833f-9d39-4537-a79a-997ff5b424b7", "The Shawshank Redemption"),
+            watchLink("엑시트", "Netflix", "https://www.netflix.com/kr/title/81336395", "EXIT"),
+            watchLink("엑시트", "TVING", "https://www.tving.com/contents/M000250033", "EXIT"),
+            watchLink("엑시트", "Wavve", "https://www.wavve.com/player/movie?movieid=MV_EN01_EN000000018", "EXIT"),
+            watchLink("엑시트", "Watcha", "https://watcha.com/contents/mdErj22", "EXIT"),
+            watchLink("프로젝트 헤일메리", "CGV", "https://cgv.co.kr/cnm/cgvChart/movieChart/30000994", "Project Hail Mary"),
+            watchLink("프로젝트 헤일메리", "Lotte Cinema", "https://www.lottecinema.co.kr/NLCHS/Movie/MovieDetailView?movie=24013", "Project Hail Mary"),
+            watchLink("프로젝트 헤일메리", "Megabox", "https://www.megabox.co.kr/movie-detail?rpstMovieNo=26013700", "Project Hail Mary"),
+            watchLink("프로젝트 헤일메리", "Apple TV", "https://tv.apple.com/kr/movie/%E1%84%91%E1%85%B3%E1%84%85%E1%85%A9%E1%84%8C%E1%85%A6%E1%86%A8%E1%84%90%E1%85%B3-%E1%84%92%E1%85%A6%E1%84%8B%E1%85%B5%E1%86%AF%E1%84%86%E1%85%A6%E1%84%85%E1%85%B5/umc.cmc.7jxdlxvz304lj3iwhtrhbe8fv", "Project Hail Mary")
+    );
 
     public record HeroSlide(String backdropUrl, String title, List<String> genres, String detailUrl) {}
 
@@ -823,7 +864,7 @@ public class MovieController {
                 rs.getString("name"),
                 rs.getString("company_role")
         ), movieCode));
-        model.addAttribute("providers", jdbcTemplate.query("""
+        List<ProviderView> providers = jdbcTemplate.query("""
                 SELECT
                     p.provider_name,
                     p.logo_path,
@@ -849,7 +890,20 @@ public class MovieController {
                 rs.getString("provider_name"),
                 rs.getString("provider_type"),
                 rs.getString("logo_path")
-        ), movieCode));
+        ), movieCode);
+        model.addAttribute("providers", providers);
+        List<WatchLinkView> watchLinks = List.of();
+        if (movieId != null) {
+            try {
+                initializeWatchLinkTable();
+                seedWatchLinks(movieId, movie);
+                watchLinks = fetchWatchLinks(movieId, providers);
+            } catch (Exception e) {
+                watchLinks = List.of();
+            }
+        }
+        model.addAttribute("watchLinks", watchLinks);
+        model.addAttribute("showWatchLinksSection", hasWatchLinkSeed(movie) || !watchLinks.isEmpty());
         List<Map<String, Object>> videos = List.of();
         if (movieId != null) {
             try {
@@ -2180,6 +2234,157 @@ public class MovieController {
         return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getString(1), movieCode);
     }
 
+    private void seedWatchLinks(Long movieId, MovieDetailView movie) {
+        Set<String> titleCandidates = watchTitleCandidates(movie);
+        java.util.LinkedHashSet<String> addedProviders = new java.util.LinkedHashSet<>();
+        int displayOrder = 0;
+
+        for (WatchLinkSeed seed : WATCH_LINK_SEEDS) {
+            if (!seed.matchesAny(titleCandidates)) {
+                continue;
+            }
+            String providerKey = normalizeProviderName(seed.providerName());
+            if (!addedProviders.add(providerKey)) {
+                continue;
+            }
+            jdbcTemplate.update("""
+                    MERGE INTO movie_ott_link (movie_id, provider_name, watch_url, source, display_order)
+                    KEY (movie_id, provider_name)
+                    VALUES (?, ?, ?, 'KINOLIGHTS_CACHE', ?)
+                    """, movieId, seed.providerName(), seed.url(), displayOrder++);
+        }
+    }
+
+    private List<WatchLinkView> fetchWatchLinks(Long movieId, List<ProviderView> providers) {
+        return jdbcTemplate.query("""
+                SELECT provider_name, watch_url
+                FROM movie_ott_link
+                WHERE movie_id = ?
+                ORDER BY display_order, provider_name
+                """, (rs, rowNum) -> {
+            String providerName = rs.getString("provider_name");
+            return new WatchLinkView(
+                    providerName,
+                    rs.getString("watch_url"),
+                    resolveProviderLogoPath(providerName, providers)
+            );
+        }, movieId);
+    }
+
+    private void initializeWatchLinkTable() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS movie_ott_link (
+                    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    movie_id BIGINT NOT NULL,
+                    provider_name VARCHAR(100) NOT NULL,
+                    watch_url VARCHAR(2048) NOT NULL,
+                    source VARCHAR(50) NOT NULL,
+                    display_order INT NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uk_movie_ott_link UNIQUE (movie_id, provider_name)
+                )
+                """);
+        jdbcTemplate.execute("""
+                CREATE INDEX IF NOT EXISTS idx_movie_ott_link_movie
+                ON movie_ott_link (movie_id, display_order)
+                """);
+    }
+        }
+        return links;
+    }
+
+    private boolean hasWatchLinkSeed(MovieDetailView movie) {
+        if (movie == null) {
+            return false;
+        }
+        Set<String> titleCandidates = watchTitleCandidates(movie);
+        return WATCH_LINK_SEEDS.stream().anyMatch(seed -> seed.matchesAny(titleCandidates));
+    }
+
+    private static Set<String> watchTitleCandidates(MovieDetailView movie) {
+        java.util.LinkedHashSet<String> candidates = new java.util.LinkedHashSet<>();
+        addWatchTitleCandidate(candidates, movie.movieName());
+        addWatchTitleCandidate(candidates, movie.movieNameOriginal());
+        addWatchTitleCandidate(candidates, movie.movieNameEn());
+        return candidates;
+    }
+
+    private static void addWatchTitleCandidate(Set<String> candidates, String title) {
+        String normalized = normalizeWatchTitle(title);
+        if (!normalized.isBlank()) {
+            candidates.add(normalized);
+        }
+    }
+
+    private String resolveProviderLogoPath(String providerName, List<ProviderView> providers) {
+        String targetKey = normalizeProviderName(providerName);
+        for (ProviderView provider : providers) {
+            String providerKey = normalizeProviderName(provider.name());
+            if (provider.logoPath() != null && (providerKey.equals(targetKey) || providerKey.contains(targetKey) || targetKey.contains(providerKey))) {
+                return provider.logoPath();
+            }
+        }
+
+        for (String alias : providerSearchAliases(providerName)) {
+            try {
+                String logoPath = jdbcTemplate.query("""
+                        SELECT logo_path
+                        FROM provider
+                        WHERE LOWER(provider_name) LIKE ?
+                          AND logo_path IS NOT NULL
+                        ORDER BY display_priority
+                        LIMIT 1
+                        """, rs -> rs.next() ? rs.getString("logo_path") : null, "%" + alias + "%");
+                if (logoPath != null) {
+                    return logoPath;
+                }
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static List<String> providerSearchAliases(String providerName) {
+        return switch (normalizeProviderName(providerName)) {
+            case "tving" -> List.of("tving", "티빙");
+            case "wavve" -> List.of("wavve", "웨이브");
+            case "watcha" -> List.of("watcha", "왓챠");
+            case "coupangplay" -> List.of("coupang", "쿠팡");
+            case "netflix" -> List.of("netflix", "넷플릭스");
+            case "appletv" -> List.of("apple");
+            case "laftel" -> List.of("laftel", "라프텔");
+            case "cgv" -> List.of("cgv", "씨지브이");
+            case "lottecinema" -> List.of("lotte", "롯데");
+            case "megabox" -> List.of("megabox", "메가박스");
+            default -> List.of(normalizeProviderName(providerName));
+        };
+    }
+
+    private static WatchLinkSeed watchLink(String title, String providerName, String url, String... aliases) {
+        List<String> titles = new ArrayList<>();
+        titles.add(title);
+        titles.addAll(Arrays.asList(aliases));
+        return new WatchLinkSeed(titles, providerName, url);
+    }
+
+    private static String normalizeWatchTitle(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.toLowerCase(Locale.ROOT)
+                .replace("인터내셔널", "인터내셔날")
+                .replaceAll("[\\s\\p{Punct}：·]", "");
+    }
+
+    private static String normalizeProviderName(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.toLowerCase(Locale.ROOT).replaceAll("[\\s+\\p{Punct}]", "");
+    }
+
     private List<String> fetchChartGenres() {
         return jdbcTemplate.query("""
                 SELECT name
@@ -2370,9 +2575,44 @@ public class MovieController {
     }
 
     public record ProviderView(String name, String type, String logoPath) {
-        private static final String TMDB_LOGO_BASE = "https://image.tmdb.org/t/p/w92";
         public String logoUrl() {
-            return logoPath != null ? TMDB_LOGO_BASE + logoPath : null;
+            return logoPath != null ? TMDB_PROVIDER_LOGO_BASE + logoPath : null;
+        }
+    }
+
+    public record WatchLinkView(String providerName, String url, String logoPath) {
+        public String logoUrl() {
+            if ("coupangplay".equals(normalizeProviderName(providerName))) {
+                return COUPANG_PLAY_LOGO_URL;
+            }
+            if ("laftel".equals(normalizeProviderName(providerName))) {
+                return LAFTEL_LOGO_URL;
+            }
+            if ("cgv".equals(normalizeProviderName(providerName))) {
+                return CGV_LOGO_URL;
+            }
+            if ("lottecinema".equals(normalizeProviderName(providerName))) {
+                return LOTTE_CINEMA_LOGO_URL;
+            }
+            if ("megabox".equals(normalizeProviderName(providerName))) {
+                return MEGABOX_LOGO_URL;
+            }
+            return logoPath != null ? TMDB_PROVIDER_LOGO_BASE + logoPath : null;
+        }
+
+        public String fallbackLabel() {
+            return providerName != null && !providerName.isBlank() ? providerName.substring(0, 1) : "?";
+        }
+    }
+
+    private record WatchLinkSeed(List<String> titles, String providerName, String url) {
+        private boolean matchesAny(Set<String> candidates) {
+            for (String title : titles) {
+                if (candidates.contains(normalizeWatchTitle(title))) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 

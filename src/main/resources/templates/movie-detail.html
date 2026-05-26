@@ -401,6 +401,20 @@
         .provider-badge { display: flex; align-items: center; gap: 7px; padding: 5px 10px 5px 6px; border-radius: var(--r-lg); background: var(--hp-card); border: 1px solid var(--hp-border); font-size: 0.8rem; color: var(--hp-text-sub); }
         .provider-badge img { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; }
         .provider-type-tag { font-size: 0.7rem; color: var(--hp-text-hint); margin-left: 2px; }
+        .watch-section { margin-top: 32px; padding: 24px; border-radius: var(--r-xl); background: var(--hp-surface-2); border: 1px solid var(--hp-border); }
+        .watch-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+        .watch-title { margin:0; color:var(--hp-text); font-size:1.15rem; font-weight:800; letter-spacing:-0.02em; }
+        .watch-source { color:var(--hp-text-hint); font-size:0.78rem; }
+        .watch-list { display:grid; gap:12px; }
+        .watch-card { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:64px; padding:14px 16px; border-radius:16px; background:rgba(15,17,23,0.44); border:1px solid rgba(255,255,255,0.07); color:var(--hp-text); text-decoration:none; transition:transform 0.16s ease, border-color 0.16s ease, background 0.16s ease; }
+        .watch-card:hover { transform:translateY(-1px); background:rgba(255,255,255,0.055); border-color:rgba(255,255,255,0.14); }
+        .watch-provider { display:flex; align-items:center; gap:12px; min-width:0; }
+        .watch-logo { width:36px; height:36px; border-radius:10px; object-fit:cover; background:#fff; }
+        .watch-logo-fallback { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#111827,#334155); color:#fff; font-weight:900; font-size:0.9rem; }
+        .watch-provider-name { font-size:0.98rem; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .watch-arrow { color:#7da2ff; font-size:0.9rem; font-weight:800; display:flex; align-items:center; gap:8px; white-space:nowrap; }
+        .watch-arrow::after { content:'›'; color:#94a3b8; font-size:1.6rem; line-height:1; }
+        .watch-empty { margin:0; padding:20px 0 4px; color:var(--hp-text-hint); font-size:0.92rem; }
         /* 이미지 섹션 */
         .movie-images-section { margin: 24px 0; }
         .movie-images-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
@@ -563,6 +577,33 @@
             <div class="img-skeleton"></div>
         </div>
         <button type="button" class="img-more-btn" id="imgMoreBtn"></button>
+    </section>
+
+    <section class="watch-section" th:if="${showWatchLinksSection}">
+        <div class="watch-header">
+            <h2 class="watch-title">보러가기</h2>
+            <span class="watch-source">Kinolights 캐시</span>
+        </div>
+        <div class="watch-list" th:if="${watchLinks != null and !watchLinks.isEmpty()}">
+            <a class="watch-card"
+               th:each="link : ${watchLinks}"
+               th:href="${link.url}"
+               target="_blank"
+               rel="noopener noreferrer">
+                <span class="watch-provider">
+                    <img class="watch-logo"
+                         th:if="${link.logoUrl() != null}"
+                         th:src="${link.logoUrl()}"
+                         th:alt="${link.providerName}">
+                    <span class="watch-logo-fallback"
+                          th:if="${link.logoUrl() == null}"
+                          th:text="${link.fallbackLabel()}">O</span>
+                    <span class="watch-provider-name" th:text="${link.providerName}">TVING</span>
+                </span>
+                <span class="watch-arrow">이동</span>
+            </a>
+        </div>
+        <p class="watch-empty" th:if="${watchLinks == null or watchLinks.isEmpty()}">없음.</p>
     </section>
 
     <!-- 이미지 라이트박스 -->

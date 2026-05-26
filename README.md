@@ -2,6 +2,95 @@
 
 ---
 
+## 05-26 구현사항 - OTT 보러가기 링크 PoC 및 영화 상세 페이지 반영
+
+### 영화 상세 페이지 `보러가기` 섹션
+
+영화 상세 페이지의 이미지 영역 아래에 `보러가기` 섹션을 추가했습니다. 기존 TMDB 제공 서비스 영역은 provider 이름/로고만 보여주는 정보성 영역이고, 이번 섹션은 실제 외부 서비스의 작품 상세 페이지로 이동하는 direct URL을 제공합니다.
+
+- 키노라이츠 공개 작품 페이지에서 OTT/극장 링크를 저빈도 크롤링해 URL 후보를 확보
+- 서비스 요청 시 실시간 크롤링하지 않음
+- 크롤링 결과를 10개 영화 seed로 반영하고, 상세 페이지 접근 시 `movie_ott_link` 런타임 테이블에 `MERGE` 적재
+- 화면은 크롤링이 아니라 DB에 저장된 `movie_ott_link`만 조회
+- 같은 provider가 여러 개 잡힌 경우 첫 번째 링크만 사용
+- 키노라이츠에 링크가 없거나 seed 대상이 아닌 영화는 현재 단계에서 `보러가기` 섹션을 숨김
+- 쿠팡플레이, 라프텔, CGV, 롯데시네마, 메가박스는 로컬 provider 아이콘 fallback을 사용
+
+### 10개 테스트 영화
+
+현재 PoC로 반영한 영화는 아래 10개입니다.
+
+| 영화 | 반영된 링크 유형 |
+|------|------------------|
+| 기생충 | Netflix, TVING, Wavve, Watcha |
+| 공조2: 인터내셔날 | Netflix, TVING, Wavve, Watcha |
+| 스파이더맨: 노 웨이 홈 | Wavve, Watcha, Apple TV |
+| 명량 | Netflix, TVING, Wavve, Watcha |
+| 탑건: 매버릭 | Wavve, Coupang Play |
+| 극장판 귀멸의 칼날: 무한열차편 | Netflix, TVING, Wavve, Watcha, Laftel |
+| 포레스트 검프 | Wavve |
+| 쇼생크 탈출 | Coupang Play |
+| 엑시트 | Netflix, TVING, Wavve, Watcha |
+| 프로젝트 헤일메리 | CGV, 롯데시네마, 메가박스, Apple TV |
+
+### 크롤링 실행 방법
+
+크롤러는 Spring Boot 앱과 분리된 독립 Python 스크립트입니다. 서비스 서버에서 실시간으로 돌리는 용도가 아니라, 링크 후보를 수집하고 검증하기 위한 관리용 PoC입니다.
+
+처음 한 번 설치:
+
+```powershell
+python -m pip install playwright
+python -m playwright install chromium
+```
+
+10개 영화 URL 입력 파일:
+
+```text
+scripts/kinolights_titles.csv
+```
+
+크롤링 실행:
+
+```powershell
+python scripts/kinolights_ott_crawler.py --input scripts/kinolights_titles.csv --output output/kinolights_ott_links_10_with_theaters.csv --max-items 10 --delay-min 1 --delay-max 2
+```
+
+결과 CSV:
+
+```text
+output/kinolights_ott_links_10_with_theaters.csv
+```
+
+CSV에는 `provider`, `watch_url`, `raw_url`, `raw_text`, `source_method`가 기록됩니다. 최종 서비스에 사용할 값은 `watch_url`입니다.
+
+### DB 적재 흐름
+
+현재 10개 영화 링크는 `MovieController`의 `WATCH_LINK_SEEDS`에 seed로 반영되어 있습니다. 앱 실행 후 해당 영화 상세 페이지에 접근하면 아래 흐름으로 DB에 적재됩니다.
+
+```text
+영화 상세 페이지 접근
+→ movie_ott_link 테이블 CREATE TABLE IF NOT EXISTS
+→ 현재 영화 제목과 WATCH_LINK_SEEDS 매칭
+→ provider별 첫 번째 watch_url을 MERGE INTO movie_ott_link
+→ 화면은 movie_ott_link 조회 결과로 보러가기 섹션 렌더링
+```
+
+즉 사용자 화면에서 키노라이츠를 매번 호출하지 않고, DB에 적재된 링크만 사용합니다. 추후 100개 이상으로 확장할 때는 `WATCH_LINK_SEEDS` 하드코딩 대신 CSV import 또는 관리자 배치 endpoint로 `movie_ott_link`에 일괄 적재하는 구조로 전환하면 됩니다.
+
+### 변경 파일
+
+| 파일 | 내용 |
+|------|------|
+| `scripts/kinolights_ott_crawler.py` | 키노라이츠 공개 페이지에서 OTT/극장 direct URL 후보 추출 |
+| `scripts/kinolights_titles.csv` | 10개 테스트 영화의 키노라이츠 URL 목록 |
+| `scripts/README_KINOLIGHTS_OTT.md` | 크롤러 실행/해석 문서 |
+| `MovieController.java` | `movie_ott_link` 런타임 테이블 생성, 10개 seed 적재, 보러가기 model attribute 추가 |
+| `templates/movie-detail.html` | 영화 상세 페이지 `보러가기` UI 추가 |
+| `static/images/providers/*` | 쿠팡플레이, 라프텔, CGV, 롯데시네마, 메가박스 로컬 아이콘 |
+
+---
+
 ## 05-26 구현 사항
 
 ### 영화 배틀 기능
