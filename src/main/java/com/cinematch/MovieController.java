@@ -2290,9 +2290,6 @@ public class MovieController {
                 ON movie_ott_link (movie_id, display_order)
                 """);
     }
-        }
-        return links;
-    }
 
     private boolean hasWatchLinkSeed(MovieDetailView movie) {
         if (movie == null) {
