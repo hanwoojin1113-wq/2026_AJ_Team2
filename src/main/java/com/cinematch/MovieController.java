@@ -14,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
@@ -40,6 +43,7 @@ import com.cinematch.tag.RecommendationTag;
 import com.cinematch.tag.RecommendationTagType;
 import com.cinematch.kobis.KobisBoxOfficeService;
 import com.cinematch.notification.NotificationService;
+import com.cinematch.ott.OttWatchLinkService;
 
 @Controller
 public class MovieController {
@@ -87,8 +91,9 @@ public class MovieController {
 
     private static final List<String> HOME_CHART_CODES = List.of("top-sales", "million-club", "flash-hit");
     private static final List<String> ONBOARDING_TAGS = List.of("funny", "tense", "dark", "emotional", "romantic");
+    private static final String TMDB_PROVIDER_LOGO_BASE = "https://image.tmdb.org/t/p/w92";
 
-    public record HeroSlide(String backdropUrl, String title, List<String> genres) {}
+    public record HeroSlide(String backdropUrl, String title, List<String> genres, String detailUrl) {}
 
     private final JdbcTemplate jdbcTemplate;
     private final RecommendationRefreshStateService recommendationRefreshStateService;
@@ -98,7 +103,10 @@ public class MovieController {
     private final ChartRegistry chartRegistry;
     private final KobisBoxOfficeService kobisBoxOfficeService;
     private final NotificationService notificationService;
+    private final OttWatchLinkService ottWatchLinkService;
     private final MovieThrowService movieThrowService;
+    private final RestTemplate tmdbRestTemplate;
+    private final String tmdbBaseUrl;
 
     public MovieController(JdbcTemplate jdbcTemplate,
                            RecommendationRefreshStateService recommendationRefreshStateService,
@@ -108,7 +116,10 @@ public class MovieController {
                            ChartRegistry chartRegistry,
                            KobisBoxOfficeService kobisBoxOfficeService,
                            NotificationService notificationService,
-                           MovieThrowService movieThrowService) {
+                           OttWatchLinkService ottWatchLinkService,
+                           MovieThrowService movieThrowService,
+                           @Qualifier("tmdbRestTemplate") RestTemplate tmdbRestTemplate,
+                           @Value("${tmdb.base-url}") String tmdbBaseUrl) {
         this.jdbcTemplate = jdbcTemplate;
         this.recommendationRefreshStateService = recommendationRefreshStateService;
         this.recommendationMaintenanceService = recommendationMaintenanceService;
@@ -117,7 +128,10 @@ public class MovieController {
         this.chartRegistry = chartRegistry;
         this.kobisBoxOfficeService = kobisBoxOfficeService;
         this.notificationService = notificationService;
+        this.ottWatchLinkService = ottWatchLinkService;
         this.movieThrowService = movieThrowService;
+        this.tmdbRestTemplate = tmdbRestTemplate;
+        this.tmdbBaseUrl = tmdbBaseUrl;
     }
 
     @GetMapping("/")
@@ -430,7 +444,7 @@ public class MovieController {
                             LIMIT 2
                             """, String.class, movieCd);
                 }
-                heroSlides.add(new HeroSlide(backdrop, movie.title(), genres));
+                heroSlides.add(new HeroSlide(backdrop, movie.title(), genres, detailUrl));
             }
             model.addAttribute("heroSlides", heroSlides);
 
@@ -814,9 +828,10 @@ public class MovieController {
                 rs.getString("name"),
                 rs.getString("company_role")
         ), movieCode));
-        model.addAttribute("providers", jdbcTemplate.query("""
+        List<ProviderView> providers = jdbcTemplate.query("""
                 SELECT
                     p.provider_name,
+                    p.logo_path,
                     CASE mp.provider_type
                         WHEN 'FLATRATE' THEN '구독'
                         WHEN 'RENT' THEN '대여'
@@ -837,8 +852,37 @@ public class MovieController {
                     mp.display_order
                 """, (rs, rowNum) -> new ProviderView(
                 rs.getString("provider_name"),
-                rs.getString("provider_type")
-        ), movieCode));
+                rs.getString("provider_type"),
+                rs.getString("logo_path")
+        ), movieCode);
+        model.addAttribute("providers", providers);
+        List<OttWatchLinkService.WatchLinkView> watchLinks = List.of();
+        boolean showWatchLinksSection = false;
+        if (movieId != null) {
+            try {
+                watchLinks = ottWatchLinkService.fetchWatchLinks(movieId, providerLogoUrls(providers));
+                showWatchLinksSection = ottWatchLinkService.hasCrawlStatus(movieId) || !watchLinks.isEmpty();
+            } catch (Exception e) {
+                watchLinks = List.of();
+            }
+        }
+        model.addAttribute("watchLinks", watchLinks);
+        model.addAttribute("showWatchLinksSection", showWatchLinksSection);
+        List<Map<String, Object>> videos = List.of();
+        if (movieId != null) {
+            try {
+                videos = jdbcTemplate.queryForList("""
+                        SELECT video_key, video_name, video_type, is_official
+                        FROM movie_video
+                        WHERE movie_id = ?
+                        ORDER BY display_order
+                        LIMIT 5
+                        """, movieId);
+            } catch (Exception e) {
+                videos = List.of();
+            }
+        }
+        model.addAttribute("videos", videos);
         model.addAttribute("audits", jdbcTemplate.query("""
                 SELECT a.audit_no, wg.name AS watch_grade_name
                 FROM movie_audit ma
@@ -871,6 +915,68 @@ public class MovieController {
         }
         model.addAttribute("moviePosts", moviePosts);
         return "movie-detail";
+    }
+
+    @GetMapping("/api/movies/{movieCode}/images")
+    @ResponseBody
+    public List<Map<String, String>> movieImages(@PathVariable String movieCode) {
+        Long movieId = findMovieId(movieCode);
+
+        String tmdbIdStr = jdbcTemplate.query("""
+                SELECT source_key FROM movie_source
+                WHERE movie_id = ? AND source_type = 'TMDB'
+                """, rs -> rs.next() ? rs.getString("source_key") : null, movieId);
+
+        List<Map<String, String>> images = new ArrayList<>();
+
+        if (tmdbIdStr != null && !tmdbIdStr.isBlank()) {
+            try {
+                String url = tmdbBaseUrl + "/movie/" + tmdbIdStr + "/images?include_image_language=null,ko";
+                @SuppressWarnings("unchecked")
+                Map<String, Object> response = tmdbRestTemplate.getForObject(url, Map.class);
+                if (response != null) {
+                    collectTmdbImages(images, response, "backdrops", "backdrop", 8);
+                    collectTmdbImages(images, response, "posters", "poster", 4);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        if (images.isEmpty()) {
+            Map<String, String> paths = jdbcTemplate.query("""
+                    SELECT backdrop_path, poster_path FROM movie WHERE movie_cd = ?
+                    """, rs -> {
+                if (!rs.next()) return null;
+                Map<String, String> m = new HashMap<>();
+                m.put("backdrop_path", rs.getString("backdrop_path"));
+                m.put("poster_path", rs.getString("poster_path"));
+                return m;
+            }, movieCode);
+            if (paths != null) {
+                if (paths.get("backdrop_path") != null)
+                    images.add(Map.of("url", "https://image.tmdb.org/t/p/w1280" + paths.get("backdrop_path"), "type", "backdrop"));
+                if (paths.get("poster_path") != null)
+                    images.add(Map.of("url", "https://image.tmdb.org/t/p/w500" + paths.get("poster_path"), "type", "poster"));
+            }
+        }
+
+        return images;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void collectTmdbImages(List<Map<String, String>> result, Map<String, Object> response,
+                                   String key, String type, int limit) {
+        Object val = response.get(key);
+        if (!(val instanceof List)) return;
+        String baseUrl = "backdrop".equals(type)
+                ? "https://image.tmdb.org/t/p/w1280"
+                : "https://image.tmdb.org/t/p/w500";
+        ((List<Map<String, Object>>) val).stream()
+                .limit(limit)
+                .map(item -> (String) item.get("file_path"))
+                .filter(path -> path != null && !path.isBlank())
+                .map(path -> Map.of("url", baseUrl + path, "type", type))
+                .forEach(result::add);
     }
 
     @PostMapping("/movies/{movieCode}/like")
@@ -2092,6 +2198,16 @@ public class MovieController {
         return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getString(1), movieCode);
     }
 
+    private Map<String, String> providerLogoUrls(List<ProviderView> providers) {
+        Map<String, String> result = new LinkedHashMap<>();
+        for (ProviderView provider : providers) {
+            if (provider.logoUrl() != null) {
+                result.put(provider.name(), provider.logoUrl());
+            }
+        }
+        return result;
+    }
+
     private List<String> fetchChartGenres() {
         return jdbcTemplate.query("""
                 SELECT name
@@ -2281,7 +2397,10 @@ public class MovieController {
     public record CompanyView(String name, String role) {
     }
 
-    public record ProviderView(String name, String type) {
+    public record ProviderView(String name, String type, String logoPath) {
+        public String logoUrl() {
+            return logoPath != null ? TMDB_PROVIDER_LOGO_BASE + logoPath : null;
+        }
     }
 
     public record AuditView(String auditNo, String watchGradeName) {

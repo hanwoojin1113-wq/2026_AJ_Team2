@@ -577,7 +577,7 @@ function setView(mode) {
         const state=actionState[code]||{};
         const posterHtml = poster ? `<img src="${poster}" alt="${title}" style="width:100%;aspect-ratio:2/3;display:block;object-fit:cover;">`
                                   : `<div class="hp-fallback">${title}</div>`;
-        const actionsHtml = ['like','dislike','later','collection'].map(act => {
+        const actionsHtml = ['dislike','like','later','collection'].map(act => {
             const on=(act==='like'&&state.liked)||(act==='dislike'&&state.disliked)||(act==='later'&&state.later)||(act==='collection'&&state.collected);
             return `<button class="hp-btn${on?' active':''}" data-code="${code}" data-action="${act}" title="${TITLES[act]}" onclick="doActionPreview(event,this)">${ICONS[act]}</button>`;
         }).join('');

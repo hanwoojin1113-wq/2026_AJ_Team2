@@ -331,6 +331,7 @@
             background: #fff;
             transform: scale(1.3);
         }
+        .hero-slide[data-href] { cursor: pointer; }
         .hero-caption {
             position: absolute;
             left: clamp(20px, 3.5vw, 56px);
@@ -759,6 +760,10 @@
         .cact-btn.active[data-action="dislike"]    { background: rgba(100,116,139,0.7); border-color: #64748B; }
         .cact-btn.active[data-action="later"]      { background: rgba(245,158,11,0.7); border-color: #F59E0B; }
         .cact-btn.active[data-action="collection"] { background: rgba(139,92,246,0.7); border-color: #8B5CF6; }
+        .cact-btn[data-action="dislike"] { order: 1; }
+        .cact-btn[data-action="like"] { order: 2; }
+        .cact-btn[data-action="later"] { order: 3; }
+        .cact-btn[data-action="collection"] { order: 4; }
         .poster {
             width: 100%;
             height: 100%;
@@ -1271,7 +1276,8 @@
             <div class="hero-slide"
                  th:each="slide, iter : ${heroSlides}"
                  th:classappend="${iter.first} ? ' is-active' : ''"
-                 th:style="'background-image: url(' + ${slide.backdropUrl} + ');'">
+                 th:style="'background-image: url(' + ${slide.backdropUrl} + ');'"
+                 th:attr="data-href=${slide.detailUrl}">
                 <div class="hero-caption">
                     <div class="hero-genre-row" th:if="${slide.genres != null and !slide.genres.isEmpty()}">
                         <span class="hero-genre-chip" th:each="g : ${slide.genres}" th:text="${g}">장르</span>
@@ -1740,6 +1746,10 @@
 
             if (!track || !prevButton || !nextButton) return;
 
+            carousel.querySelectorAll('.cact-btn').forEach(function (btn) {
+                btn.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+            });
+
             let currentX = 0;
 
             const getMaxOffset = () => Math.max(0, track.scrollWidth - track.clientWidth);
@@ -1804,7 +1814,7 @@
                     startX: event.clientX,
                     startOffset: currentX,
                     dragging: false,
-                    anchorHref: event.target.closest('.movie-card')?.href ?? null,
+                    anchorHref: event.target.closest('button') ? null : (event.target.closest('.movie-card')?.href ?? null),
                     hasModifier: !!(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
                 };
                 cancelNextClick = false;
@@ -2123,6 +2133,13 @@
             if (!Number.isNaN(i)) { show(i); play(); }
         });
     });
+    slides.forEach(function (slide) {
+        slide.addEventListener('click', function () {
+            const href = slide.dataset.href;
+            if (href) window.location.assign(href);
+        });
+    });
+
     root.addEventListener('mouseenter', stop);
     root.addEventListener('mouseleave', play);
     play();

@@ -1,0 +1,201 @@
+movie_id,movie_cd,title,release_date,poster_image_url,kinolights_url,priority_reason
+2817,TMDB-1339713,Obsession,2026-04-16,https://image.tmdb.org/t/p/w500/40I66L7QKguTFDPvcLcdiTbAD7I.jpg,,TMDB_TRENDING
+2913,TMDB-1228710,만달로리안과 그로구,2026-05-20,https://image.tmdb.org/t/p/w500/tMP99wq45GQMoeZwITgjAS8Wihm.jpg,,TMDB_TRENDING
+2979,TMDB-1083381,백룸,2026-05-27,https://image.tmdb.org/t/p/w500/c3Cb7h4ecFsGfUM02KF638kbbtC.jpg,,TMDB_TRENDING
+770,TMDB-931285,모탈 컴뱃 2,2026-05-06,https://image.tmdb.org/t/p/w500/1NgBKiPrJzv1VHdEN8brdy59Rxo.jpg,,TMDB_TRENDING
+3011,TMDB-539745,동물농장,2026-04-30,https://image.tmdb.org/t/p/w500/6pzI1DIlxwAFffw9OZcG6cr031U.jpg,,TMDB_TRENDING
+3009,TMDB-1242265,퓨즈,2026-03-23,https://image.tmdb.org/t/p/w500/oMFdQE5hMJ9JjhNORegwTo0GKmh.jpg,,TMDB_TRENDING
+2978,TMDB-1390300,오버 유어 데드 바디,2026-04-24,https://image.tmdb.org/t/p/w500/5jEVBMKeLbOkp1wEKrpSItFJuul.jpg,,TMDB_TRENDING
+3013,TMDB-898704,데저트 워리어,2026-04-23,https://image.tmdb.org/t/p/w500/waxnw1NpzTPY5JkqWvu0muSopRJ.jpg,,TMDB_TRENDING
+772,TMDB-1226863,슈퍼 마리오 갤럭시,2026-04-01,https://image.tmdb.org/t/p/w500/knaXOBDBecVBWZVup3zXaOoy23v.jpg,,SOCIAL_POST
+771,TMDB-936075,마이클,2026-04-22,https://image.tmdb.org/t/p/w500/piMZqtd0gGS7OgkhDwiQ7vVViBQ.jpg,,SOCIAL_POST
+865,TMDB-1321179,왕과 사는 남자,2026-02-04,https://image.tmdb.org/t/p/w500/zEH1FQTEnRY05i8gQIYdR10Vp92.jpg,,SOCIAL_POST
+901,TMDB-1461254,살목지,2026-04-08,https://image.tmdb.org/t/p/w500/uVJyWlSPCWftRUXRM6lxTqOzPY6.jpg,,SOCIAL_POST
+274,20124079,"광해, 왕이 된 남자",2012-09-13,https://image.tmdb.org/t/p/w500/6Pg5AwsJUqeGanGOWcaljQXGe5g.jpg,,SOCIAL_POST
+761,TMDB-736820,공조 2: 인터내셔날,2022-09-07,https://image.tmdb.org/t/p/w500/poEYP8BZswiVu0xCFVbq8uPxR6l.jpg,,SOCIAL_POST
+642,20228796,하얼빈,2024-12-24,https://image.tmdb.org/t/p/w500/xrqAcOddbmWfxDxuGHChR4QmscA.jpg,,SOCIAL_POST
+776,TMDB-1318447,정점,2026-04-24,https://image.tmdb.org/t/p/w500/wGHGVAJGTn2BqsuFfPK8lzPiKjH.jpg,,TAGGED
+773,TMDB-1292695,데이 윌 킬 유,2026-03-25,https://image.tmdb.org/t/p/w500/6oI4oQKTWMVUlr8Ivqydp28Ruu6.jpg,,TAGGED
+710,20256396,아바타: 불과 재,2025-12-17,https://image.tmdb.org/t/p/w500/l18o0AK18KS118tWeROOKYkF0ng.jpg,,TAGGED
+777,TMDB-1327819,호퍼스,2026-03-04,https://image.tmdb.org/t/p/w500/vJu9THzQ26Q5sWOVnhOkuRH5M1P.jpg,,TAGGED
+774,TMDB-1297842,고트: 더 레전드,2026-02-11,https://image.tmdb.org/t/p/w500/otP94vckeMXAgQxzhcRkZSeSmYv.jpg,,TAGGED
+700,20253289,극장판 귀멸의 칼날: 무한성편,2025-07-18,https://image.tmdb.org/t/p/w500/m6Dho6hDCcL5KI8mOQNemZAedFI.jpg,,TAGGED
+699,20252432,주토피아 2,2025-11-26,https://image.tmdb.org/t/p/w500/ib6v6qUXzez1x2qIOLN7C0yJNPQ.jpg,,TAGGED
+897,TMDB-1007757,뒤바뀐 친구들의 신비한 모험,2026-05-01,https://image.tmdb.org/t/p/w500/uv0iRQXDbtWHo1zPk3TZNo4Biti.jpg,,TAGGED
+801,TMDB-1304313,리 크로닌의 미이라,2026-04-15,https://image.tmdb.org/t/p/w500/zXlwtzXP80yc3X0VokdxvmsFQfw.jpg,,TAGGED
+362,20149120,인터스텔라,2014-11-05,https://image.tmdb.org/t/p/w500/gDN2NWtHbs8ZWEBQM8Dh5OVXdb4.jpg,,TAGGED
+1865,TMDB-24428,어벤져스,2012-04-25,https://image.tmdb.org/t/p/w500/krgjV3rJtBcEpQehODKXNCt6uFL.jpg,,TAGGED
+2153,TMDB-502356,슈퍼 마리오 브라더스,2023-04-05,https://image.tmdb.org/t/p/w500/jt1GlLLvkWL2m83VX8I1qsDR187.jpg,,TAGGED
+2007,TMDB-299536,어벤져스: 인피니티 워,2018-04-25,https://image.tmdb.org/t/p/w500/kmP6viwzcEkZeoi1LaVcQemcvZh.jpg,,TAGGED
+1622,TMDB-603,매트릭스,1999-03-31,https://image.tmdb.org/t/p/w500/fxBxoXFAYKWde6lKzXxSusn18Av.jpg,,TAGGED
+706,20254375,프레데터: 죽음의 땅,2025-11-05,https://image.tmdb.org/t/p/w500/8lpCbwbYh9SSzCFsHDndZHKrcD4.jpg,,TAGGED
+1562,TMDB-238,대부,1972-03-14,https://image.tmdb.org/t/p/w500/1yvBkSv4ZLS1GohlmMDmdpSgfYo.jpg,,TAGGED
+720,20258739,극장판 주술회전: 시부야사변 X 사멸회유,2025-11-07,https://image.tmdb.org/t/p/w500/ifK2v7oQQrgqrmDu7sr1TgoAPT9.jpg,,TAGGED
+1873,TMDB-27205,인셉션,2010-07-15,https://image.tmdb.org/t/p/w500/atSxEGstxXRoSKDQFBgqQ5lpGSt.jpg,,TAGGED
+1131,20030316,반지의 제왕: 왕의 귀환,2003-12-17,https://image.tmdb.org/t/p/w500/n8BPIRqvj1SdTRND828ANXhmSng.jpg,,TAGGED
+722,20259147,케이팝 데몬 헌터스,2025-06-20,https://image.tmdb.org/t/p/w500/5fqcLmrgVDicMuGLOa9PKErFP72.jpg,,TAGGED
+1541,TMDB-120,반지의 제왕: 반지 원정대,2001-12-18,https://image.tmdb.org/t/p/w500/r18JdjImbWDRwkbVDIzWoLQqkCo.jpg,,TAGGED
+717,20258383,나우 유 씨 미 3,2025-11-12,https://image.tmdb.org/t/p/w500/dECA069mRikkghzgSBsM0cvic4F.jpg,,TAGGED
+2006,TMDB-299534,어벤져스: 엔드게임,2019-04-24,https://image.tmdb.org/t/p/w500/z7ilT5rNN9kDo8JZmgyhM6ej2xv.jpg,,TAGGED
+487,20183238,스파이더맨: 뉴 유니버스,2018-12-06,https://image.tmdb.org/t/p/w500/d9V6Q9vpVpmaca7vwSUbCajtDb3.jpg,,TAGGED
+715,20257570,8번 출구,2025-08-28,https://image.tmdb.org/t/p/w500/uId1j785aRg5hGDj49SRpQZrEJV.jpg,,TAGGED
+180,20090834,아바타,2009-12-16,https://image.tmdb.org/t/p/w500/m5lCha2XcbDowDoYHPc0DTNaCPU.jpg,,TAGGED
+803,TMDB-1325734,더 드라마,2026-03-26,https://image.tmdb.org/t/p/w500/ikcNOWB6Qo1ER1H1BJL6Vf0W22s.jpg,,TAGGED
+2404,TMDB-1022789,인사이드 아웃 2,2024-06-11,https://image.tmdb.org/t/p/w500/x2BHx02jMbvpKjMvbf8XxJkYwHJ.jpg,,TAGGED
+117,20081056,다크 나이트,2008-07-16,https://image.tmdb.org/t/p/w500/9ICUbdveP56jRoMMVkXSOr3ceyV.jpg,,TAGGED
+2183,TMDB-533535,데드풀과 울버린,2024-07-24,https://image.tmdb.org/t/p/w500/dsfAcQ5J7TPOpJgcX8R1lRBqiMK.jpg,,TAGGED
+616,20225061,아바타: 물의 길,2022-12-14,https://image.tmdb.org/t/p/w500/u2aVXft5GLBQnjzWVNda7sdDpdu.jpg,,TAGGED
+1543,TMDB-129,센과 치히로의 행방불명,2001-07-20,https://image.tmdb.org/t/p/w500/u1L4qxIu5sC2P082uMHYt7Ifvnj.jpg,,TAGGED
+1564,TMDB-240,대부 2,1974-12-20,https://image.tmdb.org/t/p/w500/35RGDgySfINL9V2e6lkDECQ0hRa.jpg,,TAGGED
+1664,TMDB-807,세븐,1995-09-22,https://image.tmdb.org/t/p/w500/izzk8dbmrLowcoGbFaebqJvzyXg.jpg,,TAGGED
+1542,TMDB-121,반지의 제왕: 두 개의 탑,2002-12-18,https://image.tmdb.org/t/p/w500/zxZdTi3fA7aDxEOivmzZAY2bmTu.jpg,,TAGGED
+1651,TMDB-769,좋은 친구들,1990-09-12,https://image.tmdb.org/t/p/w500/zF9hSBS1t7PVFLo01GrJ3OjGi67.jpg,,TAGGED
+1665,TMDB-808,슈렉,2001-05-18,https://image.tmdb.org/t/p/w500/hABnmgdAU3u6Nu61b9GUGaOseVl.jpg,,TAGGED
+726,TMDB-671,해리 포터와 마법사의 돌,2001-11-16,https://image.tmdb.org/t/p/w500/8YaP48tVfngbURGldWk1I5odsBK.jpg,,TAGGED
+1617,TMDB-597,타이타닉,1997-12-18,https://image.tmdb.org/t/p/w500/132KjhVrWUqKFVfMAKKNkherytA.jpg,,TAGGED
+1830,TMDB-14836,코렐라인: 비밀의 문,2009-02-05,https://image.tmdb.org/t/p/w500/iGp4wBc0ZBVFd2HPicyDgl6Pn1r.jpg,,TAGGED
+711,20256397,원 배틀 애프터 어나더,2025-09-23,https://image.tmdb.org/t/p/w500/bCg9iDSXPjVTUs1RyYH8AhmJ11d.jpg,,TAGGED
+2368,TMDB-872585,오펜하이머,2023-07-19,https://image.tmdb.org/t/p/w500/jpD6z9fgNe7OqsHoDeAWQWoULde.jpg,,TAGGED
+8,20050082,이터널 선샤인,2004-03-19,https://image.tmdb.org/t/p/w500/jULvvUymAqM18gIDHbMRfKHbCSB.jpg,,TAGGED
+2040,TMDB-372058,너의 이름은.,2016-08-26,https://image.tmdb.org/t/p/w500/2DJCufz3Oa703PbLjNX1pM6MCG2.jpg,,TAGGED
+1507,TMDB-11,스타워즈 에피소드 4: 새로운 희망,1977-05-25,https://image.tmdb.org/t/p/w500/7XFfURIFCJxN1mfBg0SAjk5yGzg.jpg,,TAGGED
+2395,TMDB-980477,너자 2,2025-01-29,https://image.tmdb.org/t/p/w500/tc3wdEEov3SdMja9ZkBiAZ6fBGV.jpg,,TAGGED
+676,20240737,모아나 2,2024-11-21,https://image.tmdb.org/t/p/w500/hwmwTFtMbzxAWbIOp1RyyiOCyx0.jpg,,TAGGED
+1590,TMDB-424,쉰들러 리스트,1993-12-15,https://image.tmdb.org/t/p/w500/oyyUcGwLX7LTFS1pQbLrQpyzIyt.jpg,,TAGGED
+1598,TMDB-497,그린 마일,1999-12-10,https://image.tmdb.org/t/p/w500/pk1TPODQVnI8GdLf0DhlJQYxWjd.jpg,,TAGGED
+1580,TMDB-348,에이리언,1979-05-25,https://image.tmdb.org/t/p/w500/k3m1RdlYUlCx51PxxNMlmbm7QSk.jpg,,TAGGED
+2205,TMDB-569094,스파이더맨: 어크로스 더 유니버스,2023-05-31,https://image.tmdb.org/t/p/w500/lMWTlGr9jVUC18T515hPRKym5QQ.jpg,,TAGGED
+703,20253906,프레디의 피자가게 2,2025-12-03,https://image.tmdb.org/t/p/w500/kEmPnUUXaF9hPgDMlc0eJht5JYO.jpg,,TAGGED
+765,TMDB-1218925,극장판 체인소 맨:  레제편,2025-09-19,https://image.tmdb.org/t/p/w500/oTn0PoR8gSMpMqJaT2pUtkkN0Ia.jpg,,TAGGED
+535,20197803,겨울왕국 2,2019-11-20,https://image.tmdb.org/t/p/w500/lVcwSnzhSMWYXUQzyMilCztSE6I.jpg,,TAGGED
+1955,TMDB-150540,인사이드 아웃,2015-06-17,https://image.tmdb.org/t/p/w500/rMXHvHzpuYZXrJUhRVJ3TvDSwe5.jpg,,TAGGED
+697,20248492,와일드 로봇,2024-09-12,https://image.tmdb.org/t/p/w500/iA9NiygwSOBy8FjZjvdYOMxRUG0.jpg,,TAGGED
+1380,20168282,블레이드 러너 2049,2017-10-04,https://image.tmdb.org/t/p/w500/fJZmCJpLeBFKktLFEIKPEhllWlU.jpg,,TAGGED
+2786,TMDB-346698,바비,2023-07-19,https://image.tmdb.org/t/p/w500/h3mUJ9WEJ8PzA450ad4hrjsaiqG.jpg,,TAGGED
+708,20256025,더 러닝 맨,2025-11-11,https://image.tmdb.org/t/p/w500/klfSEbFOquMFjBQJ5uKAfp0rrsK.jpg,,TAGGED
+677,20240941,베놈: 라스트 댄스,2024-10-22,https://image.tmdb.org/t/p/w500/ptfoRD0MmL8Ry0iBVccYbqoN9Xc.jpg,,TAGGED
+1558,TMDB-218,터미네이터,1984-10-26,https://image.tmdb.org/t/p/w500/y6FmrimVoBBKsERc08VyVP1NyNs.jpg,,TAGGED
+1985,TMDB-269149,주토피아,2016-02-11,https://image.tmdb.org/t/p/w500/uitqZVbhvlQV5iLOdbk3itGoNNd.jpg,,TAGGED
+1592,TMDB-429,석양의 무법자,1966-12-23,https://image.tmdb.org/t/p/w500/s7qPuoj4liolAtmx9vcL6AyaZzR.jpg,,TAGGED
+1713,TMDB-1726,아이언맨,2008-04-30,https://image.tmdb.org/t/p/w500/ziReGUV3xURsWmcmsn2GOunPc0L.jpg,,TAGGED
+2033,TMDB-354912,코코,2017-10-27,https://image.tmdb.org/t/p/w500/pQu93NuwR90AaCULzglVD5Ge4Ml.jpg,,TAGGED
+2292,TMDB-693134,듄: 파트 2,2024-02-27,https://image.tmdb.org/t/p/w500/8AsDR2o5AC3V8Jmj6JH6cpta7dz.jpg,,TAGGED
+1639,TMDB-673,해리 포터와 아즈카반의 죄수,2004-05-31,https://image.tmdb.org/t/p/w500/anwNl1xbzXoj5Ax1nVw3WoDzHlw.jpg,,TAGGED
+1614,TMDB-585,몬스터 주식회사,2001-11-01,https://image.tmdb.org/t/p/w500/fnDLrtEoIrxTCWUvuurMzOzQGpQ.jpg,,TAGGED
+2709,TMDB-10138,아이언맨 2,2010-04-28,https://image.tmdb.org/t/p/w500/ebJbC9OYAZJxy7bRUGryR72hfa2.jpg,,TAGGED
+1531,TMDB-101,레옹,1994-09-14,https://image.tmdb.org/t/p/w500/cVNasmF1Egd3v3mpq747Hizxx4x.jpg,,TAGGED
+1675,TMDB-862,토이 스토리,1995-11-22,https://image.tmdb.org/t/p/w500/iJbm78MxPjLutWUYixbeege8EVe.jpg,,TAGGED
+1764,TMDB-8587,라이온 킹,1994-06-15,https://image.tmdb.org/t/p/w500/9Y048zYw66TWvpUtsiNK0uReiVX.jpg,,TAGGED
+1795,TMDB-10681,월•E,2008-06-26,https://image.tmdb.org/t/p/w500/skTzymk67FfQSfGvwp4JSAqje4Z.jpg,,TAGGED
+1942,TMDB-106646,더 울프 오브 월 스트리트,2013-12-25,https://image.tmdb.org/t/p/w500/rdBYtoxLvd8J9PsVYVGd7FGzQux.jpg,,TAGGED
+2415,TMDB-1087192,드래곤 길들이기,2025-06-06,https://image.tmdb.org/t/p/w500/frXkpt1dLKO3iDbmBsjQUKseLiS.jpg,,TAGGED
+1998,TMDB-290098,아가씨,2016-06-01,https://image.tmdb.org/t/p/w500/pDogzUCSBy0m4ybLKUv3OtGMRNm.jpg,,TAGGED
+2742,TMDB-99861,어벤져스: 에이지 오브 울트론,2015-04-22,https://image.tmdb.org/t/p/w500/y8pY5MIzpPAnF5vYUNm1tw1AzL3.jpg,,TAGGED
+1962,TMDB-177572,빅 히어로,2014-10-24,https://image.tmdb.org/t/p/w500/gLabmTVZpNOGa8LEiMvTi9hJPDe.jpg,,TAGGED
+2234,TMDB-603692,존 윅 4,2023-03-21,https://image.tmdb.org/t/p/w500/h3LsdSBzhRnBebz4BTpAhh63PD3.jpg,,TAGGED
+2756,TMDB-181808,스타워즈 에피소드 8: 라스트 제다이,2017-12-13,https://image.tmdb.org/t/p/w500/zRvMTCzUVnkdW9lno9HQwrigWSr.jpg,,TAGGED
+6,20040756,하울의 움직이는 성,2004-09-09,https://image.tmdb.org/t/p/w500/xiz6TiSduvR1U3VLfWVlBEdT9fO.jpg,,TAGGED
+2667,TMDB-557,스파이더맨,2002-05-01,https://image.tmdb.org/t/p/w500/4xOhtzXGt0if74dTmS4qtizFelX.jpg,,TAGGED
+1825,TMDB-14160,업,2009-05-28,https://image.tmdb.org/t/p/w500/lL2WzkjLZP0RkPgUhybBjb9x9SL.jpg,,TAGGED
+2081,TMDB-414906,더 배트맨,2022-03-01,https://image.tmdb.org/t/p/w500/jicHGaOX5pHs7RKjfexMxvLkwjf.jpg,,TAGGED
+2785,TMDB-346364,그것,2017-09-06,https://image.tmdb.org/t/p/w500/nlZKIOeoSWwrRcrppoIbkfOGZ6J.jpg,,TAGGED
+1340,20140431,메이즈 러너,2014-09-10,https://image.tmdb.org/t/p/w500/bL0bBepUCLFcCj2ATFD40FbyDEl.jpg,,TAGGED
+2779,TMDB-315635,스파이더맨: 홈커밍,2017-07-05,https://image.tmdb.org/t/p/w500/hjki9weYYVABvkpZbX5jBOmKXXv.jpg,,TAGGED
+2677,TMDB-652,트로이,2004-05-13,https://image.tmdb.org/t/p/w500/1TsdNMKodmOKyo4xPacxq7opo3p.jpg,,TAGGED
+1329,20131381,컨저링,2013-07-18,https://image.tmdb.org/t/p/w500/pWpTToZ32bG09PaZ1rvYG5mpOyV.jpg,,TAGGED
+2657,TMDB-58,캐리비안의 해적: 망자의 함,2006-07-06,https://image.tmdb.org/t/p/w500/6tD4oT7C01aZLVfoZDz5VFVbJCi.jpg,,TAGGED
+2670,TMDB-564,미이라,1999-04-16,https://image.tmdb.org/t/p/w500/31lxBgDl51HYnAnIV41aPyK4em7.jpg,,TAGGED
+1638,TMDB-672,해리 포터와 비밀의 방,2002-11-13,https://image.tmdb.org/t/p/w500/bo8FuQPWKLqbg3WgAXYISkwrbZ9.jpg,,TAGGED
+1508,TMDB-12,니모를 찾아서,2003-05-30,https://image.tmdb.org/t/p/w500/9ViCYfZ0whpwtKbM2WJP5PfsG2x.jpg,,TAGGED
+1804,TMDB-11324,셔터 아일랜드,2010-02-14,https://image.tmdb.org/t/p/w500/aywZdSOXtwcqqLTl271EUJemi2.jpg,,TAGGED
+1909,TMDB-49026,다크 나이트 라이즈,2012-07-17,https://image.tmdb.org/t/p/w500/eq5P71YHwwaacEYKaQ72Wxy6BlT.jpg,,TAGGED
+1514,TMDB-22,캐리비안의 해적: 블랙펄의 저주,2003-07-09,https://image.tmdb.org/t/p/w500/3ovejwQO4fKOWx4VgGBJeT8CKCn.jpg,,TAGGED
+603,20212015,돈 룩 업,2021-12-08,https://image.tmdb.org/t/p/w500/e48Ychye5TtwarRe41PzeCJH9RZ.jpg,,TAGGED
+1529,TMDB-98,글래디에이터,2000-05-04,https://image.tmdb.org/t/p/w500/kUBBYu0lWGMHYnUDNDTL4ttj44j.jpg,,TAGGED
+1818,TMDB-12445,해리 포터와 죽음의 성물 2,2011-07-12,https://image.tmdb.org/t/p/w500/ehUeFvQeo8Vr2aDIKLsLbC8okcw.jpg,,TAGGED
+32,20050310,해리 포터와 불의 잔,2005-11-16,https://image.tmdb.org/t/p/w500/uWPnKtu1eutmgBQ2hoWm0Xe8nfN.jpg,,TAGGED
+1604,TMDB-539,싸이코,1960-06-22,https://image.tmdb.org/t/p/w500/vC3P8hH4r3I3fHiRFa1kj6yzeaN.jpg,,TAGGED
+1931,TMDB-76341,매드맥스: 분노의 도로,2015-05-13,https://image.tmdb.org/t/p/w500/cadVm6gKYYukmPysHGCwrawUHHa.jpg,,TAGGED
+1722,TMDB-2062,라따뚜이,2007-06-28,https://image.tmdb.org/t/p/w500/zFah4LNeWw68y7RRGi20CQlGByY.jpg,,TAGGED
+335,20140425,나를 찾아줘,2014-10-01,https://image.tmdb.org/t/p/w500/m2Lw04GIjiTjylqPiccoo3WFMVb.jpg,,TAGGED
+1932,TMDB-77338,언터처블: 1%의 우정,2011-11-02,https://image.tmdb.org/t/p/w500/4oOf3pmDD5rMNQGgsf7zMbFKtKC.jpg,,TAGGED
+1641,TMDB-679,에이리언 2,1986-07-18,https://image.tmdb.org/t/p/w500/8J1SwqmsHRzZ5k8QVRibkzyc9jc.jpg,,TAGGED
+1281,20100814,슈퍼배드,2010-07-08,https://image.tmdb.org/t/p/w500/avyPqGBGeeGsx4c89sIIDcfggjR.jpg,,TAGGED
+1570,TMDB-280,터미네이터 2: 심판의 날,1991-07-03,https://image.tmdb.org/t/p/w500/nDVUiEqoeXaDQuM81KkUVNviYIm.jpg,,TAGGED
+1299,20112221,히트,1995-12-15,https://image.tmdb.org/t/p/w500/p0uAcyDgBXtCSXZdnacwr9OGcIH.jpg,,TAGGED
+2063,TMDB-396535,부산행,2016-07-20,https://image.tmdb.org/t/p/w500/6XvEZVBFFjybvb1yQd1qfOC6F2S.jpg,,TAGGED
+2014,TMDB-315162,장화신은 고양이: 끝내주는 모험,2022-12-07,https://image.tmdb.org/t/p/w500/rKgvctIuPXyuqOzCQ16VGdnHxKx.jpg,,TAGGED
+733,TMDB-12444,해리 포터와 죽음의 성물 1,2010-11-17,https://image.tmdb.org/t/p/w500/lOXvz8HrgOkp7AXGQp1APKeZqag.jpg,,TAGGED
+1650,TMDB-767,해리 포터와 혼혈왕자,2009-07-15,https://image.tmdb.org/t/p/w500/yrGlb3HLtjGp39mv4MJ5UuIHcj4.jpg,,TAGGED
+2797,TMDB-429617,스파이더맨: 파 프롬 홈,2019-06-28,https://image.tmdb.org/t/p/w500/3YewJtji80oIroeXUavNRZkeXfQ.jpg,,TAGGED
+1676,TMDB-863,토이 스토리 2,1999-10-30,https://image.tmdb.org/t/p/w500/gXUNsdIIn6NiEBvh8Mq6gjgVPm0.jpg,,TAGGED
+1524,TMDB-77,메멘토,2000-10-11,https://image.tmdb.org/t/p/w500/x5FPVwJHyf1SnDW04fwr9rsyWm4.jpg,,TAGGED
+1537,TMDB-111,스카페이스,1983-12-09,https://image.tmdb.org/t/p/w500/zx7sXrMISbs8RI4URbjPyKocRgP.jpg,,TAGGED
+1556,TMDB-207,죽은 시인의 사회,1989-06-02,https://image.tmdb.org/t/p/w500/41AJ4X5TRWpECsiMIKS8so4MSsD.jpg,,TAGGED
+1135,20030350,올드보이,2003-11-21,https://image.tmdb.org/t/p/w500/xpa9ybm6tYGna5LseqSXvKpSSJn.jpg,,TAGGED
+2768,TMDB-271110,캡틴 아메리카: 시빌 워,2016-04-27,https://image.tmdb.org/t/p/w500/vaMRzME3Dt73robEjOtDw4SPJGA.jpg,,TAGGED
+2751,TMDB-156022,더 이퀄라이저,2014-09-24,https://image.tmdb.org/t/p/w500/hqes9NQtVIULs8VKu0WqY6RdXGU.jpg,,TAGGED
+712,20256684,웨폰,2025-08-04,https://image.tmdb.org/t/p/w500/lcu0aRFg7lzmzxGzpkYCeN4XRjh.jpg,,TAGGED
+2705,TMDB-9502,쿵푸팬더,2008-06-04,https://image.tmdb.org/t/p/w500/c3Dzd3A3QE0LkKb5HMOHTzs2Fyg.jpg,,TAGGED
+333,20140226,호빗: 다섯 군대 전투,2014-12-10,https://image.tmdb.org/t/p/w500/tLNTaP5kcH2FDQNxGu4EkOCpMjr.jpg,,TAGGED
+550,20199950,조커,2019-10-01,https://image.tmdb.org/t/p/w500/6OnFzi7nU6t4j1rmX9QI8EYDWb4.jpg,,TAGGED
+1640,TMDB-675,해리 포터와 불사조 기사단,2007-07-08,https://image.tmdb.org/t/p/w500/1ItejykqHTbFWbZXdzqlvqriv7K.jpg,,TAGGED
+2730,TMDB-68721,아이언맨 3,2013-04-18,https://image.tmdb.org/t/p/w500/5aHoACZhLJR95uQN4Hd2k6swUZq.jpg,,TAGGED
+2735,TMDB-72190,월드워 Z,2013-06-19,https://image.tmdb.org/t/p/w500/cnUlKvIXbTmDnyp6pIGIMgdl332.jpg,,TAGGED
+683,20244762,서브스턴스,2024-09-07,https://image.tmdb.org/t/p/w500/oUkeyrXvGUEylOQtlYMv9esNRiu.jpg,,TAGGED
+2666,TMDB-425,아이스 에이지,2002-03-14,https://image.tmdb.org/t/p/w500/biwqSbuyxjrZMvVcb8Lsv3GyQbw.jpg,,TAGGED
+2267,TMDB-637649,캐시트럭,2021-04-22,https://image.tmdb.org/t/p/w500/qEkQy6H83Sz7vPWN9ZQXWl9RiBF.jpg,,TAGGED
+2001,TMDB-293660,데드풀,2016-02-09,https://image.tmdb.org/t/p/w500/k1e0TlvDM4KsiSRyJENVrHxMqtK.jpg,,TAGGED
+1674,TMDB-857,라이언 일병 구하기,1998-07-24,https://image.tmdb.org/t/p/w500/9W0XUvNtoJMG6kI4F4Y2mbsS2kt.jpg,,TAGGED
+1979,TMDB-263115,로건,2017-02-28,https://image.tmdb.org/t/p/w500/tE6tvHXlAZ8hqM4k9ZvtWtBk4pc.jpg,,TAGGED
+2017,TMDB-324786,핵소 고지,2016-10-07,https://image.tmdb.org/t/p/w500/nlvcNogJK9R9iIj0YINApQE36FF.jpg,,TAGGED
+1894,TMDB-38757,라푼젤,2010-11-24,https://image.tmdb.org/t/p/w500/sT1vLH38iaezVgoFqmaiihbnTUy.jpg,,TAGGED
+2669,TMDB-559,스파이더맨 3,2007-05-01,https://image.tmdb.org/t/p/w500/9atb6Nn8TRGxfwROJGuzOD24GNl.jpg,,TAGGED
+1579,TMDB-346,7인의 사무라이,1954-04-26,https://image.tmdb.org/t/p/w500/6Y8Q5t79ybiDA7XubUTneqZhjA3.jpg,,TAGGED
+2800,TMDB-453395,닥터 스트레인지: 대혼돈의 멀티버스,2022-05-04,https://image.tmdb.org/t/p/w500/vL5ktZauR0fZMDOHKjakb1idhuU.jpg,,TAGGED
+675,20240193,무파사: 라이온 킹,2024-12-18,https://image.tmdb.org/t/p/w500/1VUExee8iFohFTwYVi4IOArYyaM.jpg,,TAGGED
+370,20151383,마션,2015-09-30,https://image.tmdb.org/t/p/w500/uH8q40cjMAjrRHyPJMbQwAIJATb.jpg,,TAGGED
+2673,TMDB-604,매트릭스 2: 리로디드,2003-05-15,https://image.tmdb.org/t/p/w500/5RsZJfcXUndClV1vaI68V2shJOs.jpg,,TAGGED
+1534,TMDB-106,프레데터,1987-06-12,https://image.tmdb.org/t/p/w500/AjYcJsuiqW4sHFEmh5SVSy5PswH.jpg,,TAGGED
+1784,TMDB-10193,토이 스토리 3,2010-06-16,https://image.tmdb.org/t/p/w500/hbUWahBLUon8RaIb9Tq7aWCBCtS.jpg,,TAGGED
+171,20090685,2012,2009-10-10,https://image.tmdb.org/t/p/w500/kdyhLTaforuBk0CjnACiMXuj7zd.jpg,,TAGGED
+1781,TMDB-10020,미녀와 야수,1991-10-22,https://image.tmdb.org/t/p/w500/xN8yuKcIIQEJo1Cuk6RuZpV64Uh.jpg,,TAGGED
+2684,TMDB-920,카,2006-06-08,https://image.tmdb.org/t/p/w500/uwQMfpTRXQUHvGKtnHGdQE7nZWv.jpg,,TAGGED
+2663,TMDB-285,캐리비안의 해적: 세상의 끝에서,2007-05-19,https://image.tmdb.org/t/p/w500/bTotG6tZERQqfKr2TDjwdjW8It4.jpg,,TAGGED
+2693,TMDB-1865,캐리비안의 해적: 낯선 조류,2011-05-15,https://image.tmdb.org/t/p/w500/osJVVjkHmoO5WoJfbBsImYrKWIb.jpg,,TAGGED
+2329,TMDB-766507,프레이,2022-08-02,https://image.tmdb.org/t/p/w500/dBcot5vSnmn3XeAg1c4PZM63G5x.jpg,,TAGGED
+2771,TMDB-284054,블랙 팬서,2018-02-13,https://image.tmdb.org/t/p/w500/iRkknrX0rRxZHSL79W2Rax0EFsL.jpg,,TAGGED
+1748,TMDB-4951,내가 널 사랑할 수 없는 10가지 이유,1999-03-30,https://image.tmdb.org/t/p/w500/syoeWNSLr7AMesZXM5DUAmoDRvp.jpg,,TAGGED
+2349,TMDB-823219,플로우,2024-08-29,https://image.tmdb.org/t/p/w500/iEDrRE5TWjKrWO2MtkCBR5aH7pT.jpg,,TAGGED
+1967,TMDB-205596,이미테이션 게임,2014-11-14,https://image.tmdb.org/t/p/w500/wT4cHJMqWqWxY4GXDXgD10lMQWy.jpg,,TAGGED
+2021,TMDB-333339,레디 플레이어 원,2018-03-28,https://image.tmdb.org/t/p/w500/j4TIfwFrm8WnckByTnMFEAuIVju.jpg,,TAGGED
+2686,TMDB-953,마다가스카,2005-05-25,https://image.tmdb.org/t/p/w500/7BeMHBgS6nUaxj6w0hGhsiK827c.jpg,,TAGGED
+1453,20217742,샹치와 텐 링즈의 전설,2021-09-01,https://image.tmdb.org/t/p/w500/14L4NGrqO4r7gJtVRiSRP5rNsL5.jpg,,TAGGED
+336,20140694,퓨리,2014-10-15,https://image.tmdb.org/t/p/w500/dYwwlFLd8WNrfa3s6HBzAbH3QXG.jpg,,TAGGED
+1124,20030047,모노노케 히메,1997-07-12,https://image.tmdb.org/t/p/w500/lLftgg4iFyDwuodra3Isr41y2Lq.jpg,,TAGGED
+1194,20040745,인크레더블,2004-10-27,https://image.tmdb.org/t/p/w500/11Byg6rHkKIvSehlW3R4pcUj8J.jpg,,TAGGED
+2732,TMDB-68726,퍼시픽 림,2013-07-11,https://image.tmdb.org/t/p/w500/BWJhHHqeW5oCRvqLXF5twAFAga.jpg,,TAGGED
+5,20040734,노트북,2004-06-25,https://image.tmdb.org/t/p/w500/ntdgcdsmMuHd9s4oEKTvWDiUyU7.jpg,,TAGGED
+2798,TMDB-436969,더 수어사이드 스쿼드,2021-07-28,https://image.tmdb.org/t/p/w500/1FiLuxuowOusZAG1vvI4TorMuNG.jpg,,TAGGED
+2697,TMDB-1930,어메이징 스파이더맨,2012-06-23,https://image.tmdb.org/t/p/w500/a1Kup5VnmxjAHnsT3Sz7RtrC9UU.jpg,,TAGGED
+2760,TMDB-209112,배트맨 대 슈퍼맨: 저스티스의 시작,2016-03-23,https://image.tmdb.org/t/p/w500/nfdgwCossZkIEEaQ4iR80mX2iR3.jpg,,TAGGED
+2778,TMDB-301528,토이 스토리 4,2019-06-19,https://image.tmdb.org/t/p/w500/9P8IX4UyH3QFLL4MV6GZyuOB7Ue.jpg,,TAGGED
+2338,TMDB-791373,잭 스나이더의 저스티스 리그,2021-03-18,https://image.tmdb.org/t/p/w500/qd7iPB26bwMPZqRcnflzAeDkMn.jpg,,TAGGED
+1167,20040670,맨 온 파이어,2004-04-23,https://image.tmdb.org/t/p/w500/fGVxyJRrDCPMH22DnbPYePwlvSU.jpg,,TAGGED
+229,20112173,리얼 스틸,2011-09-28,https://image.tmdb.org/t/p/w500/lbN080kn6nzq978jqsdgxci9llR.jpg,,TAGGED
+1643,TMDB-694,샤이닝,1980-05-23,https://image.tmdb.org/t/p/w500/aaItbIXZlC2C7Arg3PI0IglKi0.jpg,,TAGGED
+1574,TMDB-311,원스 어폰 어 타임 인 아메리카,1984-05-23,https://image.tmdb.org/t/p/w500/xbuc6sjIIopkA1Ep24rR6yCw0DK.jpg,,TAGGED
+2743,TMDB-102382,어메이징 스파이더맨 2,2014-04-16,https://image.tmdb.org/t/p/w500/eYaFLrKuEdzrGw6XG5ZTVciH28v.jpg,,TAGGED
+658,20234797,헝거게임: 노래하는 새와 뱀의 발라드,2023-11-15,https://image.tmdb.org/t/p/w500/9f9YsmXoy9ghqZKIVuKHkmGGZCY.jpg,,TAGGED
+1957,TMDB-152601,그녀,2013-12-18,https://image.tmdb.org/t/p/w500/thUJI82kWMxA2jtjLtPxDIj67tY.jpg,,TAGGED
+1929,TMDB-68718,장고: 분노의 추적자,2012-12-25,https://image.tmdb.org/t/p/w500/AoH4YLDdxAHraeT336sc9nOIaX0.jpg,,TAGGED
+740,TMDB-50620,브레이킹 던 Part 2,2012-11-13,https://image.tmdb.org/t/p/w500/Akxxrqg1Zb6pLvj3MxlHCNFWDf0.jpg,,TAGGED
+1128,20030191,매트릭스 3: 레볼루션,2003-11-05,https://image.tmdb.org/t/p/w500/wLS7CaUNyz4hVwCxj7mXhX66A7r.jpg,,TAGGED
+158,20090578,바스터즈: 거친 녀석들,2009-08-02,https://image.tmdb.org/t/p/w500/4eQ2DQi2Vb8oYN9IRAca8vaALNl.jpg,,TAGGED
+1525,TMDB-78,블레이드 러너,1982-06-25,https://image.tmdb.org/t/p/w500/6yXqNiVIoJcMhio10Nkb5QMNeh8.jpg,,TAGGED
+2394,TMDB-976573,엘리멘탈,2023-06-14,https://image.tmdb.org/t/p/w500/w7eApyAshbepBnDyYRjSeGyRHi2.jpg,,TAGGED
+289,20127634,메리다와 마법의 숲,2012-06-21,https://image.tmdb.org/t/p/w500/uzVUEQ6PPGGsETviLwVKSzS8OUG.jpg,,TAGGED
+2782,TMDB-324552,존 윅: 리로드,2017-02-08,https://image.tmdb.org/t/p/w500/7IEjgGVcOT3kTIb42yFLPVjSvot.jpg,,TAGGED
+1995,TMDB-283995,가디언즈 오브 갤럭시 Vol. 2,2017-04-19,https://image.tmdb.org/t/p/w500/uDuwGhQgffd5GQ695oUfy5oZGqP.jpg,,TAGGED
+1844,TMDB-19404,용감한 자가 신부를 데려가리,1995-10-20,https://image.tmdb.org/t/p/w500/2CAL2433ZeIihfX1Hb2139CX0pW.jpg,,TAGGED
+2723,TMDB-49521,맨 오브 스틸,2013-06-12,https://image.tmdb.org/t/p/w500/8Qx9fp2lZJU4v67jks6MmOMBCQg.jpg,,TAGGED

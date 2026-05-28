@@ -89,14 +89,13 @@
         .subtitle { margin-top:10px; color:var(--hp-text-sub); font-size:16px; }
         .year { margin-top:10px; color:var(--hp-text-hint); font-size:14px; }
         .actions {
-            margin-top:26px; padding:22px;
+            margin-top:22px; padding:18px;
             border-radius:var(--r-xl);
             background:var(--hp-surface-2);
             border:1px solid var(--hp-border);
         }
-        .actions h2 { font-size:16px; font-weight:600; margin-bottom:6px; }
-        .actions p { color:var(--hp-text-sub); font-size:14px; margin-bottom:16px; }
         .row { display:grid; gap:10px; margin-top:10px; }
+        .actions > .row:first-child { margin-top:0; }
         .row.two { grid-template-columns:repeat(2,minmax(0,1fr)); }
         .row.three { grid-template-columns:repeat(3,minmax(0,1fr)); }
         .btn { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:72px; padding:14px 16px; border-radius:var(--r-xl); border:1px solid var(--hp-border); background:var(--hp-surface); color:var(--hp-text); cursor:pointer; transition:transform .16s ease,border-color .16s ease,background .16s ease; }
@@ -387,6 +386,59 @@
         @media (max-width:768px) { .movie-posts-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width:720px) { .row.two,.row.three,.stats { grid-template-columns:1fr; } }
         @media (max-width:480px) { .movie-posts-grid { grid-template-columns: repeat(2, 1fr); } }
+        /* 예고편 섹션 */
+        .trailer-section { margin: 24px 0; }
+        .trailer-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .trailer-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
+        .trailer-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .trailer-tab { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--hp-border); background: var(--hp-surface-2); color: var(--hp-text-sub); font: inherit; font-size: 0.82rem; cursor: pointer; transition: background 0.15s, color 0.15s; }
+        .trailer-tab.active { background: var(--hp-blue); border-color: var(--hp-blue); color: #fff; }
+        .trailer-embed { position: relative; aspect-ratio: 16/9; border-radius: var(--r-xl); overflow: hidden; background: #000; }
+        .trailer-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+        /* OTT 로고 */
+        .provider-logos { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .provider-badge { display: flex; align-items: center; gap: 7px; padding: 5px 10px 5px 6px; border-radius: var(--r-lg); background: var(--hp-card); border: 1px solid var(--hp-border); font-size: 0.8rem; color: var(--hp-text-sub); }
+        .provider-badge img { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; }
+        .provider-type-tag { font-size: 0.7rem; color: var(--hp-text-hint); margin-left: 2px; }
+        .watch-section { margin-top: 32px; padding: 24px; border-radius: var(--r-xl); background: var(--hp-surface-2); border: 1px solid var(--hp-border); }
+        .watch-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+        .watch-title { margin:0; color:var(--hp-text); font-size:1.15rem; font-weight:800; letter-spacing:-0.02em; }
+        .watch-source { color:var(--hp-text-hint); font-size:0.78rem; }
+        .watch-list { display:grid; gap:12px; }
+        .watch-card { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:64px; padding:14px 16px; border-radius:16px; background:rgba(15,17,23,0.44); border:1px solid rgba(255,255,255,0.07); color:var(--hp-text); text-decoration:none; transition:transform 0.16s ease, border-color 0.16s ease, background 0.16s ease; }
+        .watch-card:hover { transform:translateY(-1px); background:rgba(255,255,255,0.055); border-color:rgba(255,255,255,0.14); }
+        .watch-provider { display:flex; align-items:center; gap:12px; min-width:0; }
+        .watch-logo { width:36px; height:36px; border-radius:10px; object-fit:cover; background:#fff; }
+        .watch-logo-fallback { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#111827,#334155); color:#fff; font-weight:900; font-size:0.9rem; }
+        .watch-provider-name { font-size:0.98rem; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .watch-arrow { color:#7da2ff; font-size:0.9rem; font-weight:800; display:flex; align-items:center; gap:8px; white-space:nowrap; }
+        .watch-arrow::after { content:'›'; color:#94a3b8; font-size:1.6rem; line-height:1; }
+        .watch-empty { margin:0; padding:20px 0 4px; color:var(--hp-text-hint); font-size:0.92rem; }
+        /* 이미지 섹션 */
+        .movie-images-section { margin: 24px 0; }
+        .movie-images-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .movie-images-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
+        .movie-images-count { color: var(--hp-text-hint); font-size: 0.85rem; }
+        .movie-images-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        @media (max-width: 640px) { .movie-images-grid { grid-template-columns: repeat(2, 1fr); } }
+        .img-item { cursor: pointer; border-radius: var(--r-lg); overflow: hidden; aspect-ratio: 16/9; background: var(--hp-surface-2); }
+        .img-item img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.2s; }
+        .img-item:hover img { transform: scale(1.04); }
+        .img-item.portrait { aspect-ratio: 2/3; }
+        .img-skeleton { border-radius: var(--r-lg); aspect-ratio: 16/9; background: var(--hp-surface-2); }
+        @keyframes imgShimmer { 0%,100% { opacity:0.45; } 50% { opacity:0.9; } }
+        .img-skeleton { animation: imgShimmer 1.4s infinite; }
+        /* 라이트박스 */
+        .img-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 800; display: flex; align-items: center; justify-content: center; }
+        .img-lightbox[hidden] { display: none; }
+        .img-lightbox-img { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: var(--r-lg); }
+        .img-lightbox-close { position: absolute; top: 16px; right: 20px; background: rgba(255,255,255,0.12); border: none; color: #fff; font-size: 1.2rem; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .img-lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.12); border: none; color: #fff; font-size: 2rem; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .img-lightbox-prev { left: 12px; }
+        .img-lightbox-next { right: 12px; }
+        .img-more-btn { display: none; width: 100%; margin-top: 12px; padding: 11px; border-radius: var(--r-lg); border: 1px solid var(--hp-border); background: var(--hp-surface-2); color: var(--hp-text-sub); font: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s; }
+        .img-more-btn:hover { background: var(--hp-card); color: var(--hp-text); }
+        .img-more-btn.visible { display: block; }
     </style>
 </head>
 <body>
@@ -417,16 +469,14 @@
             <p class="year" th:text="${movie.productionYear != null ? movie.productionYear : (movie.boxOfficeOpenDate != null ? #temporals.format(movie.boxOfficeOpenDate, 'yyyy') : '연도 정보 없음')}">2024</p>
 
             <section class="actions">
-                <h2>이 영화를 어떻게 남길까요?</h2>
-                <p>버튼을 눌러도 페이지는 새로 쌓이지 않고 상태만 바로 바뀝니다.</p>
                 <div class="row two">
-                    <button type="button" id="dislike-btn" class="btn dislike" data-tip="별로에요">
-                        <span class="icon" id="dislike-icon"></span>
-                        <span class="copy"><span class="label">별로에요</span><span class="hint">좋아요와 동시에 켜지지 않습니다.</span></span>
-                    </button>
                     <button type="button" id="like-btn" class="btn like" data-tip="좋아요">
                         <span class="icon" id="like-icon"></span>
                         <span class="copy"><span class="label">좋아요</span><span class="hint">강한 호감 신호</span></span>
+                    </button>
+                    <button type="button" id="dislike-btn" class="btn dislike" data-tip="별로에요">
+                        <span class="icon" id="dislike-icon"></span>
+                        <span class="copy"><span class="label">별로에요</span><span class="hint">좋아요와 동시에 켜지지 않습니다.</span></span>
                     </button>
                 </div>
                 <div class="row three">
@@ -461,16 +511,12 @@
                     </div>
                     <div class="rating-note" id="rating-note">아직 별점이 없습니다.</div>
                 </div>
-                <div class="rating-off" id="rating-off">보는중 단계에서는 별점이 열리지 않습니다. 봤어요 상태에서만 별점을 남길 수 있습니다.</div>
+                <div class="rating-off" id="rating-off" hidden></div>
             </section>
 
             <section class="stats">
-                <div class="card"><div class="stat-label">개봉일</div><div class="stat-value" th:text="${movie.boxOfficeOpenDate != null ? movie.boxOfficeOpenDate : '-'}">2014-07-30</div></div>
                 <div class="card"><div class="stat-label">제작연도</div><div class="stat-value" th:text="${movie.productionYear != null ? movie.productionYear : '-'}">2013</div></div>
-                <div class="card"><div class="stat-label">상영시간</div><div class="stat-value" th:text="${movie.showTime != null ? movie.showTime + '분' : '-'}">128분</div></div>
-                <div class="card"><div class="stat-label">스크린 수</div><div class="stat-value" th:text="${movie.boxOfficeScrnCnt != null ? #numbers.formatInteger(movie.boxOfficeScrnCnt, 0, 'COMMA') + '개' : '-'}">1,000개</div></div>
-                <div class="card"><div class="stat-label">상영 횟수</div><div class="stat-value" th:text="${movie.boxOfficeShowCnt != null ? #numbers.formatInteger(movie.boxOfficeShowCnt, 0, 'COMMA') + '회' : '-'}">1,000회</div></div>
-                <div class="card"><div class="stat-label">영화 코드</div><div class="stat-value" th:text="${movie.movieCode}">movieCode</div></div>
+                <div class="card"><div class="stat-label">러닝타임</div><div class="stat-value" th:text="${movie.showTime != null ? movie.showTime + '분' : '-'}">128분</div></div>
             </section>
         </div>
     </section>
@@ -492,15 +538,98 @@
         </div>
     </section>
 
+    <!-- 예고편 섹션 -->
+    <section class="trailer-section" th:if="${!#lists.isEmpty(videos)}">
+        <div class="trailer-header">
+            <h2 class="trailer-title">예고편 / 영상</h2>
+        </div>
+        <div class="trailer-tabs" id="trailerTabs">
+            <button class="trailer-tab active" th:each="v, vStat : ${videos}"
+                    th:attr="data-key=${v.video_key}"
+                    th:text="${vStat.index == 0 ? (v.video_name != null ? v.video_name : '예고편 1') : (v.video_name != null ? v.video_name : '영상 ' + (vStat.index + 1))}">
+                예고편
+            </button>
+        </div>
+        <div class="trailer-embed">
+            <iframe id="trailerIframe"
+                    th:src="'https://www.youtube.com/embed/' + ${videos[0].video_key} + '?rel=0'"
+                    allowfullscreen
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
+            </iframe>
+        </div>
+    </section>
+
+    <section class="movie-images-section" id="imageSection">
+        <div class="movie-images-header">
+            <h2 class="movie-images-title">이미지</h2>
+            <span class="movie-images-count" id="imageCount"></span>
+        </div>
+        <div class="movie-images-grid" id="imageGrid">
+            <div class="img-skeleton"></div>
+            <div class="img-skeleton"></div>
+            <div class="img-skeleton"></div>
+        </div>
+        <button type="button" class="img-more-btn" id="imgMoreBtn"></button>
+    </section>
+
+    <section class="watch-section" th:if="${showWatchLinksSection}">
+        <div class="watch-header">
+            <h2 class="watch-title">보러가기</h2>
+            <span class="watch-source">Kinolights 캐시</span>
+        </div>
+        <div class="watch-list" th:if="${watchLinks != null and !watchLinks.isEmpty()}">
+            <a class="watch-card"
+               th:each="link : ${watchLinks}"
+               th:href="${link.url}"
+               target="_blank"
+               rel="noopener noreferrer">
+                <span class="watch-provider">
+                    <img class="watch-logo"
+                         th:if="${link.logoUrl() != null}"
+                         th:src="${link.logoUrl()}"
+                         th:alt="${link.providerName}">
+                    <span class="watch-logo-fallback"
+                          th:if="${link.logoUrl() == null}"
+                          th:text="${link.fallbackLabel()}">O</span>
+                    <span class="watch-provider-name" th:text="${link.providerName}">TVING</span>
+                </span>
+                <span class="watch-arrow">이동</span>
+            </a>
+        </div>
+        <p class="watch-empty" th:if="${watchLinks == null or watchLinks.isEmpty()}">없음.</p>
+    </section>
+
+    <!-- 이미지 라이트박스 -->
+    <div class="img-lightbox" id="imgLightbox" hidden>
+        <button class="img-lightbox-close" id="imgLightboxClose" type="button">✕</button>
+        <img class="img-lightbox-img" id="imgLightboxImg" src="" alt="영화 이미지">
+        <button class="img-lightbox-nav img-lightbox-prev" id="imgLightboxPrev" type="button">‹</button>
+        <button class="img-lightbox-nav img-lightbox-next" id="imgLightboxNext" type="button">›</button>
+    </div>
+
     <section class="sections">
-        <article class="card"><h3>장르</h3><div class="chips" th:if="${!#lists.isEmpty(genres)}"><span class="chip" th:each="genre : ${genres}" th:text="${genre}">장르</span></div><p class="empty" th:if="${#lists.isEmpty(genres)}">장르 정보가 없습니다.</p></article>
+        <article class="card"><h3>장르</h3><div class="chips" th:if="${!#lists.isEmpty(genres)}"><span class="chip" th:each="genre, stat : ${genres}" th:if="${stat.index < 5}" th:text="${genre}">장르</span></div><p class="empty" th:if="${#lists.isEmpty(genres)}">장르 정보가 없습니다.</p></article>
         <article class="card"><h3>추천 태그</h3><div class="chips" th:if="${!#lists.isEmpty(recommendationTags)}"><span class="chip" th:each="tag : ${recommendationTags}" th:text="${tag.tagTypeLabel + ' · ' + tag.tagLabel}">태그</span></div><p class="empty" th:if="${#lists.isEmpty(recommendationTags)}">추천 태그가 없습니다.</p></article>
-        <article class="card"><h3>감독 / 배우</h3><div class="chips" th:if="${!#lists.isEmpty(directors)}"><span class="chip" th:each="director : ${directors}" th:text="${director}">감독</span></div><div class="chips" style="margin-top:10px" th:if="${!#lists.isEmpty(actors)}"><span class="chip" th:each="actor : ${actors}" th:text="${actor}">배우</span></div><p class="empty" th:if="${#lists.isEmpty(directors) and #lists.isEmpty(actors)}">감독/배우 정보가 없습니다.</p></article>
-        <article class="card"><h3>제공 서비스</h3><div class="meta-list" th:if="${!#lists.isEmpty(providers)}"><div class="meta-item" th:each="provider : ${providers}" th:text="${provider.name + ' · ' + provider.type}">Netflix · 구독</div></div><p class="empty" th:if="${#lists.isEmpty(providers)}">제공 서비스 정보가 없습니다.</p></article>
+        <article class="card"><h3>감독</h3><div class="chips" th:if="${!#lists.isEmpty(directors)}"><span class="chip" th:each="director : ${directors}" th:text="${director}">감독</span></div><p class="empty" th:if="${#lists.isEmpty(directors)}">감독 정보가 없습니다.</p></article>
+        <article class="card"><h3>배우</h3><div class="chips" th:if="${!#lists.isEmpty(actors)}"><span class="chip" th:each="actor, stat : ${actors}" th:if="${stat.index < 10}" th:text="${actor}">배우</span><span class="chip" th:if="${#lists.size(actors) > 10}" th:text="|외 ${#lists.size(actors) - 10}명|">외 0명</span></div><p class="empty" th:if="${#lists.isEmpty(actors)}">배우 정보가 없습니다.</p></article>
         <article class="card"><h3>심의 / 제작사</h3><div class="meta-list" th:if="${!#lists.isEmpty(audits) or !#lists.isEmpty(companies)}"><div class="meta-item" th:each="audit : ${audits}" th:text="${(audit.auditNo != null ? audit.auditNo : '심의번호 없음') + ' · ' + (audit.watchGradeName != null ? audit.watchGradeName : '등급 정보 없음')}">심의번호 · 12세 관람가</div><div class="meta-item" th:each="company : ${companies}" th:text="${company.name + ' · ' + (company.role != null ? company.role : '참여사')}">제작사 · 배급</div></div><p class="empty" th:if="${#lists.isEmpty(audits) and #lists.isEmpty(companies)}">추가 정보가 없습니다.</p></article>
     </section>
 </main>
 
+<script>
+    (function () {
+        const tabs = document.getElementById('trailerTabs');
+        const iframe = document.getElementById('trailerIframe');
+        if (!tabs || !iframe) return;
+        tabs.addEventListener('click', function (e) {
+            const btn = e.target.closest('.trailer-tab');
+            if (!btn) return;
+            tabs.querySelectorAll('.trailer-tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            iframe.src = 'https://www.youtube.com/embed/' + btn.dataset.key + '?rel=0&autoplay=1';
+        });
+    })();
+</script>
 <script th:inline="javascript">
     const movieCode = [[${movie.movieCode}]];
     let movieState = {
@@ -604,7 +733,7 @@
 
         const watched = movieState.watchStatus === 'WATCHED';
         ratingBox.classList.toggle('active', watched);
-        ratingOff.style.display = watched ? 'none' : 'block';
+        ratingOff.hidden = true;
         ratingBadge.textContent = movieState.rating ? `${movieState.rating}점` : '미평가';
         ratingNote.textContent = movieState.rating ? `${movieState.rating}점으로 저장되었습니다.` : '아직 별점이 없습니다.';
         paintStars(movieState.rating || 0);
@@ -957,6 +1086,80 @@
     }
 
     loadReviews();
+})();
+</script>
+
+<script th:inline="javascript">
+(function () {
+    const movieCode = /*[[${movie.movieCode}]]*/ '';
+    const section = document.getElementById('imageSection');
+    const grid = document.getElementById('imageGrid');
+    const countEl = document.getElementById('imageCount');
+    const lightbox = document.getElementById('imgLightbox');
+    const lightboxImg = document.getElementById('imgLightboxImg');
+
+    let images = [];
+    let currentIndex = 0;
+
+    function openLightbox(index) {
+        currentIndex = index;
+        lightboxImg.src = images[index].url;
+        lightbox.hidden = false;
+        document.body.classList.add('modal-open');
+    }
+
+    function closeLightbox() {
+        lightbox.hidden = true;
+        document.body.classList.remove('modal-open');
+    }
+
+    document.getElementById('imgLightboxClose').addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+    document.getElementById('imgLightboxPrev').addEventListener('click', () => openLightbox((currentIndex - 1 + images.length) % images.length));
+    document.getElementById('imgLightboxNext').addEventListener('click', () => openLightbox((currentIndex + 1) % images.length));
+    document.addEventListener('keydown', e => {
+        if (lightbox.hidden) return;
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') openLightbox((currentIndex - 1 + images.length) % images.length);
+        if (e.key === 'ArrowRight') openLightbox((currentIndex + 1) % images.length);
+    });
+
+    const INITIAL_LIMIT = 6;
+    const moreBtn = document.getElementById('imgMoreBtn');
+
+    function renderImages(data, limit) {
+        grid.innerHTML = data.slice(0, limit).map((img, i) =>
+            `<div class="img-item${img.type === 'poster' ? ' portrait' : ''}" data-index="${i}">
+                <img src="${img.url}" alt="영화 이미지" loading="lazy" onerror="this.closest('.img-item').style.display='none'">
+            </div>`
+        ).join('');
+    }
+
+    fetch(`/api/movies/${movieCode}/images`)
+        .then(r => r.ok ? r.json() : [])
+        .then(data => {
+            images = data;
+            if (!data.length) { section.hidden = true; return; }
+            countEl.textContent = data.length + '장';
+            renderImages(data, INITIAL_LIMIT);
+            grid.addEventListener('click', e => {
+                const item = e.target.closest('.img-item');
+                if (item) openLightbox(Number(item.dataset.index));
+            });
+            if (data.length > INITIAL_LIMIT) {
+                let expanded = false;
+                moreBtn.textContent = `이미지 더보기 (${data.length - INITIAL_LIMIT}장 더)`;
+                moreBtn.classList.add('visible');
+                moreBtn.addEventListener('click', () => {
+                    expanded = !expanded;
+                    renderImages(data, expanded ? data.length : INITIAL_LIMIT);
+                    moreBtn.textContent = expanded
+                        ? '이미지 접기'
+                        : `이미지 더보기 (${data.length - INITIAL_LIMIT}장 더)`;
+                });
+            }
+        })
+        .catch(() => { section.hidden = true; });
 })();
 </script>
 

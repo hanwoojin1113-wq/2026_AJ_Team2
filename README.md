@@ -2,6 +2,229 @@
 
 ---
 
+## 05-28 구현사항 - 영화 상세 페이지 정보 구조 정리
+
+영화 상세 페이지에서 중복 안내 문구와 과도한 부가 정보를 정리해 핵심 정보가 더 잘 보이도록 개선했습니다.
+
+- 활동 버튼 영역의 설명 문구를 제거하고 여백을 줄였습니다.
+- `좋아요`와 `별로에요` 버튼 위치를 영화 상세 페이지 기준으로 교체했습니다.
+- 별점 비활성 안내 문구를 제거해 액션 박스 하단이 비어 보이지 않도록 정리했습니다.
+- 상세 정보 카드는 `제작연도`, `러닝타임`만 남기고 나머지 박스는 제거했습니다.
+- 하단 관련 정보에서 장르는 최대 5개만 표시합니다.
+- 기존 `감독 / 배우` 통합 섹션을 `감독`, `배우` 섹션으로 분리했습니다.
+- 배우는 최대 10명까지 표시하고, 초과 인원은 `외 n명`으로 요약합니다.
+- 기존 `제공 서비스` 정보 박스는 실제 이동 URL을 제공하는 `보러가기` 섹션과 역할이 겹쳐 제거했습니다.
+
+---
+
+## 05-28 구현사항 - OTT 보러가기 링크 200개 크롤링 캐시 전환
+
+영화 상세 페이지의 `보러가기` 링크 관리를 하드코딩 seed 중심에서 DB 캐시 중심으로 전환했습니다.
+
+- `movie_ott_link`: 영화별 제공처 direct URL 저장. 같은 제공처가 여러 URL이면 첫 번째 URL만 서비스에 노출합니다.
+- `movie_ott_crawl_status`: 영화별 크롤링 결과를 `SUCCESS`, `NO_LINK`, `NO_TITLE`, `FAILED`로 관리합니다.
+- `kinolights_title_mapping`: 우리 DB 영화와 키노라이츠 작품 URL 매핑을 저장합니다.
+- 중복 방지는 링크 존재 여부가 아니라 크롤링 상태 기준으로 처리합니다. 그래서 URL 1개가 이미 있다는 이유로 같은 영화의 다른 제공처를 놓치지 않습니다.
+- 키노라이츠에 작품이 없거나 보러가기 링크가 없는 영화는 상태 테이블에 따로 남기므로, H2 콘솔에서 수동 확인/보정 대상을 조회할 수 있습니다.
+
+200개 후보 영화에 대해 키노라이츠 공개 페이지를 저빈도로 크롤링했고, 결과는 아래 파일에 정리되어 있습니다.
+
+- 후보 목록: `output/kinolights_candidates_200.csv`
+- URL 원본 결과: `output/kinolights_ott_links_200_clean.csv`
+- 영화별 요약: `output/kinolights_ott_links_200_summary.csv`
+
+실행 흐름:
+
+```powershell
+$base = "http://localhost:8080"
+Invoke-WebRequest "$base/admin/ott-links/candidates.csv?limit=200" -OutFile "output/kinolights_candidates_200.csv"
+
+python scripts/kinolights_ott_crawler.py `
+  --input output/kinolights_candidates_200.csv `
+  --output output/kinolights_ott_links_200_clean.csv `
+  --max-items 200 `
+  --delay-min 2 `
+  --delay-max 4 `
+  --search-timeout-ms 6000 `
+  --max-clicks 0 `
+  --resume
+
+Invoke-RestMethod -Method Post "$base/admin/ott-links/import-csv?path=output/kinolights_ott_links_200_clean.csv"
+```
+
+이번 200개 크롤링 결과:
+
+- 총 200개 영화 처리
+- direct URL 확보: 181개
+- 보러가기 링크 없음: 19개
+- DB import 결과: 영화 181개, provider별 대표 링크 306개 저장
+
+---
+
+## 05-26 구현사항 - OTT 보러가기 링크 PoC 및 영화 상세 페이지 반영
+
+### 영화 상세 페이지 `보러가기` 섹션
+
+영화 상세 페이지의 이미지 영역 아래에 `보러가기` 섹션을 추가했습니다. 기존 TMDB 제공 서비스 영역은 provider 이름/로고만 보여주는 정보성 영역이고, 이번 섹션은 실제 외부 서비스의 작품 상세 페이지로 이동하는 direct URL을 제공합니다.
+
+- 키노라이츠 공개 작품 페이지에서 OTT/극장 링크를 저빈도 크롤링해 URL 후보를 확보
+- 서비스 요청 시 실시간 크롤링하지 않음
+- 크롤링 결과를 10개 영화 seed로 반영하고, 상세 페이지 접근 시 `movie_ott_link` 런타임 테이블에 `MERGE` 적재
+- 화면은 크롤링이 아니라 DB에 저장된 `movie_ott_link`만 조회
+- 같은 provider가 여러 개 잡힌 경우 첫 번째 링크만 사용
+- 키노라이츠에 링크가 없거나 seed 대상이 아닌 영화는 현재 단계에서 `보러가기` 섹션을 숨김
+- 쿠팡플레이, 라프텔, CGV, 롯데시네마, 메가박스는 로컬 provider 아이콘 fallback을 사용
+
+### 10개 테스트 영화
+
+현재 PoC로 반영한 영화는 아래 10개입니다.
+
+| 영화 | 반영된 링크 유형 |
+|------|------------------|
+| 기생충 | Netflix, TVING, Wavve, Watcha |
+| 공조2: 인터내셔날 | Netflix, TVING, Wavve, Watcha |
+| 스파이더맨: 노 웨이 홈 | Wavve, Watcha, Apple TV |
+| 명량 | Netflix, TVING, Wavve, Watcha |
+| 탑건: 매버릭 | Wavve, Coupang Play |
+| 극장판 귀멸의 칼날: 무한열차편 | Netflix, TVING, Wavve, Watcha, Laftel |
+| 포레스트 검프 | Wavve |
+| 쇼생크 탈출 | Coupang Play |
+| 엑시트 | Netflix, TVING, Wavve, Watcha |
+| 프로젝트 헤일메리 | CGV, 롯데시네마, 메가박스, Apple TV |
+
+### 크롤링 실행 방법
+
+크롤러는 Spring Boot 앱과 분리된 독립 Python 스크립트입니다. 서비스 서버에서 실시간으로 돌리는 용도가 아니라, 링크 후보를 수집하고 검증하기 위한 관리용 PoC입니다.
+
+처음 한 번 설치:
+
+```powershell
+python -m pip install playwright
+python -m playwright install chromium
+```
+
+10개 영화 URL 입력 파일:
+
+```text
+scripts/kinolights_titles.csv
+```
+
+크롤링 실행:
+
+```powershell
+python scripts/kinolights_ott_crawler.py --input scripts/kinolights_titles.csv --output output/kinolights_ott_links_10_with_theaters.csv --max-items 10 --delay-min 1 --delay-max 2
+```
+
+결과 CSV:
+
+```text
+output/kinolights_ott_links_10_with_theaters.csv
+```
+
+CSV에는 `provider`, `watch_url`, `raw_url`, `raw_text`, `source_method`가 기록됩니다. 최종 서비스에 사용할 값은 `watch_url`입니다.
+
+### DB 적재 흐름
+
+현재 10개 영화 링크는 `MovieController`의 `WATCH_LINK_SEEDS`에 seed로 반영되어 있습니다. 앱 실행 후 해당 영화 상세 페이지에 접근하면 아래 흐름으로 DB에 적재됩니다.
+
+```text
+영화 상세 페이지 접근
+→ movie_ott_link 테이블 CREATE TABLE IF NOT EXISTS
+→ 현재 영화 제목과 WATCH_LINK_SEEDS 매칭
+→ provider별 첫 번째 watch_url을 MERGE INTO movie_ott_link
+→ 화면은 movie_ott_link 조회 결과로 보러가기 섹션 렌더링
+```
+
+즉 사용자 화면에서 키노라이츠를 매번 호출하지 않고, DB에 적재된 링크만 사용합니다. 추후 100개 이상으로 확장할 때는 `WATCH_LINK_SEEDS` 하드코딩 대신 CSV import 또는 관리자 배치 endpoint로 `movie_ott_link`에 일괄 적재하는 구조로 전환하면 됩니다.
+
+### 변경 파일
+
+| 파일 | 내용 |
+|------|------|
+| `scripts/kinolights_ott_crawler.py` | 키노라이츠 공개 페이지에서 OTT/극장 direct URL 후보 추출 |
+| `scripts/kinolights_titles.csv` | 10개 테스트 영화의 키노라이츠 URL 목록 |
+| `scripts/README_KINOLIGHTS_OTT.md` | 크롤러 실행/해석 문서 |
+| `MovieController.java` | `movie_ott_link` 런타임 테이블 생성, 10개 seed 적재, 보러가기 model attribute 추가 |
+| `templates/movie-detail.html` | 영화 상세 페이지 `보러가기` UI 추가 |
+| `static/images/providers/*` | 쿠팡플레이, 라프텔, CGV, 롯데시네마, 메가박스 로컬 아이콘 |
+
+---
+
+## 05-26 구현 사항
+
+### 영화 배틀 기능
+
+두 영화를 맞붙여 사용자가 투표하는 배틀 시스템을 추가했습니다.
+
+#### 배틀 자동 생성 (5가지 타입)
+
+| 타입 | 기준 | 조건 |
+|------|------|------|
+| GENRE | 같은 장르의 영화 2편 | 평점 7.0+, 유사 평점대 (±1.5), popularity 5.0+ |
+| DIRECTOR | 같은 감독의 작품 2편 | 평점 7.0+ |
+| ACTOR | 같은 배우(주연 3위 이내) 출연작 2편 | 평점 7.0+ |
+| TAG | 같은 MOOD 태그를 가진 영화 2편 | 평점 7.0+ |
+| ERA | 같은 10년대 영화 2편 | 평점 7.5+, 평점 차 ±1.0 이내 |
+
+- 이미 존재하는 페어는 UNIQUE 제약으로 자동 무시
+- `/battles` 진입 시 배틀이 없으면 자동 생성
+
+#### 투표 방식
+
+- 첫 투표 → 저장
+- 같은 영화 재클릭 → 취소
+- 다른 영화 클릭 → 변경
+- 득표 수와 비율(%)을 실시간으로 응답
+
+#### 05-26 영화 배틀 변경 파일
+
+| 파일 | 유형 | 설명 |
+|------|------|------|
+| `battle/MovieBattleService.java` | 신규 | 배틀 생성·투표·조회 핵심 로직, `movie_battle`/`battle_vote` 테이블 자동 생성 |
+| `battle/MovieBattleController.java` | 신규 | `GET /battles`, `POST /api/battles/generate`, `POST /api/battles/{id}/vote` |
+| `templates/battle.html` | 신규 | 배틀 목록 및 투표 UI 페이지 |
+| `templates/fragments/app-shell.html` | 수정 | 좌측 사이드 네비게이션에 "영화 배틀" 메뉴 추가 |
+
+---
+
+### 영화 상세 페이지 — 이미지 갤러리 + 예고편
+
+#### 이미지 갤러리
+
+- `GET /api/movies/{movieCode}/images` 엔드포인트 신규 추가
+- TMDB API 실시간 호출로 backdrop 최대 8장 + poster 최대 4장 수집
+- TMDB 이미지가 없으면 DB에 저장된 `backdrop_path` / `poster_path`로 폴백
+- 3열 그리드로 표시, 로딩 중 shimmer 스켈레톤 3개 노출
+- 기본 6장만 표시 후 "더 보기" 버튼으로 전체 노출
+- 이미지 클릭 시 라이트박스 전체화면 뷰: ‹ › 버튼 및 키보드 방향키로 탐색, Esc로 닫기
+
+#### 예고편 / 영상
+
+- TMDB 정규화 단계에서 YouTube 영상을 `movie_video` 테이블에 저장 (Trailer → Teaser → Clip 우선순위 정렬)
+- 영상이 있는 경우 영화 상세 페이지에 YouTube iframe 탭 UI 표시
+- 여러 영상이 있을 경우 탭 전환 가능, 탭 클릭 시 autoplay
+
+#### YouTube 트레일러 보완 배치
+
+- TMDB에 영상이 없는 영화를 대상으로 YouTube Data API v3로 트레일러 검색
+- 한국어 제목 → 원제(영어) 순으로 재시도
+- `POST /youtube/fill-trailers?limit=50` 배치 엔드포인트로 수동 실행
+- `GET /tmdb/video-stats`로 영상 보유 현황 통계 확인 가능
+
+#### 05-26 영화 상세 변경 파일
+
+| 파일 | 유형 | 설명 |
+|------|------|------|
+| `MovieController.java` | 수정 | `GET /api/movies/{movieCode}/images` 추가, `videos` model attribute 주입 |
+| `templates/movie-detail.html` | 수정 | 이미지 갤러리(3열 그리드 + 라이트박스), 예고편 탭 UI 추가 |
+| `tmdb/TmdbMovieNormalizeService.java` | 수정 | `normalizeVideos()` 추가 — TMDB YouTube 영상 정규화 및 `movie_video` 저장 |
+| `tmdb/TmdbTestController.java` | 수정 | `GET /tmdb/video-stats` 추가 |
+| `youtube/YoutubeTrailerService.java` | 신규 | YouTube API로 트레일러 검색 후 `movie_video`에 저장 |
+| `youtube/YoutubeTrailerController.java` | 신규 | `POST /youtube/fill-trailers` 배치 엔드포인트 |
+| `application.properties` | 수정 | `youtube.api-key` 환경변수 설정 추가 |
+
+---
+
 ## 05-18 UI/UX 인터랙션 개선
 
 토스증권·인스타그램 스타일의 애니메이션 및 인터랙션 효과를 전반적으로 추가했습니다.
