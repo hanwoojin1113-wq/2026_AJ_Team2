@@ -1,119 +1,114 @@
-# Kinolights OTT Link PoC
+# Kinolights OTT Link Crawler
 
 ## 목적
 
-CineMatch 영화 상세 페이지에서 OTT 버튼을 눌렀을 때 해당 OTT의 작품 페이지로 이동할 수 있는지 확인하기 위한 소규모 PoC입니다.
+영화 상세 페이지의 `보러가기` 섹션에 사용할 OTT/극장 direct URL을 소규모로 수집해 DB 캐시로 관리한다.
 
-이 스크립트는 Spring Boot 서비스 코드, DB schema, 템플릿을 수정하지 않습니다. 수동으로 준비한 키노라이츠 작품 URL 목록을 Playwright로 렌더링하고, 공개 페이지의 `보러가기` 주변에서 OTT 제공사 URL 후보를 CSV로 캐싱합니다.
+서비스 요청 시마다 크롤링하지 않는다. 공개 키노라이츠 작품 페이지를 낮은 빈도로 확인하고, 결과를 CSV로 저장한 뒤 `/admin/ott-links/import-csv`로 DB에 적재한다.
 
-## 운영 원칙
+## 관리 방식
 
-- 공개 작품 페이지 URL만 대상으로 합니다.
-- 로그인, 캡차, 차단 우회, 비공개 API 호출은 하지 않습니다.
-- 서비스 요청 시점에 크롤링하지 않습니다.
-- 100개 내외 샘플을 저빈도로 수집한 뒤 결과 CSV/DB 캐시만 서비스에서 사용합니다.
-- 결과 URL은 사람이 샘플 클릭 검증해야 합니다.
+크롤링 결과는 세 가지 상태로 분리해서 관리한다.
+
+- `movie_ott_link`: 실제 표시할 제공처 URL. 영화별 제공처 하나만 저장한다. 같은 제공처가 여러 개면 키노라이츠에서 먼저 나온 URL만 사용한다.
+- `movie_ott_crawl_status`: 영화별 크롤링 상태. `SUCCESS`, `NO_TITLE`, `NO_LINK`, `FAILED`를 저장한다.
+- `kinolights_title_mapping`: 우리 DB의 movie_id와 키노라이츠 작품 URL 매핑.
+
+중복 방지 기준은 `movie_ott_link` 존재 여부가 아니라 `movie_ott_crawl_status`다. 그래서 URL 1개가 이미 있다는 이유로 같은 영화의 나머지 제공처를 놓치는 문제를 피한다.
 
 ## 설치
-
-PowerShell 기준:
 
 ```powershell
 python -m pip install playwright
 python -m playwright install chromium
 ```
 
-## 입력 CSV
+## 200개 후보 CSV 만들기
 
-기본 입력 파일:
-
-```text
-scripts/kinolights_titles.csv
-```
-
-형식:
-
-```csv
-title,kinolights_url
-기생충,https://m.kinolights.com/title/66957
-파묘,https://m.kinolights.com/title/125723
-```
-
-`scripts/kinolights_titles.csv`가 없으면 샘플 파일 `scripts/kinolights_titles.sample.csv`를 사용합니다. 실제 검증 전에는 URL이 현재 키노라이츠 작품과 맞는지 직접 확인하세요.
-
-## 실행
-
-기본 실행:
+Spring Boot 앱을 실행한 뒤 후보 CSV를 받는다.
 
 ```powershell
-python scripts/kinolights_ott_crawler.py
+$base = "http://localhost:8080"
+Invoke-WebRequest "$base/admin/ott-links/candidates.csv?limit=200" -OutFile "output/kinolights_candidates_200.csv"
 ```
 
-100개 이하로 제한하고 결과 파일 지정:
+이미 `SUCCESS`, `NO_TITLE`, `NO_LINK` 상태인 영화는 후보에서 제외된다. `FAILED`는 재시도 대상이다.
+
+## 크롤링 실행
 
 ```powershell
-python scripts/kinolights_ott_crawler.py --input scripts/kinolights_titles.csv --output output/kinolights_ott_links.csv --max-items 100
+python scripts/kinolights_ott_crawler.py `
+  --input output/kinolights_candidates_200.csv `
+  --output output/kinolights_ott_links_200.csv `
+  --max-items 200 `
+  --delay-min 3 `
+  --delay-max 7 `
+  --max-clicks 0 `
+  --resume
 ```
 
-브라우저를 눈으로 보면서 디버깅:
+`kinolights_url`이 비어 있으면 크롤러가 키노라이츠 검색 페이지에서 `/title/{id}` URL을 찾는다. 못 찾으면 `NO_TITLE`로 남긴다.
+대량 실행에서는 우선 `--max-clicks 0`으로 anchor/redirect URL만 수집하는 편이 안정적이다. 클릭으로 새 창을 여는 케이스까지 확인해야 할 때만 `--max-clicks 2` 이상으로 다시 보강한다.
+
+## DB 적재
+
+크롤링 CSV를 앱으로 import한다.
 
 ```powershell
-python scripts/kinolights_ott_crawler.py --headful --max-items 5
+$base = "http://localhost:8080"
+Invoke-RestMethod -Method Post "$base/admin/ott-links/import-csv?path=output/kinolights_ott_links_200.csv"
 ```
 
-요청 간 딜레이 조정:
+기존 10개 결과를 새 관리 방식으로 옮기려면 다음을 먼저 실행한다.
 
 ```powershell
-python scripts/kinolights_ott_crawler.py --delay-min 5 --delay-max 10
+$base = "http://localhost:8080"
+Invoke-RestMethod -Method Post "$base/admin/ott-links/import-csv?path=output/kinolights_ott_links_10_with_theaters.csv"
 ```
 
-## 출력 CSV
+## 결과 파일
 
-기본 출력:
+- 후보: `output/kinolights_candidates_200.csv`
+- 크롤링 결과: `output/kinolights_ott_links_200.csv`
 
-```text
-output/kinolights_ott_links.csv
+크롤링 결과 CSV 주요 컬럼:
+
+- `movie_id`, `movie_cd`, `title`
+- `kinolights_url`
+- `status`: `SUCCESS`, `NO_TITLE`, `NO_LINK`, `FAILED`
+- `provider`
+- `watch_url`
+- `raw_url`, `raw_text`, `source_method`
+- `is_external_direct`
+- `error`, `crawled_at`
+
+## 확인용 SQL
+
+```sql
+SELECT status, COUNT(*) AS movie_count
+FROM movie_ott_crawl_status
+GROUP BY status
+ORDER BY status;
 ```
 
-컬럼:
-
-- `title`: 입력 영화 제목
-- `kinolights_url`: 입력 키노라이츠 URL
-- `provider`: 감지된 OTT 제공사
-- `watch_url`: 외부 direct URL로 판단된 URL
-- `raw_url`: 원본 href 또는 클릭 후 포착 URL
-- `raw_text`: 버튼/링크 텍스트
-- `source_method`: `anchor`, `click_popup`, `click_navigation`
-- `is_external_direct`: 키노라이츠 내부 URL이 아닌 외부 URL 여부
-- `error`: 페이지 처리 실패 메시지
-- `crawled_at`: CSV 생성 시각
-
-## 결과 해석
-
-- `watch_url`이 비어 있지 않고 `is_external_direct=true`인 행이 실제 서비스 버튼 후보입니다.
-- `provider`는 잡혔지만 `watch_url`이 비어 있으면 내부 redirect 또는 버튼 구조만 확인된 상태입니다.
-- `raw_url`이 키노라이츠 내부 URL이면 direct link로 쓰기 전에 클릭/리다이렉트 검증이 필요합니다.
-- TVING, Wavve, Watcha, Coupang Play가 핵심 판단 대상입니다.
-- Netflix, Disney+, Apple TV, Google Play, Naver SeriesOn은 보조 판단 대상입니다.
-- URL이 있더라도 실제 해당 OTT의 해당 영화 상세 페이지로 이동하는지는 사람이 샘플 클릭 검증해야 합니다.
-
-## 서비스 반영 방향
-
-PoC 결과가 쓸 만하면 서비스에는 다음 구조가 안전합니다.
-
-```text
-movie_ott_link
-- id
-- movie_id
-- provider_name
-- watch_url
-- source
-- crawled_at
-- verified_at
+```sql
+SELECT provider_name, COUNT(*) AS link_count
+FROM movie_ott_link
+GROUP BY provider_name
+ORDER BY link_count DESC;
 ```
 
-운영 서비스는 크롤러를 실시간으로 호출하지 않고, 검증된 `movie_ott_link` 캐시만 조회해서 영화 상세 페이지의 OTT 버튼으로 표시하는 방식이 적절합니다.
+```sql
+SELECT m.id, COALESCE(m.title, m.movie_name) AS title, s.status, s.error_message
+FROM movie_ott_crawl_status s
+JOIN movie m ON m.id = s.movie_id
+WHERE s.status IN ('NO_TITLE', 'NO_LINK', 'FAILED')
+ORDER BY s.updated_at DESC;
+```
 
 ## 주의사항
 
-이 스크립트는 포트폴리오/기능 검증 목적의 소규모 도구입니다. 대량 수집, 재판매, 차단 우회, 로그인 세션 사용, 비공개 API 호출 용도로 확장하지 마세요.
+- 대량 실시간 크롤링 금지. 결과는 DB 캐시로만 사용한다.
+- URL은 사람이 샘플 클릭 검증해야 한다.
+- 200개 실행은 3~7초 지연 기준으로 대략 10~25분 걸릴 수 있다.
+- 키노라이츠 검색 매핑은 자동 추정이므로 `NO_TITLE` 또는 이상한 매핑은 수동 보정 대상이다.

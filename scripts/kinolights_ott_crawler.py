@@ -1,9 +1,9 @@
 """
-Small-scope Kinolights OTT direct-link crawler for CineMatch PoC.
+Kinolights OTT/theater direct-link crawler for CineMatch.
 
-This script intentionally does not touch the Spring Boot app or database.
-It reads manually prepared Kinolights title URLs, renders public pages with
-Playwright, extracts OTT-looking external links, and writes a CSV cache.
+The crawler reads movie candidates from CSV, optionally finds a Kinolights
+title page through public search pages, extracts direct watch links, and writes
+a cache CSV that can be imported through /admin/ott-links/import-csv.
 """
 
 from __future__ import annotations
@@ -12,16 +12,27 @@ import argparse
 import asyncio
 import csv
 import random
+import re
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urljoin, urlparse
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 
 DEFAULT_INPUT = Path("scripts/kinolights_titles.csv")
 DEFAULT_SAMPLE_INPUT = Path("scripts/kinolights_titles.sample.csv")
 DEFAULT_OUTPUT = Path("output/kinolights_ott_links.csv")
+KINOLIGHTS_BASE = "https://m.kinolights.com"
+
+TERMINAL_STATUSES = {"SUCCESS", "NO_TITLE", "NO_LINK"}
 
 NOISE_DOMAINS = {
     "youtube.com",
@@ -64,20 +75,25 @@ PROVIDER_ALIASES: dict[str, tuple[str, ...]] = {
 
 @dataclass(frozen=True)
 class InputTitle:
+    movie_id: str
+    movie_cd: str
     title: str
     kinolights_url: str
 
 
 @dataclass
 class OttLink:
+    movie_id: str
+    movie_cd: str
     title: str
     kinolights_url: str
-    provider: str
-    watch_url: str
-    raw_url: str
-    raw_text: str
-    source_method: str
-    is_external_direct: bool
+    status: str
+    provider: str = ""
+    watch_url: str = ""
+    raw_url: str = ""
+    raw_text: str = ""
+    source_method: str = ""
+    is_external_direct: bool = False
     error: str = ""
 
 
@@ -85,6 +101,10 @@ def normalize_text(value: str | None) -> str:
     if not value:
         return ""
     return " ".join(value.lower().replace("\u00a0", " ").split())
+
+
+def compact_text(value: str | None) -> str:
+    return re.sub(r"[\W_]+", "", normalize_text(value), flags=re.UNICODE)
 
 
 def domain_of(url: str) -> str:
@@ -104,13 +124,19 @@ def is_http_url(url: str | None) -> bool:
 
 
 def is_kinolights_url(url: str | None) -> bool:
-    domain = domain_of(url or "")
-    return domain in KINOLIGHTS_DOMAINS
+    return domain_of(url or "") in KINOLIGHTS_DOMAINS
 
 
 def is_noise_url(url: str | None) -> bool:
-    domain = domain_of(url or "")
-    return domain in NOISE_DOMAINS
+    return domain_of(url or "") in NOISE_DOMAINS
+
+
+def normalize_kinolights_url(url: str) -> str:
+    if not url:
+        return ""
+    if url.startswith("/"):
+        return urljoin(KINOLIGHTS_BASE, url)
+    return url
 
 
 def extract_redirect_target(url: str | None) -> str:
@@ -134,7 +160,7 @@ def direct_watch_url(raw_url: str | None) -> str:
 
 
 def detect_provider(*parts: str | None) -> str:
-    haystack = normalize_text(" ".join(p for p in parts if p))
+    haystack = normalize_text(" ".join(part for part in parts if part))
     if not haystack:
         return ""
 
@@ -158,24 +184,58 @@ def load_input(path: Path) -> list[InputTitle]:
     rows: list[InputTitle] = []
     with path.open(newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
-        required = {"title", "kinolights_url"}
-        if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
-            raise SystemExit("Input CSV must contain columns: title, kinolights_url")
+        if not reader.fieldnames or "title" not in set(reader.fieldnames):
+            raise SystemExit("Input CSV must contain at least a title column.")
 
         for row in reader:
             title = (row.get("title") or "").strip()
-            url = (row.get("kinolights_url") or "").strip()
-            if title and url:
-                rows.append(InputTitle(title=title, kinolights_url=url))
+            if not title:
+                continue
+            rows.append(
+                InputTitle(
+                    movie_id=(row.get("movie_id") or "").strip(),
+                    movie_cd=(row.get("movie_cd") or "").strip(),
+                    title=title,
+                    kinolights_url=(row.get("kinolights_url") or "").strip(),
+                )
+            )
 
     return rows
 
 
+def load_completed_from_output(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+
+    completed: set[str] = set()
+    with path.open(newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            status = (row.get("status") or "").strip().upper()
+            if status not in TERMINAL_STATUSES:
+                continue
+            key = row_key(
+                (row.get("movie_id") or "").strip(),
+                (row.get("title") or "").strip(),
+            )
+            if key:
+                completed.add(key)
+    return completed
+
+
+def row_key(movie_id: str, title: str) -> str:
+    if movie_id:
+        return f"id:{movie_id}"
+    if title:
+        return f"title:{compact_text(title)}"
+    return ""
+
+
 def dedupe_links(links: list[OttLink]) -> list[OttLink]:
     result: list[OttLink] = []
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[tuple[str, str, str, str]] = set()
     for link in links:
-        key = (link.title, link.provider, link.watch_url or link.raw_url)
+        key = (row_key(link.movie_id, link.title), link.provider, link.watch_url or link.raw_url, link.status)
         if key in seen:
             continue
         seen.add(key)
@@ -190,13 +250,91 @@ async def prepare_page(page: Any, url: str, timeout_ms: int) -> None:
     except Exception:
         pass
 
-    # Trigger lazy sections without hammering the page.
     for _ in range(4):
         await page.mouse.wheel(0, 1200)
         await page.wait_for_timeout(450)
 
 
-async def extract_anchor_links(page: Any, row: InputTitle) -> list[OttLink]:
+async def find_kinolights_title_url(context: Any, row: InputTitle, timeout_ms: int) -> str:
+    if row.kinolights_url:
+        return normalize_kinolights_url(row.kinolights_url)
+
+    search_urls = [
+        f"{KINOLIGHTS_BASE}/search?keyword={quote(row.title)}",
+        f"{KINOLIGHTS_BASE}/search?q={quote(row.title)}",
+        f"{KINOLIGHTS_BASE}/search?search={quote(row.title)}",
+    ]
+
+    best_url = ""
+    page = await context.new_page()
+    try:
+        for search_url in search_urls:
+            try:
+                await page.goto(search_url, wait_until="domcontentloaded", timeout=timeout_ms)
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=8_000)
+                except Exception:
+                    pass
+                await page.wait_for_timeout(800)
+            except Exception:
+                continue
+
+            candidates = await page.evaluate(
+                """
+                () => Array.from(document.querySelectorAll('a[href*="/title/"]')).map((node) => {
+                    const normalize = (value) => (value || '').replace(/\\s+/g, ' ').trim();
+                    let cur = node;
+                    const chunks = [];
+                    for (let i = 0; cur && i < 5; i += 1, cur = cur.parentElement) {
+                        chunks.push(normalize(cur.innerText || ''));
+                    }
+                    return {
+                        href: node.href || node.getAttribute('href') || '',
+                        text: normalize(chunks.join(' | '))
+                    };
+                })
+                """
+            )
+            best_url = choose_best_title_url(row.title, candidates)
+            if best_url:
+                return best_url
+    finally:
+        await page.close()
+
+    return ""
+
+
+def choose_best_title_url(title: str, candidates: list[dict[str, str]]) -> str:
+    target = compact_text(title)
+    if not candidates:
+        return ""
+
+    unique: dict[str, str] = {}
+    for candidate in candidates:
+        href = normalize_kinolights_url(candidate.get("href", ""))
+        if "/title/" not in href:
+            continue
+        unique.setdefault(href.split("?")[0], candidate.get("text", ""))
+
+    if not unique:
+        return ""
+
+    scored: list[tuple[int, str]] = []
+    for href, text in unique.items():
+        compact = compact_text(text)
+        score = 0
+        if target and target in compact:
+            score += 100
+        if compact and compact in target:
+            score += 40
+        score -= len(scored)
+        scored.append((score, href))
+
+    scored.sort(reverse=True)
+    return scored[0][1] if scored[0][0] > 0 else next(iter(unique.keys()))
+
+
+async def extract_anchor_links(page: Any, row: InputTitle, kinolights_url: str) -> list[OttLink]:
     items = await page.evaluate(
         """
         () => {
@@ -238,24 +376,25 @@ async def extract_anchor_links(page: Any, row: InputTitle) -> list[OttLink]:
         if is_noise_url(target_url):
             continue
 
-        text_parts = [
+        label_parts = [
             item.get("text", ""),
             item.get("aria", ""),
             item.get("title", ""),
             item.get("imgAlt", ""),
-            target_url,
-            href,
         ]
-        provider = detect_provider(*text_parts)
+        provider = detect_provider(target_url, href) or detect_provider(*label_parts)
         if not provider:
             continue
 
         watch_url = direct_watch_url(href)
-        raw_text = next((part for part in text_parts[:4] if part), "")
+        raw_text = next((part for part in [*label_parts, item.get("ancestorText", "")] if part), "")
         links.append(
             OttLink(
+                movie_id=row.movie_id,
+                movie_cd=row.movie_cd,
                 title=row.title,
-                kinolights_url=row.kinolights_url,
+                kinolights_url=kinolights_url,
+                status="SUCCESS" if watch_url else "NO_LINK",
                 provider=provider,
                 watch_url=watch_url,
                 raw_url=href,
@@ -273,44 +412,23 @@ async def mark_click_candidates(page: Any) -> list[dict[str, Any]]:
         """
         () => {
             const normalize = (value) => (value || '').replace(/\\s+/g, ' ').trim();
-            const providerPattern = /(tving|티빙|wavve|wave|웨이브|watcha|왓챠|coupang|쿠팡|netflix|넷플릭스|disney|디즈니|apple|애플|google|구글|naver|네이버|serieson|시리즈온|prime|amazon|laftel|라프텔)/i;
+            const providerPattern = /(tving|티빙|wavve|wave|웨이브|watcha|왓챠|coupang|쿠팡|netflix|넷플릭스|disney|디즈니|apple|애플|google|구글|naver|네이버|serieson|시리즈온|prime|amazon|laftel|라프텔|cgv|씨지브이|lotte|롯데|megabox|메가박스)/i;
 
             const candidates = [];
             const nodes = Array.from(document.querySelectorAll('a[href], button, [role="button"], [onclick]'));
-
-            for (const node of nodes) {
-                const imgAlt = Array.from(node.querySelectorAll('img'))
-                    .map((img) => img.getAttribute('alt') || '')
-                    .filter(Boolean)
-                    .join(' ');
-                const ownText = normalize([
+            nodes.forEach((node, index) => {
+                const text = normalize([
                     node.innerText || '',
                     node.getAttribute('aria-label') || '',
                     node.getAttribute('title') || '',
-                    imgAlt,
-                    node.getAttribute('href') || ''
+                    Array.from(node.querySelectorAll('img')).map((img) => img.getAttribute('alt') || '').join(' ')
                 ].join(' '));
-
-                let ancestor = node;
-                const ancestorChunks = [];
-                for (let i = 0; ancestor && i < 5; i += 1, ancestor = ancestor.parentElement) {
-                    ancestorChunks.push(normalize(ancestor.innerText || ''));
-                }
-                const contextText = ancestorChunks.join(' | ');
-                if (!providerPattern.test(ownText)) {
-                    continue;
-                }
-
-                const index = candidates.length;
-                node.setAttribute('data-cm-ott-crawl-index', String(index));
-                candidates.push({
-                    index,
-                    text: ownText,
-                    contextText,
-                    href: node.href || node.getAttribute('href') || ''
-                });
-            }
-
+                const href = node.href || node.getAttribute('href') || '';
+                if (!providerPattern.test(`${text} ${href}`)) return;
+                const attr = `cm-ott-${index}`;
+                node.setAttribute('data-cm-ott-crawl-index', attr);
+                candidates.push({ index: attr, text, href });
+            });
             return candidates;
         }
         """
@@ -320,6 +438,7 @@ async def mark_click_candidates(page: Any) -> list[dict[str, Any]]:
 async def click_provider_candidates(
     page: Any,
     row: InputTitle,
+    kinolights_url: str,
     timeout_ms: int,
     max_clicks: int,
 ) -> list[OttLink]:
@@ -333,11 +452,9 @@ async def click_provider_candidates(
 
         href = candidate.get("href", "")
         target_url = direct_watch_url(href) or href
-        provider = detect_provider(candidate.get("text", ""), target_url, href)
+        provider = detect_provider(target_url, href) or detect_provider(candidate.get("text", ""))
         if not provider:
             continue
-
-        # Already handled by anchor extraction if the href can be resolved to a direct URL.
         if direct_watch_url(href):
             continue
 
@@ -370,7 +487,7 @@ async def click_provider_candidates(
                 captured_url = page.url
                 source_method = "click_navigation"
                 try:
-                    await prepare_page(page, row.kinolights_url, timeout_ms)
+                    await prepare_page(page, kinolights_url, timeout_ms)
                     await mark_click_candidates(page)
                 except Exception:
                     pass
@@ -380,10 +497,14 @@ async def click_provider_candidates(
             continue
 
         watch_url = direct_watch_url(captured_url)
+        provider = detect_provider(target_url, captured_url) or provider
         links.append(
             OttLink(
+                movie_id=row.movie_id,
+                movie_cd=row.movie_cd,
                 title=row.title,
-                kinolights_url=row.kinolights_url,
+                kinolights_url=kinolights_url,
+                status="SUCCESS" if watch_url else "NO_LINK",
                 provider=provider,
                 watch_url=watch_url,
                 raw_url=captured_url,
@@ -400,30 +521,63 @@ async def crawl_one(
     browser_context: Any,
     row: InputTitle,
     timeout_ms: int,
+    search_timeout_ms: int,
     max_clicks: int,
+    auto_search: bool,
 ) -> list[OttLink]:
     page = await browser_context.new_page()
     try:
-        print(f"[START] {row.title} - {row.kinolights_url}")
-        await prepare_page(page, row.kinolights_url, timeout_ms)
-        links = await extract_anchor_links(page, row)
-        links.extend(await click_provider_candidates(page, row, timeout_ms, max_clicks))
+        kinolights_url = normalize_kinolights_url(row.kinolights_url)
+        if not kinolights_url and auto_search:
+            kinolights_url = await find_kinolights_title_url(browser_context, row, search_timeout_ms)
+
+        if not kinolights_url:
+            print(f"[NO_TITLE] {row.title}")
+            return [
+                OttLink(
+                    movie_id=row.movie_id,
+                    movie_cd=row.movie_cd,
+                    title=row.title,
+                    kinolights_url="",
+                    status="NO_TITLE",
+                    error="Kinolights title page not found",
+                )
+            ]
+
+        print(f"[START] {row.title} - {kinolights_url}")
+        await prepare_page(page, kinolights_url, timeout_ms)
+        links = await extract_anchor_links(page, row, kinolights_url)
+        links.extend(await click_provider_candidates(page, row, kinolights_url, timeout_ms, max_clicks))
         links = dedupe_links(links)
         direct_count = sum(1 for link in links if link.is_external_direct and link.watch_url)
+        if direct_count == 0:
+            print(f"[NO_LINK] {row.title}")
+            return [
+                OttLink(
+                    movie_id=row.movie_id,
+                    movie_cd=row.movie_cd,
+                    title=row.title,
+                    kinolights_url=kinolights_url,
+                    status="NO_LINK",
+                    error="No direct watch links found",
+                )
+            ]
+
+        for link in links:
+            if link.watch_url and link.is_external_direct:
+                link.status = "SUCCESS"
+        links = [link for link in links if link.watch_url and link.is_external_direct]
         print(f"[DONE] {row.title} - {len(links)} candidates, {direct_count} direct URLs")
         return links
     except Exception as exc:
-        print(f"[ERROR] {row.title}: {exc}")
+        print(f"[FAILED] {row.title}: {exc}")
         return [
             OttLink(
+                movie_id=row.movie_id,
+                movie_cd=row.movie_cd,
                 title=row.title,
                 kinolights_url=row.kinolights_url,
-                provider="",
-                watch_url="",
-                raw_url="",
-                raw_text="",
-                source_method="",
-                is_external_direct=False,
+                status="FAILED",
                 error=str(exc),
             )
         ]
@@ -431,11 +585,14 @@ async def crawl_one(
         await page.close()
 
 
-def write_csv(path: Path, rows: list[OttLink]) -> None:
+def write_csv(path: Path, rows: list[OttLink], append: bool) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
+        "movie_id",
+        "movie_cd",
         "title",
         "kinolights_url",
+        "status",
         "provider",
         "watch_url",
         "raw_url",
@@ -446,15 +603,20 @@ def write_csv(path: Path, rows: list[OttLink]) -> None:
         "crawled_at",
     ]
     crawled_at = datetime.now(timezone.utc).isoformat()
+    mode = "a" if append and path.exists() else "w"
 
-    with path.open("w", newline="", encoding="utf-8-sig") as f:
+    with path.open(mode, newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
+        if mode == "w":
+            writer.writeheader()
         for row in rows:
             writer.writerow(
                 {
+                    "movie_id": row.movie_id,
+                    "movie_cd": row.movie_cd,
                     "title": row.title,
                     "kinolights_url": row.kinolights_url,
+                    "status": row.status,
                     "provider": row.provider,
                     "watch_url": row.watch_url,
                     "raw_url": row.raw_url,
@@ -469,7 +631,10 @@ def write_csv(path: Path, rows: list[OttLink]) -> None:
 
 def print_summary(input_count: int, rows: list[OttLink], output: Path) -> None:
     direct_rows = [row for row in rows if row.watch_url and row.is_external_direct]
-    titles_with_direct = {row.title for row in direct_rows}
+    success_titles = {row_key(row.movie_id, row.title) for row in direct_rows}
+    no_title = {row_key(row.movie_id, row.title) for row in rows if row.status == "NO_TITLE"}
+    no_link = {row_key(row.movie_id, row.title) for row in rows if row.status == "NO_LINK"}
+    failed = {row_key(row.movie_id, row.title) for row in rows if row.status == "FAILED"}
     provider_counts: dict[str, int] = {}
     for row in direct_rows:
         provider_counts[row.provider] = provider_counts.get(row.provider, 0) + 1
@@ -477,7 +642,10 @@ def print_summary(input_count: int, rows: list[OttLink], output: Path) -> None:
     print("")
     print("Kinolights OTT crawl summary")
     print(f"- input titles: {input_count}")
-    print(f"- titles with direct URL: {len(titles_with_direct)}")
+    print(f"- titles with direct URL: {len(success_titles)}")
+    print(f"- no Kinolights title: {len(no_title)}")
+    print(f"- no watch links: {len(no_link)}")
+    print(f"- failed: {len(failed)}")
     print(f"- direct URL count: {len(direct_rows)}")
     for provider in PROVIDER_ALIASES:
         print(f"- {provider}: {provider_counts.get(provider, 0)}")
@@ -493,16 +661,19 @@ async def run(args: argparse.Namespace) -> None:
         ) from exc
 
     input_rows = load_input(Path(args.input))
+    output_path = Path(args.output)
+    completed = load_completed_from_output(output_path) if args.resume else set()
+    if completed:
+        input_rows = [row for row in input_rows if row_key(row.movie_id, row.title) not in completed]
+
     if args.max_items > 0:
         input_rows = input_rows[: args.max_items]
 
-    output_path = Path(args.output)
     all_links: list[OttLink] = []
-
     user_agent = (
-        f"Mozilla/5.0 CineMatchOttPoC/0.1 (public-page cache; contact: {args.contact})"
+        f"Mozilla/5.0 CineMatchOttCrawler/0.2 (public-page cache; contact: {args.contact})"
         if args.contact
-        else "Mozilla/5.0 CineMatchOttPoC/0.1 (public-page cache)"
+        else "Mozilla/5.0 CineMatchOttCrawler/0.2 (public-page cache)"
     )
 
     async with async_playwright() as p:
@@ -520,9 +691,12 @@ async def run(args: argparse.Namespace) -> None:
                 context,
                 row,
                 timeout_ms=args.timeout_ms,
+                search_timeout_ms=args.search_timeout_ms,
                 max_clicks=args.max_clicks,
+                auto_search=not args.no_auto_search,
             )
             all_links.extend(links)
+            write_csv(output_path, links, append=args.resume or index > 1)
 
             if index < len(input_rows):
                 delay = random.uniform(args.delay_min, args.delay_max)
@@ -530,23 +704,25 @@ async def run(args: argparse.Namespace) -> None:
 
         await browser.close()
 
-    write_csv(output_path, all_links)
     print_summary(len(input_rows), all_links, output_path)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Crawl a small Kinolights title URL list and cache OTT direct-link candidates."
+        description="Crawl Kinolights title pages and cache OTT/theater direct-link candidates."
     )
-    parser.add_argument("--input", default=str(DEFAULT_INPUT), help="Input CSV with title,kinolights_url")
+    parser.add_argument("--input", default=str(DEFAULT_INPUT), help="Input CSV with title and optional movie_id/movie_cd/kinolights_url")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT), help="Output CSV path")
     parser.add_argument("--max-items", type=int, default=100, help="Maximum titles to crawl; 0 means no limit")
     parser.add_argument("--delay-min", type=float, default=3.0, help="Minimum delay between pages")
     parser.add_argument("--delay-max", type=float, default=7.0, help="Maximum delay between pages")
     parser.add_argument("--timeout-ms", type=int, default=60_000, help="Page timeout in milliseconds")
+    parser.add_argument("--search-timeout-ms", type=int, default=12_000, help="Kinolights search page timeout in milliseconds")
     parser.add_argument("--max-clicks", type=int, default=8, help="Max provider-looking button clicks per title")
     parser.add_argument("--headful", action="store_true", help="Run Chromium visibly for debugging")
     parser.add_argument("--contact", default="", help="Contact string included in the user-agent")
+    parser.add_argument("--resume", action="store_true", help="Append to output and skip terminal rows already present there")
+    parser.add_argument("--no-auto-search", action="store_true", help="Do not search Kinolights when kinolights_url is blank")
     return parser.parse_args()
 
 

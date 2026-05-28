@@ -89,14 +89,13 @@
         .subtitle { margin-top:10px; color:var(--hp-text-sub); font-size:16px; }
         .year { margin-top:10px; color:var(--hp-text-hint); font-size:14px; }
         .actions {
-            margin-top:26px; padding:22px;
+            margin-top:22px; padding:18px;
             border-radius:var(--r-xl);
             background:var(--hp-surface-2);
             border:1px solid var(--hp-border);
         }
-        .actions h2 { font-size:16px; font-weight:600; margin-bottom:6px; }
-        .actions p { color:var(--hp-text-sub); font-size:14px; margin-bottom:16px; }
         .row { display:grid; gap:10px; margin-top:10px; }
+        .actions > .row:first-child { margin-top:0; }
         .row.two { grid-template-columns:repeat(2,minmax(0,1fr)); }
         .row.three { grid-template-columns:repeat(3,minmax(0,1fr)); }
         .btn { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:72px; padding:14px 16px; border-radius:var(--r-xl); border:1px solid var(--hp-border); background:var(--hp-surface); color:var(--hp-text); cursor:pointer; transition:transform .16s ease,border-color .16s ease,background .16s ease; }
@@ -470,16 +469,14 @@
             <p class="year" th:text="${movie.productionYear != null ? movie.productionYear : (movie.boxOfficeOpenDate != null ? #temporals.format(movie.boxOfficeOpenDate, 'yyyy') : '연도 정보 없음')}">2024</p>
 
             <section class="actions">
-                <h2>이 영화를 어떻게 남길까요?</h2>
-                <p>버튼을 눌러도 페이지는 새로 쌓이지 않고 상태만 바로 바뀝니다.</p>
                 <div class="row two">
-                    <button type="button" id="dislike-btn" class="btn dislike" data-tip="별로에요">
-                        <span class="icon" id="dislike-icon"></span>
-                        <span class="copy"><span class="label">별로에요</span><span class="hint">좋아요와 동시에 켜지지 않습니다.</span></span>
-                    </button>
                     <button type="button" id="like-btn" class="btn like" data-tip="좋아요">
                         <span class="icon" id="like-icon"></span>
                         <span class="copy"><span class="label">좋아요</span><span class="hint">강한 호감 신호</span></span>
+                    </button>
+                    <button type="button" id="dislike-btn" class="btn dislike" data-tip="별로에요">
+                        <span class="icon" id="dislike-icon"></span>
+                        <span class="copy"><span class="label">별로에요</span><span class="hint">좋아요와 동시에 켜지지 않습니다.</span></span>
                     </button>
                 </div>
                 <div class="row three">
@@ -514,16 +511,12 @@
                     </div>
                     <div class="rating-note" id="rating-note">아직 별점이 없습니다.</div>
                 </div>
-                <div class="rating-off" id="rating-off">보는중 단계에서는 별점이 열리지 않습니다. 봤어요 상태에서만 별점을 남길 수 있습니다.</div>
+                <div class="rating-off" id="rating-off" hidden></div>
             </section>
 
             <section class="stats">
-                <div class="card"><div class="stat-label">개봉일</div><div class="stat-value" th:text="${movie.boxOfficeOpenDate != null ? movie.boxOfficeOpenDate : '-'}">2014-07-30</div></div>
                 <div class="card"><div class="stat-label">제작연도</div><div class="stat-value" th:text="${movie.productionYear != null ? movie.productionYear : '-'}">2013</div></div>
-                <div class="card"><div class="stat-label">상영시간</div><div class="stat-value" th:text="${movie.showTime != null ? movie.showTime + '분' : '-'}">128분</div></div>
-                <div class="card"><div class="stat-label">스크린 수</div><div class="stat-value" th:text="${movie.boxOfficeScrnCnt != null ? #numbers.formatInteger(movie.boxOfficeScrnCnt, 0, 'COMMA') + '개' : '-'}">1,000개</div></div>
-                <div class="card"><div class="stat-label">상영 횟수</div><div class="stat-value" th:text="${movie.boxOfficeShowCnt != null ? #numbers.formatInteger(movie.boxOfficeShowCnt, 0, 'COMMA') + '회' : '-'}">1,000회</div></div>
-                <div class="card"><div class="stat-label">영화 코드</div><div class="stat-value" th:text="${movie.movieCode}">movieCode</div></div>
+                <div class="card"><div class="stat-label">러닝타임</div><div class="stat-value" th:text="${movie.showTime != null ? movie.showTime + '분' : '-'}">128분</div></div>
             </section>
         </div>
     </section>
@@ -615,10 +608,10 @@
     </div>
 
     <section class="sections">
-        <article class="card"><h3>장르</h3><div class="chips" th:if="${!#lists.isEmpty(genres)}"><span class="chip" th:each="genre : ${genres}" th:text="${genre}">장르</span></div><p class="empty" th:if="${#lists.isEmpty(genres)}">장르 정보가 없습니다.</p></article>
+        <article class="card"><h3>장르</h3><div class="chips" th:if="${!#lists.isEmpty(genres)}"><span class="chip" th:each="genre, stat : ${genres}" th:if="${stat.index < 5}" th:text="${genre}">장르</span></div><p class="empty" th:if="${#lists.isEmpty(genres)}">장르 정보가 없습니다.</p></article>
         <article class="card"><h3>추천 태그</h3><div class="chips" th:if="${!#lists.isEmpty(recommendationTags)}"><span class="chip" th:each="tag : ${recommendationTags}" th:text="${tag.tagTypeLabel + ' · ' + tag.tagLabel}">태그</span></div><p class="empty" th:if="${#lists.isEmpty(recommendationTags)}">추천 태그가 없습니다.</p></article>
-        <article class="card"><h3>감독 / 배우</h3><div class="chips" th:if="${!#lists.isEmpty(directors)}"><span class="chip" th:each="director : ${directors}" th:text="${director}">감독</span></div><div class="chips" style="margin-top:10px" th:if="${!#lists.isEmpty(actors)}"><span class="chip" th:each="actor : ${actors}" th:text="${actor}">배우</span></div><p class="empty" th:if="${#lists.isEmpty(directors) and #lists.isEmpty(actors)}">감독/배우 정보가 없습니다.</p></article>
-        <article class="card"><h3>제공 서비스</h3><div class="provider-logos" th:if="${!#lists.isEmpty(providers)}"><div class="provider-badge" th:each="provider : ${providers}"><img th:if="${provider.logoUrl() != null}" th:src="${provider.logoUrl()}" th:alt="${provider.name}"><span th:text="${provider.name}">Netflix</span><span class="provider-type-tag" th:text="${provider.type}">구독</span></div></div><p class="empty" th:if="${#lists.isEmpty(providers)}">제공 서비스 정보가 없습니다.</p></article>
+        <article class="card"><h3>감독</h3><div class="chips" th:if="${!#lists.isEmpty(directors)}"><span class="chip" th:each="director : ${directors}" th:text="${director}">감독</span></div><p class="empty" th:if="${#lists.isEmpty(directors)}">감독 정보가 없습니다.</p></article>
+        <article class="card"><h3>배우</h3><div class="chips" th:if="${!#lists.isEmpty(actors)}"><span class="chip" th:each="actor, stat : ${actors}" th:if="${stat.index < 10}" th:text="${actor}">배우</span><span class="chip" th:if="${#lists.size(actors) > 10}" th:text="|외 ${#lists.size(actors) - 10}명|">외 0명</span></div><p class="empty" th:if="${#lists.isEmpty(actors)}">배우 정보가 없습니다.</p></article>
         <article class="card"><h3>심의 / 제작사</h3><div class="meta-list" th:if="${!#lists.isEmpty(audits) or !#lists.isEmpty(companies)}"><div class="meta-item" th:each="audit : ${audits}" th:text="${(audit.auditNo != null ? audit.auditNo : '심의번호 없음') + ' · ' + (audit.watchGradeName != null ? audit.watchGradeName : '등급 정보 없음')}">심의번호 · 12세 관람가</div><div class="meta-item" th:each="company : ${companies}" th:text="${company.name + ' · ' + (company.role != null ? company.role : '참여사')}">제작사 · 배급</div></div><p class="empty" th:if="${#lists.isEmpty(audits) and #lists.isEmpty(companies)}">추가 정보가 없습니다.</p></article>
     </section>
 </main>
@@ -740,7 +733,7 @@
 
         const watched = movieState.watchStatus === 'WATCHED';
         ratingBox.classList.toggle('active', watched);
-        ratingOff.style.display = watched ? 'none' : 'block';
+        ratingOff.hidden = true;
         ratingBadge.textContent = movieState.rating ? `${movieState.rating}점` : '미평가';
         ratingNote.textContent = movieState.rating ? `${movieState.rating}점으로 저장되었습니다.` : '아직 별점이 없습니다.';
         paintStars(movieState.rating || 0);

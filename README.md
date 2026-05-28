@@ -2,6 +2,65 @@
 
 ---
 
+## 05-28 구현사항 - 영화 상세 페이지 정보 구조 정리
+
+영화 상세 페이지에서 중복 안내 문구와 과도한 부가 정보를 정리해 핵심 정보가 더 잘 보이도록 개선했습니다.
+
+- 활동 버튼 영역의 설명 문구를 제거하고 여백을 줄였습니다.
+- `좋아요`와 `별로에요` 버튼 위치를 영화 상세 페이지 기준으로 교체했습니다.
+- 별점 비활성 안내 문구를 제거해 액션 박스 하단이 비어 보이지 않도록 정리했습니다.
+- 상세 정보 카드는 `제작연도`, `러닝타임`만 남기고 나머지 박스는 제거했습니다.
+- 하단 관련 정보에서 장르는 최대 5개만 표시합니다.
+- 기존 `감독 / 배우` 통합 섹션을 `감독`, `배우` 섹션으로 분리했습니다.
+- 배우는 최대 10명까지 표시하고, 초과 인원은 `외 n명`으로 요약합니다.
+- 기존 `제공 서비스` 정보 박스는 실제 이동 URL을 제공하는 `보러가기` 섹션과 역할이 겹쳐 제거했습니다.
+
+---
+
+## 05-28 구현사항 - OTT 보러가기 링크 200개 크롤링 캐시 전환
+
+영화 상세 페이지의 `보러가기` 링크 관리를 하드코딩 seed 중심에서 DB 캐시 중심으로 전환했습니다.
+
+- `movie_ott_link`: 영화별 제공처 direct URL 저장. 같은 제공처가 여러 URL이면 첫 번째 URL만 서비스에 노출합니다.
+- `movie_ott_crawl_status`: 영화별 크롤링 결과를 `SUCCESS`, `NO_LINK`, `NO_TITLE`, `FAILED`로 관리합니다.
+- `kinolights_title_mapping`: 우리 DB 영화와 키노라이츠 작품 URL 매핑을 저장합니다.
+- 중복 방지는 링크 존재 여부가 아니라 크롤링 상태 기준으로 처리합니다. 그래서 URL 1개가 이미 있다는 이유로 같은 영화의 다른 제공처를 놓치지 않습니다.
+- 키노라이츠에 작품이 없거나 보러가기 링크가 없는 영화는 상태 테이블에 따로 남기므로, H2 콘솔에서 수동 확인/보정 대상을 조회할 수 있습니다.
+
+200개 후보 영화에 대해 키노라이츠 공개 페이지를 저빈도로 크롤링했고, 결과는 아래 파일에 정리되어 있습니다.
+
+- 후보 목록: `output/kinolights_candidates_200.csv`
+- URL 원본 결과: `output/kinolights_ott_links_200_clean.csv`
+- 영화별 요약: `output/kinolights_ott_links_200_summary.csv`
+
+실행 흐름:
+
+```powershell
+$base = "http://localhost:8080"
+Invoke-WebRequest "$base/admin/ott-links/candidates.csv?limit=200" -OutFile "output/kinolights_candidates_200.csv"
+
+python scripts/kinolights_ott_crawler.py `
+  --input output/kinolights_candidates_200.csv `
+  --output output/kinolights_ott_links_200_clean.csv `
+  --max-items 200 `
+  --delay-min 2 `
+  --delay-max 4 `
+  --search-timeout-ms 6000 `
+  --max-clicks 0 `
+  --resume
+
+Invoke-RestMethod -Method Post "$base/admin/ott-links/import-csv?path=output/kinolights_ott_links_200_clean.csv"
+```
+
+이번 200개 크롤링 결과:
+
+- 총 200개 영화 처리
+- direct URL 확보: 181개
+- 보러가기 링크 없음: 19개
+- DB import 결과: 영화 181개, provider별 대표 링크 306개 저장
+
+---
+
 ## 05-26 구현사항 - OTT 보러가기 링크 PoC 및 영화 상세 페이지 반영
 
 ### 영화 상세 페이지 `보러가기` 섹션
