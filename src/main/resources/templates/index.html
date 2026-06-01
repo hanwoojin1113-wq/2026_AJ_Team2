@@ -1141,6 +1141,154 @@
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
 
+        /* ── 페이지 존 (3-zone 구분) ── */
+        .page-zone {
+            margin-top: 28px;
+            padding: 20px 20px 24px;
+            border-radius: var(--r-xl);
+            border: 1px solid var(--hp-border);
+            border-left-width: 3px;
+        }
+        .zone-ranking {
+            background: rgba(245,158,11,0.04);
+            border-color: rgba(245,158,11,0.18);
+            border-left-color: rgba(245,158,11,0.60);
+        }
+        .zone-recommend {
+            background: rgba(41,110,249,0.05);
+            border-color: rgba(41,110,249,0.18);
+            border-left-color: rgba(41,110,249,0.58);
+        }
+        .zone-social {
+            background: rgba(16,185,129,0.04);
+            border-color: rgba(16,185,129,0.18);
+            border-left-color: rgba(16,185,129,0.58);
+        }
+        .zone-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+        .zone-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 5px 13px;
+            border-radius: var(--r-lg);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
+        }
+        .ranking-eyebrow {
+            background: rgba(245,158,11,0.16);
+            border: 1px solid rgba(245,158,11,0.38);
+            color: #fbbf24;
+        }
+        .recommend-eyebrow {
+            background: rgba(41,110,249,0.13);
+            border: 1px solid rgba(41,110,249,0.35);
+            color: var(--hp-blue-bright);
+        }
+        .social-eyebrow {
+            background: rgba(16,185,129,0.13);
+            border: 1px solid rgba(16,185,129,0.35);
+            color: #6ee7b7;
+        }
+        .zone-see-all {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--hp-text-hint);
+            text-decoration: none;
+            transition: color 0.14s;
+        }
+        .zone-see-all:hover { color: var(--hp-blue-bright); }
+        .zone-see-all svg { stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+        .page-zone .home-section { margin-top: 16px; }
+        .page-zone .home-chart-section { margin-top: 0; }
+        .page-zone .home-chart-block { margin-top: 16px; }
+        .page-zone .home-chart-block:first-child { margin-top: 8px; }
+        .friend-posts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 14px;
+            margin-top: 16px;
+        }
+        .friend-post-card {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            border-radius: var(--r-xl);
+            background: var(--hp-surface-2);
+            border: 1px solid var(--hp-border);
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            overflow: hidden;
+            transform-origin: center center;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+            will-change: transform;
+        }
+        .friend-post-card:hover {
+            transform: scale(1.05) translateY(-3px);
+            z-index: 10;
+            box-shadow: 0 18px 44px rgba(0,0,0,0.55);
+            border-color: rgba(16,185,129,0.50);
+        }
+        .fp-poster-wrap { flex-shrink: 0; width: 52px; }
+        .fp-poster {
+            width: 52px; aspect-ratio: 2/3; object-fit: cover;
+            border-radius: var(--r-md); display: block;
+        }
+        .fp-poster-fallback {
+            width: 52px; aspect-ratio: 2/3; border-radius: var(--r-md);
+            background: var(--hp-card);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.58rem; color: var(--hp-text-hint); text-align: center; padding: 4px;
+        }
+        .fp-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        .fp-user { font-size: 0.78rem; font-weight: 700; color: var(--hp-text); transition: color 0.18s; }
+        .friend-post-card:hover .fp-user { color: #6ee7b7; }
+        .fp-movie-title {
+            font-size: 0.72rem; color: var(--hp-blue-bright);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .fp-content {
+            font-size: 0.76rem; color: var(--hp-text-sub); margin: 0;
+            overflow: hidden; display: -webkit-box;
+            -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            line-height: 1.4; flex: 1;
+        }
+        .fp-meta {
+            display: flex; align-items: center; gap: 4px;
+            font-size: 0.7rem; color: var(--hp-text-hint); margin-top: 4px;
+        }
+        .fp-meta svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .fp-hover-overlay {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 20px 12px 10px;
+            background: linear-gradient(to top, rgba(16,185,129,0.72) 0%, transparent 100%);
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            opacity: 0;
+            transition: opacity 0.18s ease;
+            pointer-events: none;
+        }
+        .friend-post-card:hover .fp-hover-overlay { opacity: 1; }
+        .fp-hover-label {
+            font-size: 0.68rem; font-weight: 700;
+            color: white; letter-spacing: 0.3px;
+        }
+
         /* ─── LEFT SIDEBAR ─── */
         .sidebar {
             position: fixed;
@@ -1355,7 +1503,14 @@
     </div>
 
     <section th:if="${!hasActiveSearch}">
-        <div class="home-section" th:if="${!#lists.isEmpty(trendingMovies)}">
+
+        <!-- ── 존 1: 인기 &amp; 랭킹 ── -->
+        <div class="page-zone zone-ranking" th:if="${!#lists.isEmpty(trendingMovies)}">
+        <div class="zone-label"><span class="zone-eyebrow ranking-eyebrow">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            인기 &amp; 랭킹
+        </span></div>
+        <div class="home-section">
             <div class="section-head">
                 <div class="section-head-main">
                     <h2>실시간 인기 작품</h2>
@@ -1427,6 +1582,53 @@
                 </button>
             </div>
         </div>
+        </div><!-- /zone-ranking: 인기 -->
+
+        <!-- ── 존 2: 친구 활동 ── -->
+        <div class="page-zone zone-social" th:if="${!#lists.isEmpty(homeFriendPosts)}">
+        <div class="zone-label">
+            <span class="zone-eyebrow social-eyebrow">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                친구 활동
+            </span>
+            <a class="zone-see-all" th:href="@{/feed}">피드 전체 보기
+                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+        </div>
+        <div class="friend-posts-grid">
+            <a class="friend-post-card"
+               th:each="fp : ${homeFriendPosts}"
+               th:href="@{|/posts/${fp.id}|}">
+                <div class="fp-poster-wrap">
+                    <img class="fp-poster"
+                         th:if="${fp.poster_image_url != null}"
+                         th:src="${fp.poster_image_url}"
+                         th:alt="${fp.movie_title}">
+                    <div class="fp-poster-fallback"
+                         th:unless="${fp.poster_image_url != null}"
+                         th:text="${fp.movie_title}">영화</div>
+                </div>
+                <div class="fp-body">
+                    <div class="fp-user" th:text="${fp.nickname}">닉네임</div>
+                    <div class="fp-movie-title" th:text="${fp.movie_title}">영화 제목</div>
+                    <p class="fp-content" th:text="${fp.content}">내용</p>
+                    <div class="fp-meta">
+                        <svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        <span th:text="${fp.like_count}">0</span>
+                    </div>
+                </div>
+                <div class="fp-hover-overlay"><span class="fp-hover-label">게시물 보기 →</span></div>
+            </a>
+        </div>
+        </div><!-- /zone-social: 친구 활동 -->
+
+        <!-- ── 존 3: 나를 위한 추천 ── -->
+        <th:block th:if="${primaryRecommendationBlock != null or collaborativeLifeBlock != null or !#lists.isEmpty(secondaryRecommendationBlocks)}">
+        <div class="page-zone zone-recommend">
+        <div class="zone-label"><span class="zone-eyebrow recommend-eyebrow">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            나를 위한 추천
+        </span></div>
 
         <div class="home-section" th:if="${primaryRecommendationBlock != null}" th:with="block=${primaryRecommendationBlock}">
             <div class="home-section">
@@ -1580,7 +1782,21 @@
             </div>
         </div>
 
-        <div class="home-chart-section" th:if="${!#lists.isEmpty(homeChartSections)}">
+        </div><!-- /zone-recommend: 추천 -->
+        </th:block>
+
+        <!-- ── 존 4: 차트 랭킹 ── -->
+        <div class="page-zone zone-ranking" th:if="${!#lists.isEmpty(homeChartSections)}">
+        <div class="zone-label">
+            <span class="zone-eyebrow ranking-eyebrow">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="4" width="4" height="17"/></svg>
+                차트 랭킹
+            </span>
+            <a class="zone-see-all" th:href="@{/ranking}">전체 차트 보기
+                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+        </div>
+        <div class="home-chart-section">
             <div class="home-chart-block" th:each="section : ${homeChartSections}">
                 <div class="home-chart-head">
                     <div>
@@ -1628,8 +1844,15 @@
                 </div>
             </div>
         </div>
+        </div><!-- /zone-ranking: 차트 -->
 
-        <div class="home-section" th:if="${#lists.isEmpty(recommendationBlocks)} and ${!#lists.isEmpty(fallbackMovies)}">
+        <!-- ── 폴백 추천 (개인화 추천 없을 때) ── -->
+        <div class="page-zone zone-recommend" th:if="${#lists.isEmpty(recommendationBlocks) and !#lists.isEmpty(fallbackMovies)}">
+        <div class="zone-label"><span class="zone-eyebrow recommend-eyebrow">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            추천 영화
+        </span></div>
+        <div class="home-section">
             <div class="section-head">
                 <div class="section-head-main">
                     <h2>지금 많이 보는 영화</h2>
@@ -1671,6 +1894,7 @@
                 </button>
             </div>
         </div>
+        </div><!-- /zone-recommend: 폴백 -->
     </section>
 
     <section th:if="${hasActiveSearch}">

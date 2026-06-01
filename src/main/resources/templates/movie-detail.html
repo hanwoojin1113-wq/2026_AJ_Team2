@@ -108,6 +108,14 @@
         .copy { text-align:left; display:grid; gap:4px; }
         .label { font-weight:600; font-size:14px; }
         .hint { color:var(--hp-text-hint); font-size:12px; }
+        .poster-signals { display:flex; flex-direction:column; gap:5px; margin-bottom:10px; }
+        .poster-signal { display:flex; align-items:center; gap:7px; font-size:0.76rem; font-weight:600; padding:6px 10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.10); color:rgba(255,255,255,0.72); }
+        .poster-signal.liked     { color:#fca5a5; background:rgba(244,63,94,0.10);   border-color:rgba(244,63,94,0.22); }
+        .poster-signal.disliked  { color:rgba(255,255,255,0.55); }
+        .poster-signal.stored    { color:#fde68a; background:rgba(245,158,11,0.10);  border-color:rgba(245,158,11,0.22); }
+        .poster-signal.watching  { color:#7dd3fc; background:rgba(56,189,248,0.10);  border-color:rgba(56,189,248,0.22); }
+        .poster-signal.watched   { color:#93c5fd; background:rgba(37,99,235,0.10);   border-color:rgba(37,99,235,0.22); }
+        .poster-signal.collected { color:#c4b5fd; background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.22); }
         .btn.active,
         .btn.watching,
         .btn.watched {
@@ -434,6 +442,16 @@
 <main class="page">
     <section class="hero">
         <div>
+            <th:block th:if="${friendLikedSignal != null or friendDislikedSignal != null or friendStoredSignal != null or friendWatchingSignal != null or friendWatchedSignal != null or friendCollectedSignal != null}">
+                <div class="poster-signals">
+                    <div th:if="${friendLikedSignal != null}"     class="poster-signal liked">    <span>❤️</span> <span th:text="${friendLikedSignal}"></span></div>
+                    <div th:if="${friendDislikedSignal != null}"  class="poster-signal disliked"> <span>😑</span> <span th:text="${friendDislikedSignal}"></span></div>
+                    <div th:if="${friendWatchingSignal != null}"  class="poster-signal watching"> <span>👁️</span> <span th:text="${friendWatchingSignal}"></span></div>
+                    <div th:if="${friendWatchedSignal != null}"   class="poster-signal watched">  <span>✅</span> <span th:text="${friendWatchedSignal}"></span></div>
+                    <div th:if="${friendStoredSignal != null}"    class="poster-signal stored">   <span>🕐</span> <span th:text="${friendStoredSignal}"></span></div>
+                    <div th:if="${friendCollectedSignal != null}" class="poster-signal collected"><span>🔖</span> <span th:text="${friendCollectedSignal}"></span></div>
+                </div>
+            </th:block>
             <img class="poster" th:if="${!#strings.isEmpty(movie.posterImageUrl)}" th:src="${movie.posterImageUrl}" th:alt="${movie.movieName}">
             <div class="fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}"><span th:text="${movie.movieName}">영화 제목</span></div>
         </div>

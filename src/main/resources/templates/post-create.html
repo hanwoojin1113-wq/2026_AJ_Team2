@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineMatch | 게시물 작성</title>
+    <title>CineMatch | 글 작성하기</title>
     <link rel="stylesheet" href="/css/hp-theme.css">
     <style>
         :root {
@@ -19,486 +19,441 @@
         }
         .nav a { color:#fff; text-decoration:none; font-weight:600; }
         .nav-right { display:flex; gap:12px; align-items:center; }
-        .pill {
-            padding:8px 14px; border-radius:var(--r-md);
-            background:var(--hp-surface-2); border:1px solid var(--hp-border);
-        }
-        .logout {
-            background:var(--hp-blue) !important; color:#fff !important;
-            border-radius:var(--r-md); font-size:12px; font-weight:600;
-            letter-spacing:0.7px; text-transform:uppercase; border:none !important;
-        }
+        .pill { padding:8px 14px; border-radius:var(--r-md); background:var(--hp-surface-2); border:1px solid var(--hp-border); }
+        .logout { background:var(--hp-blue) !important; color:#fff !important; border-radius:var(--r-md); font-size:12px; font-weight:600; letter-spacing:0.7px; text-transform:uppercase; border:none !important; }
         .notif-wrap { position: relative; }
-        .notif-btn {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: none;
-            background: rgba(255,255,255,0.08);
-            color: white;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-        .notif-btn:hover { background: rgba(255,255,255,0.15); }
-        .notif-badge {
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            min-width: 16px;
-            height: 16px;
-            padding: 0 3px;
-            border-radius: 999px;
-            background: #ef4444;
-            color: white;
-            font-size: 0.65rem;
-            font-weight: 900;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .notif-badge:empty { display: none; }
-        .notif-panel {
-            position: absolute;
-            top: calc(100% + 10px);
-            right: 0;
-            width: 360px;
-            max-height: 480px;
-            border-radius: var(--r-xl);
-            background: var(--hp-surface);
-            border: 1px solid var(--hp-border);
-            box-shadow: var(--hp-shadow-lg);
-            z-index: 9999;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-        .notif-panel[hidden] { display: none; }
-        .notif-panel-header {
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            padding:16px 20px 12px;
-            border-bottom:1px solid rgba(148,163,184,0.1);
-            font-weight:800;
-            font-size:0.95rem;
-        }
-        .notif-read-all-btn {
-            border:none;
-            background:none;
-            color:#60A5FA;
-            font-size:0.78rem;
-            font-weight:700;
-            cursor:pointer;
-            padding:4px 8px;
-            border-radius:6px;
-            font-family:inherit;
-        }
+        .notif-btn { position:relative; display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:50%; border:none; background:rgba(255,255,255,0.08); color:white; cursor:pointer; transition:background 0.15s; }
+        .notif-btn:hover { background:rgba(255,255,255,0.15); }
+        .notif-badge { position:absolute; top:4px; right:4px; min-width:16px; height:16px; padding:0 3px; border-radius:999px; background:#ef4444; color:white; font-size:0.65rem; font-weight:900; display:flex; align-items:center; justify-content:center; }
+        .notif-badge:empty { display:none; }
+        .notif-panel { position:absolute; top:calc(100% + 10px); right:0; width:360px; max-height:480px; border-radius:var(--r-xl); background:var(--hp-surface); border:1px solid var(--hp-border); box-shadow:var(--hp-shadow-lg); z-index:9999; overflow:hidden; display:flex; flex-direction:column; }
+        .notif-panel[hidden] { display:none; }
+        .notif-panel-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 12px; border-bottom:1px solid rgba(148,163,184,0.1); font-weight:800; font-size:0.95rem; }
+        .notif-read-all-btn { border:none; background:none; color:#60A5FA; font-size:0.78rem; font-weight:700; cursor:pointer; padding:4px 8px; border-radius:6px; font-family:inherit; }
         .notif-list { overflow-y:auto; flex:1; }
-        .notif-item {
-            display:flex;
-            align-items:center;
-            gap:12px;
-            padding:14px 20px;
-            border-bottom:1px solid rgba(148,163,184,0.07);
-            text-decoration:none;
-            color:inherit;
-        }
-        .notif-item.unread { background: rgba(0,72,255,0.07); }
-        .notif-avatar {
-            width:40px;
-            height:40px;
-            border-radius:50%;
-            background: rgba(255,255,255,0.12);
-            overflow:hidden;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-weight:900;
-        }
+        .notif-item { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid rgba(148,163,184,0.07); text-decoration:none; color:inherit; }
+        .notif-item.unread { background:rgba(0,72,255,0.07); }
+        .notif-avatar { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,0.12); overflow:hidden; display:flex; align-items:center; justify-content:center; font-weight:900; }
         .notif-avatar img { width:100%; height:100%; object-fit:cover; }
         .notif-content { flex:1; min-width:0; }
         .notif-text { font-size:0.83rem; line-height:1.45; color:#CBD5E1; }
         .notif-text strong { color:white; }
         .notif-time { margin-top:3px; font-size:0.73rem; color:#64748B; }
-        .notif-movie-thumb {
-            width:46px;
-            height:64px;
-            border-radius:6px;
-            object-fit:cover;
-            flex-shrink:0;
-            background: rgba(255,255,255,0.06);
-        }
-        .notif-empty { padding: 40px 20px; text-align: center; color: #64748B; font-size: 0.88rem; }
+        .notif-movie-thumb { width:46px; height:64px; border-radius:6px; object-fit:cover; flex-shrink:0; background:rgba(255,255,255,0.06); }
+        .notif-empty { padding:40px 20px; text-align:center; color:#64748B; font-size:0.88rem; }
+
+        /* ── Page layout ── */
         .page {
-            max-width: 980px;
+            max-width: 640px;
             margin: 0 auto;
-            padding: 36px 20px 64px;
+            padding: 32px 16px 80px;
         }
-        .page-header { margin-bottom: 24px; }
-        .page-title {
-            margin: 0 0 10px 0;
-            font-size: 2rem;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-        }
-        .page-copy {
-            margin: 0;
-            color: var(--sub);
-            line-height: 1.6;
-        }
-        .error-banner {
-            margin: 0 0 18px 0;
-            padding: 14px 16px;
-            border-radius: 16px;
-            background: rgba(248,113,113,0.12);
-            border: 1px solid rgba(248,113,113,0.28);
-            color: #fecaca;
-            font-size: 0.95rem;
-        }
+
+        /* ── Composer card ── */
         .composer-card {
-            display: grid;
-            gap: 24px;
-            padding: 24px;
-            border-radius: var(--r-xl);
             background: var(--hp-surface);
             border: 1px solid var(--border);
+            border-radius: 20px;
             box-shadow: var(--hp-shadow-lg);
+            overflow: hidden;
         }
-        .field { display: grid; gap: 10px; }
-        .field-label {
-            font-size: 0.92rem;
-            font-weight: 700;
+
+        /* ── Card header ── */
+        .composer-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
         }
-        .field-copy {
-            margin: -4px 0 0 0;
-            color: var(--sub);
-            font-size: 0.82rem;
-        }
-        .file-picker {
-            display: inline-flex;
+        .composer-back {
+            display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 46px;
-            padding: 0 16px;
-            border-radius: 14px;
-            border: 1px solid rgba(255,255,255,0.16);
-            background: rgba(255,255,255,0.04);
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.06);
             color: #fff;
             cursor: pointer;
-            font-weight: 700;
-            width: fit-content;
+            text-decoration: none;
+            flex-shrink: 0;
+            transition: background 0.15s;
         }
-        .upload-dropzone {
-            display: grid;
-            gap: 14px;
-            padding: 18px;
-            border-radius: 18px;
-            border: 1px dashed rgba(255,255,255,0.18);
-            background: rgba(255,255,255,0.03);
-            transition: border-color 0.18s, background 0.18s, transform 0.18s;
+        .composer-back:hover { background: rgba(255,255,255,0.12); }
+        .composer-title {
+            flex: 1;
+            font-weight: 800;
+            font-size: 1rem;
+            letter-spacing: -0.01em;
         }
-        .upload-dropzone.dragover {
-            border-color: rgba(96,165,250,0.72);
-            background: rgba(96,165,250,0.08);
-            transform: translateY(-1px);
-        }
-        .upload-drop-copy {
-            color: var(--sub);
-            font-size: 0.82rem;
-        }
-        .upload-ratio-guide {
+
+        /* ── Type toolbar ── */
+        .type-bar {
             display: flex;
             align-items: center;
-            gap: 16px;
-            padding: 14px 16px;
-            border-radius: 14px;
-            background: rgba(96,165,250,0.06);
-            border: 1px solid rgba(96,165,250,0.14);
+            gap: 2px;
+            padding: 10px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.02);
         }
-        .ratio-preview {
-            flex: 0 0 auto;
-            width: 52px;
-            height: 52px;
-            border-radius: 10px;
-            background: rgba(96,165,250,0.12);
-            border: 2px solid rgba(96,165,250,0.36);
+        .type-btn {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.72rem;
-            font-weight: 800;
-            color: var(--accent);
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
         }
-        .ratio-guide-copy {
-            font-size: 0.8rem;
-            color: var(--sub);
-            line-height: 1.6;
+        .type-btn svg { width: 20px; height: 20px; }
+        .type-btn:hover { background: rgba(255,255,255,0.08); color: #cbd5e1; }
+        .type-btn.active { background: rgba(37,99,235,0.18); color: #60a5fa; }
+        .type-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            left: 50%; transform: translateX(-50%);
+            width: 4px; height: 4px;
+            border-radius: 50%;
+            background: #60a5fa;
         }
-        .ratio-guide-copy strong {
-            color: var(--text);
+        .type-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            margin-top: 1px;
             display: block;
-            margin-bottom: 2px;
         }
-        .image-warning {
+        .type-btn-inner { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+        .type-divider {
+            width: 1px; height: 20px;
+            background: rgba(255,255,255,0.08);
+            margin: 0 6px;
+            flex-shrink: 0;
+        }
+
+        /* ── Main content area ── */
+        .composer-body { padding: 16px 20px 0; }
+        .compose-textarea {
+            width: 100%;
+            min-height: 120px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font: inherit;
+            font-size: 0.97rem;
+            line-height: 1.7;
+            resize: none;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .compose-textarea::placeholder { color: #475569; }
+
+        /* ── Section panels ── */
+        .content-section { display: none; padding: 12px 20px 16px; border-top: 1px solid rgba(255,255,255,0.06); }
+        .content-section.active { display: block; }
+        .section-label {
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #60a5fa;
+            margin: 0 0 10px;
+        }
+
+        /* ── Emoji picker ── */
+        .emoji-categories { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+        .emoji-cat-btn {
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: #94a3b8;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.12s;
+        }
+        .emoji-cat-btn.active { background: rgba(37,99,235,0.2); border-color: rgba(96,165,250,0.4); color: #93c5fd; }
+        .emoji-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+        .emoji-btn {
+            width: 36px; height: 36px;
+            border: none;
+            background: transparent;
+            font-size: 1.25rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.12s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .emoji-btn:hover { background: rgba(255,255,255,0.1); }
+
+        /* ── Photo section ── */
+        .upload-dropzone {
+            display: grid; gap: 12px;
+            padding: 14px;
+            border-radius: 14px;
+            border: 1px dashed rgba(255,255,255,0.16);
+            background: rgba(255,255,255,0.02);
+            transition: border-color 0.18s, background 0.18s;
+        }
+        .upload-dropzone.dragover {
+            border-color: rgba(96,165,250,0.7);
+            background: rgba(96,165,250,0.07);
+        }
+        .file-picker {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 6px;
+            height: 40px; padding: 0 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(255,255,255,0.04);
+            color: #fff; cursor: pointer; font-weight: 700; font-size: 0.84rem;
+            width: fit-content;
+        }
+        .file-input { display: none; }
+        .upload-drop-copy { color: var(--sub); font-size: 0.8rem; }
+        .image-warning { display: none; padding: 8px 12px; border-radius: 10px; background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.28); color: #fecaca; font-size: 0.82rem; }
+        .image-warning.active { display: block; }
+        .image-preview-grid { display: none; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+        .image-preview-grid.active { display: grid; }
+        .image-preview { position: relative; aspect-ratio: 1/1; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: rgba(255,255,255,0.03); }
+        .image-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .image-preview-primary { position: absolute; top: 5px; left: 5px; padding: 2px 6px; border-radius: 999px; background: rgba(15,23,42,0.84); color: #fff; font-size: 0.62rem; font-weight: 800; }
+        .image-remove-btn { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; border: none; background: rgba(0,0,0,0.7); color: #fff; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        /* ── Video section ── */
+        .video-preview-wrap {
+            position: relative;
+            border-radius: 14px;
+            overflow: hidden;
+            background: rgba(0,0,0,0.4);
             display: none;
+        }
+        .video-preview-wrap.active { display: block; }
+        .video-preview { width: 100%; max-height: 280px; display: block; border-radius: 14px; }
+        .video-remove-btn {
+            position: absolute; top: 8px; right: 8px;
+            width: 28px; height: 28px;
+            border-radius: 50%; border: none;
+            background: rgba(0,0,0,0.7); color: #fff;
+            cursor: pointer; font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* ── File section ── */
+        .file-preview-card {
+            display: none;
+            align-items: center;
+            gap: 12px;
             padding: 12px 14px;
             border-radius: 12px;
-            background: rgba(248,113,113,0.12);
-            border: 1px solid rgba(248,113,113,0.28);
-            color: #fecaca;
-            font-size: 0.84rem;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
         }
-        .image-warning.active { display: block; }
-        .file-input { display: none; }
-        .image-preview-note {
-            display: none;
-            font-size: 0.76rem;
-            color: var(--sub);
-            margin: 8px 0 6px;
-        }
-        .image-preview-grid {
-            display: none;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 10px;
+        .file-preview-card.active { display: flex; }
+        .file-icon { font-size: 1.8rem; flex-shrink: 0; }
+        .file-info { flex: 1; min-width: 0; }
+        .file-name { font-weight: 700; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-size { color: var(--sub); font-size: 0.78rem; margin-top: 2px; }
+        .file-remove-btn { border: none; background: rgba(255,255,255,0.1); color: #fff; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+        /* ── Poll section ── */
+        .poll-question-input,
+        .poll-option-input,
+        .quiz-question-input,
+        .quiz-option-input {
             width: 100%;
-        }
-        .image-preview-grid.active { display: grid; }
-        .image-preview {
-            width: 100%;
-            aspect-ratio: 1 / 1;
-            border-radius: 18px;
-            overflow: hidden;
-            border: 1px solid var(--border);
-            background: rgba(255,255,255,0.03);
-        }
-        .image-preview img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
-        .image-preview-primary {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            padding: 4px 8px;
-            border-radius: 999px;
-            background: rgba(15,23,42,0.84);
-            color: #fff;
-            font-size: 0.7rem;
-            font-weight: 800;
-        }
-        textarea,
-        .movie-search-input {
-            width: 100%;
-            border-radius: 16px;
+            box-sizing: border-box;
+            border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.12);
             background: rgba(15,17,23,0.72);
             color: var(--text);
             font: inherit;
+            font-size: 0.9rem;
+            padding: 10px 14px;
             outline: none;
+            transition: border-color 0.15s;
         }
-        textarea {
-            min-height: 150px;
-            resize: vertical;
-            padding: 16px;
-            line-height: 1.6;
+        .poll-question-input:focus,
+        .quiz-question-input:focus { border-color: rgba(96,165,250,0.5); }
+        .poll-options-list,
+        .quiz-options-list { display: grid; gap: 8px; margin-top: 10px; }
+        .poll-option-row,
+        .quiz-option-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .movie-search-input {
-            height: 50px;
-            padding: 0 16px;
-            padding-right: 52px;
+        .poll-option-input,
+        .quiz-option-input { flex: 1; }
+        .poll-option-input:focus,
+        .quiz-option-input:focus { border-color: rgba(96,165,250,0.5); }
+        .correct-radio {
+            width: 18px; height: 18px;
+            accent-color: #22c55e;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .remove-option-btn {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.08);
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.12s, color 0.12s;
+        }
+        .remove-option-btn:hover:not(:disabled) { background: rgba(248,113,113,0.2); color: #f87171; }
+        .remove-option-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .add-option-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            margin-top: 8px;
+            padding: 7px 14px;
+            border-radius: 999px;
+            border: 1px dashed rgba(255,255,255,0.2);
+            background: transparent;
+            color: #94a3b8;
+            font: inherit;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.12s;
+        }
+        .add-option-btn:hover:not(:disabled) { border-color: rgba(96,165,250,0.5); color: #93c5fd; }
+        .add-option-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .poll-multiselect-row {
+            display: flex; align-items: center; gap: 8px;
+            margin-top: 10px;
+            font-size: 0.82rem;
+            color: var(--sub);
+        }
+        .poll-multiselect-row input[type="checkbox"] { accent-color: #60a5fa; width: 15px; height: 15px; cursor: pointer; }
+        .quiz-hint { font-size: 0.76rem; color: #64748b; margin-top: 6px; }
+
+        /* ── Movie selector ── */
+        .movie-section {
+            padding: 14px 20px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .movie-section-label {
+            font-size: 0.75rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+            color: #64748b; margin: 0 0 8px;
         }
         .movie-search-wrap { position: relative; }
-        .movie-search-clear {
-            position: absolute;
-            top: 50%;
-            right: 12px;
-            transform: translateY(-50%);
-            width: 28px;
-            height: 28px;
-            border: none;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.08);
-            color: #cbd5e1;
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.95rem;
-            line-height: 1;
-            padding: 0;
+        .movie-search-input {
+            width: 100%; box-sizing: border-box;
+            height: 44px; padding: 0 40px 0 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(15,17,23,0.72);
+            color: var(--text); font: inherit; font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.15s;
         }
+        .movie-search-input:focus { border-color: rgba(96,165,250,0.5); }
+        .movie-search-clear { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); width: 24px; height: 24px; border: none; border-radius: 50%; background: rgba(255,255,255,0.08); color: #cbd5e1; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 0.9rem; line-height: 1; padding: 0; }
         .movie-search-clear.visible { display: inline-flex; }
-        .movie-search-results {
-            display: none;
-            margin-top: 12px;
-            border-radius: 18px;
-            border: 1px solid var(--border);
-            background: rgba(15,17,23,0.94);
-            overflow: hidden;
-        }
+        .movie-search-results { display: none; margin-top: 8px; border-radius: 12px; border: 1px solid var(--border); background: rgba(15,17,23,0.94); overflow: hidden; }
         .movie-search-results.active { display: block; }
-        .movie-search-empty {
-            padding: 16px;
-            color: var(--sub);
-            font-size: 0.86rem;
-        }
-        .movie-search-item {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            width: 100%;
-            padding: 12px 14px;
-            border: none;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-            background: transparent;
-            color: inherit;
-            cursor: pointer;
-            text-align: left;
-            transition: background 0.15s;
-        }
+        .movie-search-empty { padding: 12px 14px; color: var(--sub); font-size: 0.84rem; }
+        .movie-search-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: none; border-bottom: 1px solid rgba(255,255,255,0.06); background: transparent; color: inherit; cursor: pointer; text-align: left; transition: background 0.12s; }
         .movie-search-item:last-child { border-bottom: none; }
         .movie-search-item:hover { background: rgba(255,255,255,0.06); }
-        .movie-search-item:active { background: rgba(96,165,250,0.12); }
-        .movie-search-poster,
-        .movie-search-fallback {
-            width: 52px;
-            height: 74px;
-            border-radius: 10px;
-            flex: 0 0 auto;
-            overflow: hidden;
-            background: rgba(255,255,255,0.07);
-        }
-        .movie-search-poster img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .movie-search-fallback {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 8px;
-            font-size: 0.72rem;
-            color: var(--sub);
-        }
-        .movie-search-title {
-            font-weight: 700;
-            color: var(--text);
-        }
-        .selected-movie {
-            display: none;
-            position: relative;
-            align-items: center;
-            gap: 14px;
-            padding: 14px;
-            border-radius: 18px;
-            background: rgba(59,130,246,0.16);
-            border: 1px solid rgba(96,165,250,0.24);
-        }
+        .movie-search-poster, .movie-search-fallback { width: 40px; height: 56px; border-radius: 8px; flex: 0 0 auto; overflow: hidden; background: rgba(255,255,255,0.07); }
+        .movie-search-poster img { width: 100%; height: 100%; object-fit: cover; }
+        .movie-search-fallback { display: flex; align-items: center; justify-content: center; padding: 4px; font-size: 0.65rem; color: var(--sub); }
+        .movie-search-title { font-weight: 700; color: var(--text); font-size: 0.88rem; }
+        .selected-movie { display: none; position: relative; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(59,130,246,0.14); border: 1px solid rgba(96,165,250,0.22); }
         .selected-movie.active { display: flex; }
-        .selected-badge {
-            position: absolute;
-            top: -10px;
-            left: 14px;
-            padding: 2px 10px;
-            border-radius: 999px;
-            background: rgba(96,165,250,0.9);
-            color: #0f172a;
-            font-size: 0.7rem;
-            font-weight: 800;
-        }
-        .selected-movie-poster,
-        .selected-movie-fallback {
-            width: 58px;
-            height: 82px;
-            border-radius: 12px;
-            overflow: hidden;
-            flex: 0 0 auto;
-            background: rgba(255,255,255,0.07);
-        }
-        .selected-movie-poster img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .selected-movie-fallback {
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:8px;
-            color:var(--sub);
-            font-size:0.74rem;
-            text-align:center;
-        }
-        .selected-movie-copy {
-            min-width: 0;
-            flex: 1;
-        }
-        .selected-movie-title {
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-        .selected-movie-sub {
-            color: var(--sub);
-            font-size: 0.82rem;
-        }
-        .selected-movie-clear {
-            border: none;
-            background: rgba(255,255,255,0.12);
-            color: #fff;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 1rem;
-            flex: 0 0 auto;
-        }
-        .submit-row {
+        .selected-badge { position: absolute; top: -8px; left: 12px; padding: 1px 8px; border-radius: 999px; background: rgba(96,165,250,0.9); color: #0f172a; font-size: 0.65rem; font-weight: 800; }
+        .selected-movie-poster, .selected-movie-fallback { width: 44px; height: 62px; border-radius: 8px; overflow: hidden; flex: 0 0 auto; background: rgba(255,255,255,0.07); }
+        .selected-movie-poster img { width: 100%; height: 100%; object-fit: cover; }
+        .selected-movie-fallback { display: flex; align-items: center; justify-content: center; padding: 4px; color: var(--sub); font-size: 0.68rem; text-align: center; }
+        .selected-movie-copy { min-width: 0; flex: 1; }
+        .selected-movie-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 2px; }
+        .selected-movie-sub { color: var(--sub); font-size: 0.78rem; }
+        .selected-movie-clear { border: none; background: rgba(255,255,255,0.1); color: #fff; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 0.9rem; flex: 0 0 auto; }
+
+        /* ── Footer ── */
+        .composer-footer {
             display: flex;
-            justify-content: flex-end;
-            padding-top: 8px;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px 16px;
             border-top: 1px solid rgba(255,255,255,0.06);
-            margin-top: 4px;
+            background: rgba(255,255,255,0.015);
         }
-        .submit-btn {
-            border: none;
-            min-width: 180px;
-            height: 52px;
-            border-radius: var(--r-md);
-            background: var(--hp-blue);
-            color: #fff;
-            font: inherit;
-            font-weight: 700;
-            font-size: 0.9rem;
-            letter-spacing: 0.7px;
-            text-transform: uppercase;
+        .notice-toggle-row {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.82rem; color: var(--sub);
+        }
+        .toggle-switch {
+            position: relative; width: 38px; height: 22px;
+            display: inline-block;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; inset: 0;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.12);
             cursor: pointer;
-            transition: opacity 0.18s, transform 0.12s;
+            transition: background 0.2s;
         }
-        .submit-btn:disabled {
-            cursor: not-allowed;
-            opacity: 0.45;
-            background: var(--hp-surface-2);
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 16px; height: 16px;
+            left: 3px; top: 3px;
+            border-radius: 50%;
+            background: #fff;
+            transition: transform 0.2s;
         }
-        .submit-btn:hover:not(:disabled) {
-            opacity: 0.88;
-            transform: translateY(-1px);
-            box-shadow: 0 18px 36px rgba(37,99,235,0.36);
+        .toggle-switch input:checked + .toggle-slider { background: #024ad8; }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(16px); }
+        .action-btns { display: flex; gap: 8px; }
+        .btn-cancel {
+            height: 40px; padding: 0 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: transparent;
+            color: #94a3b8; font: inherit; font-size: 0.86rem; font-weight: 700;
+            cursor: pointer; transition: all 0.15s; text-decoration: none;
+            display: flex; align-items: center;
         }
-        .submit-btn:active:not(:disabled) { transform: translateY(0); }
-        @media (max-width: 768px) {
-            .page { padding: 24px 16px 48px; }
-            .composer-card { padding: 18px; }
-            .page-title { font-size: 1.6rem; }
-            .nav { padding: 14px 16px; }
-            .nav-right { gap: 8px; }
-            .image-preview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .btn-cancel:hover { background: rgba(255,255,255,0.06); color: #fff; }
+        .btn-submit {
+            height: 40px; padding: 0 20px;
+            border-radius: 10px; border: none;
+            background: var(--hp-blue); color: #fff;
+            font: inherit; font-size: 0.86rem; font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer; transition: opacity 0.15s, transform 0.12s;
+        }
+        .btn-submit:disabled { opacity: 0.35; cursor: not-allowed; background: var(--hp-surface-2); }
+        .btn-submit:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+        .btn-submit:active:not(:disabled) { transform: translateY(0); }
+
+        .error-banner {
+            margin-bottom: 16px; padding: 12px 14px; border-radius: 12px;
+            background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.28);
+            color: #fecaca; font-size: 0.9rem;
+        }
+        @media (max-width: 480px) {
+            .page { padding: 12px 0 64px; }
+            .composer-card { border-radius: 0; border-left: none; border-right: none; }
+            .type-btn { width: 36px; height: 36px; }
         }
     </style>
 </head>
@@ -506,376 +461,626 @@
 <div th:replace="~{fragments/app-shell :: shell}"></div>
 
 <main class="page">
-    <header class="page-header">
-        <h1 class="page-title">게시물 작성</h1>
-        <p class="page-copy">영화와 어울리는 사진과 함께 감상을 기록해보세요.</p>
-    </header>
-
     <div class="error-banner" th:if="${param.error != null}">
-        게시물을 저장하지 못했습니다. 이미지 개수와 영화 선택 상태를 다시 확인해주세요.
+        게시물을 저장하지 못했습니다. 내용을 다시 확인해주세요.
     </div>
 
-    <form class="composer-card" th:action="@{/posts}" method="post" enctype="multipart/form-data" id="postCreateForm">
-        <div class="field">
-            <label class="field-label" for="imageInput">사진 첨부</label>
-            <p class="field-copy">최대 5장까지 업로드할 수 있습니다. 첫 번째 사진이 대표 이미지가 됩니다.</p>
-            <div class="upload-dropzone" id="imageDropzone">
-                <label class="file-picker" for="imageInput">이미지 선택</label>
-                <input class="file-input" id="imageInput" type="file" name="images" multiple accept="image/*">
-                <div class="upload-ratio-guide">
-                    <div class="ratio-preview">
-                        <span>1:1</span>
+    <form id="postForm" th:action="@{/posts}" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="postType" id="postTypeInput" value="photo">
+
+        <div class="composer-card">
+            <!-- Header -->
+            <div class="composer-header">
+                <a class="composer-back" th:href="@{/feed}" aria-label="뒤로">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </a>
+                <span class="composer-title">글 작성하기</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+
+            <!-- Type toolbar -->
+            <div class="type-bar">
+                <button type="button" class="type-btn" id="btn-emoji" onclick="setType('emoji')" title="이모티콘">
+                    <div class="type-btn-inner">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9" stroke-width="2.5" stroke-linecap="round"/><line x1="15" y1="9" x2="15.01" y2="9" stroke-width="2.5" stroke-linecap="round"/></svg>
+                        <span class="type-label">이모티콘</span>
                     </div>
-                    <div class="ratio-guide-copy">
-                        <strong>정사각형(1:1) 비율을 권장합니다.</strong><br>
-                        세로가 긴 이미지(4:5)도 잘 어울립니다.<br>
-                        가로로 지나치게 넓은 이미지는 잘릴 수 있습니다.
+                </button>
+                <button type="button" class="type-btn active" id="btn-photo" onclick="setType('photo')" title="사진">
+                    <div class="type-btn-inner">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        <span class="type-label">사진</span>
+                    </div>
+                </button>
+                <button type="button" class="type-btn" id="btn-video" onclick="setType('video')" title="동영상">
+                    <div class="type-btn-inner">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                        <span class="type-label">동영상</span>
+                    </div>
+                </button>
+                <button type="button" class="type-btn" id="btn-file" onclick="setType('file')" title="파일">
+                    <div class="type-btn-inner">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span class="type-label">파일</span>
+                    </div>
+                </button>
+                <div class="type-divider"></div>
+                <button type="button" class="type-btn" id="btn-poll" onclick="setType('poll')" title="투표">
+                    <div class="type-btn-inner">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        <span class="type-label">투표</span>
+                    </div>
+                </button>
+                <button type="button" class="type-btn" id="btn-quiz" onclick="setType('quiz')" title="퀴즈">
+                    <div class="type-btn-inner">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17" stroke-width="2.5" stroke-linecap="round"/></svg>
+                        <span class="type-label">퀴즈</span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Main textarea -->
+            <div class="composer-body">
+                <textarea class="compose-textarea" name="content" id="contentInput"
+                          placeholder="멤버들과 공유하고 싶은 소식을 남겨보세요."
+                          rows="5"></textarea>
+            </div>
+
+            <!-- ── Emoji section ── -->
+            <div class="content-section" id="section-emoji">
+                <p class="section-label">이모티콘</p>
+                <div class="emoji-categories" id="emojiCategories"></div>
+                <div class="emoji-grid" id="emojiGrid"></div>
+            </div>
+
+            <!-- ── Photo section ── -->
+            <div class="content-section active" id="section-photo">
+                <p class="section-label">사진 첨부 <span style="color:#475569;font-weight:400;font-size:0.7rem;">최대 5장</span></p>
+                <div class="upload-dropzone" id="imageDropzone">
+                    <label class="file-picker" for="imageInput">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        이미지 선택
+                    </label>
+                    <input class="file-input" id="imageInput" type="file" name="images" multiple accept="image/*">
+                    <div class="upload-drop-copy">이미지를 여기로 끌어다 놓아도 됩니다. JPG, PNG, GIF, WEBP</div>
+                    <div class="image-warning" id="imageWarning">10MB 이하 이미지, 최대 5장까지 업로드할 수 있습니다.</div>
+                    <div class="image-preview-grid" id="imagePreviewGrid"></div>
+                </div>
+            </div>
+
+            <!-- ── Video section ── -->
+            <div class="content-section" id="section-video">
+                <p class="section-label">동영상 첨부</p>
+                <label class="file-picker" for="videoInput" id="videoPicker">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    동영상 선택
+                </label>
+                <input class="file-input" id="videoInput" type="file" name="videoFile" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.avi">
+                <div class="video-preview-wrap" id="videoPreviewWrap">
+                    <video class="video-preview" id="videoPreview" controls></video>
+                    <button type="button" class="video-remove-btn" id="videoRemoveBtn">×</button>
+                </div>
+                <p style="color:#475569;font-size:0.78rem;margin-top:8px;">MP4, WebM, MOV, AVI · 최대 200MB</p>
+            </div>
+
+            <!-- ── File section ── -->
+            <div class="content-section" id="section-file">
+                <p class="section-label">파일 첨부</p>
+                <label class="file-picker" for="docInput" id="docPicker">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    파일 선택
+                </label>
+                <input class="file-input" id="docInput" type="file" name="docFile" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.hwp">
+                <div class="file-preview-card" id="filePreviewCard">
+                    <span class="file-icon" id="fileIcon">📎</span>
+                    <div class="file-info">
+                        <div class="file-name" id="fileName">파일명</div>
+                        <div class="file-size" id="fileSize">크기</div>
+                    </div>
+                    <button type="button" class="file-remove-btn" id="fileRemoveBtn">×</button>
+                </div>
+                <p style="color:#475569;font-size:0.78rem;margin-top:8px;">PDF, DOC, XLS, PPT, TXT, ZIP, HWP · 최대 200MB</p>
+            </div>
+
+            <!-- ── Poll section ── -->
+            <div class="content-section" id="section-poll">
+                <p class="section-label">투표 만들기</p>
+                <input type="text" class="poll-question-input" name="pollQuestion" id="pollQuestion"
+                       placeholder="투표 질문을 입력하세요" maxlength="200">
+                <div class="poll-options-list" id="pollOptionsList">
+                    <div class="poll-option-row">
+                        <input type="text" class="poll-option-input" name="pollOption" placeholder="선택지 1" maxlength="100">
+                        <button type="button" class="remove-option-btn" disabled title="삭제">×</button>
+                    </div>
+                    <div class="poll-option-row">
+                        <input type="text" class="poll-option-input" name="pollOption" placeholder="선택지 2" maxlength="100">
+                        <button type="button" class="remove-option-btn" disabled title="삭제">×</button>
                     </div>
                 </div>
-                <div class="upload-drop-copy">여기로 이미지를 끌어다 놓아도 첨부할 수 있습니다.</div>
-                <div class="image-warning" id="imageWarning">10MB 이하 이미지와 최대 5장까지만 업로드할 수 있습니다.</div>
-                <p class="image-preview-note" id="imagePreviewNote">첫 번째 사진이 대표 이미지로 사용됩니다.</p>
-                <div class="image-preview-grid" id="imagePreviewGrid"></div>
-            </div>
-        </div>
-
-        <div class="field">
-            <label class="field-label" for="contentInput">설명</label>
-            <textarea id="contentInput" name="content" placeholder="이 영화와 함께 남기고 싶은 감상을 적어보세요."></textarea>
-        </div>
-
-        <div class="field">
-            <label class="field-label" for="movieSearchInput">영화 선택</label>
-            <p class="field-copy">게시물에 연결할 영화를 검색해서 선택해주세요.</p>
-            <div class="movie-search-wrap">
-                <input class="movie-search-input" id="movieSearchInput" type="text" placeholder="영화 제목을 입력하세요">
-                <button class="movie-search-clear" id="movieSearchClear" type="button" aria-label="검색어 지우기">×</button>
-            </div>
-            <input type="hidden" name="movieId" id="selectedMovieId" required>
-
-            <div class="selected-movie" id="selectedMovie">
-                <div class="selected-badge">✓ 선택됨</div>
-                <div class="selected-movie-poster" id="selectedMoviePoster"></div>
-                <div class="selected-movie-copy">
-                    <div class="selected-movie-title" id="selectedMovieTitle">선택된 영화</div>
-                    <div class="selected-movie-sub">이 영화와 함께 게시물이 등록됩니다.</div>
+                <button type="button" class="add-option-btn" id="addPollOptionBtn">+ 항목 추가 (최대 4개)</button>
+                <div class="poll-multiselect-row">
+                    <input type="checkbox" name="pollMultiSelect" id="pollMultiSelect" value="true">
+                    <label for="pollMultiSelect">복수 선택 허용</label>
                 </div>
-                <button class="selected-movie-clear" type="button" id="clearSelectedMovie" aria-label="선택 취소">×</button>
             </div>
 
-            <div class="movie-search-results" id="movieSearchResults"></div>
-        </div>
+            <!-- ── Quiz section ── -->
+            <div class="content-section" id="section-quiz">
+                <p class="section-label">퀴즈 만들기</p>
+                <input type="text" class="quiz-question-input" name="quizQuestion" id="quizQuestion"
+                       placeholder="퀴즈 질문을 입력하세요" maxlength="200">
+                <p class="quiz-hint">정답 옆의 ● 을 클릭하여 정답을 표시하세요.</p>
+                <div class="quiz-options-list" id="quizOptionsList">
+                    <div class="quiz-option-row">
+                        <input type="radio" class="correct-radio" name="quizCorrectIndex" value="0" title="정답">
+                        <input type="text" class="quiz-option-input" name="quizOption" placeholder="선택지 1" maxlength="100">
+                        <button type="button" class="remove-option-btn" disabled title="삭제">×</button>
+                    </div>
+                    <div class="quiz-option-row">
+                        <input type="radio" class="correct-radio" name="quizCorrectIndex" value="1" title="정답">
+                        <input type="text" class="quiz-option-input" name="quizOption" placeholder="선택지 2" maxlength="100">
+                        <button type="button" class="remove-option-btn" disabled title="삭제">×</button>
+                    </div>
+                </div>
+                <button type="button" class="add-option-btn" id="addQuizOptionBtn">+ 항목 추가 (최대 4개)</button>
+            </div>
 
-        <div class="submit-row">
-            <button class="submit-btn" id="submitBtn" type="submit" disabled>게시하기</button>
+            <!-- Movie selector -->
+            <div class="movie-section">
+                <p class="movie-section-label">영화 선택 *</p>
+                <div class="movie-search-wrap">
+                    <input class="movie-search-input" id="movieSearchInput" type="text" placeholder="영화 제목을 검색하세요">
+                    <button class="movie-search-clear" id="movieSearchClear" type="button" aria-label="검색어 지우기">×</button>
+                </div>
+                <input type="hidden" name="movieId" id="selectedMovieId" required>
+                <div class="selected-movie" id="selectedMovie">
+                    <div class="selected-badge">✓ 선택됨</div>
+                    <div class="selected-movie-poster" id="selectedMoviePoster"></div>
+                    <div class="selected-movie-copy">
+                        <div class="selected-movie-title" id="selectedMovieTitle">선택된 영화</div>
+                        <div class="selected-movie-sub">이 영화와 함께 게시물이 등록됩니다.</div>
+                    </div>
+                    <button class="selected-movie-clear" type="button" id="clearSelectedMovie" aria-label="선택 취소">×</button>
+                </div>
+                <div class="movie-search-results" id="movieSearchResults"></div>
+            </div>
+
+            <!-- Footer -->
+            <div class="composer-footer">
+                <div class="notice-toggle-row">
+                    <label class="toggle-switch" for="noticeToggle">
+                        <input type="checkbox" id="noticeToggle" name="isNotice">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>공지</span>
+                </div>
+                <div class="action-btns">
+                    <a class="btn-cancel" th:href="@{/feed}">취소</a>
+                    <button class="btn-submit" id="submitBtn" type="submit" disabled>등록</button>
+                </div>
+            </div>
         </div>
     </form>
 </main>
 
 <script>
-    (function () {
-        const btn = document.getElementById('notifBtn');
-        const panel = document.getElementById('notifPanel');
-        const badge = document.getElementById('notifBadge');
-        const list = document.getElementById('notifList');
-        const readAllBtn = document.getElementById('notifReadAll');
+(function () {
+    // ── Notification panel (same as other pages) ──
+    const btn = document.getElementById('notifBtn');
+    const panel = document.getElementById('notifPanel');
+    const badge = document.getElementById('notifBadge');
+    const list = document.getElementById('notifList');
+    const readAllBtn = document.getElementById('notifReadAll');
 
-        function timeAgo(value) {
-            if (!value) return '';
-            const seconds = Math.floor((Date.now() - new Date(value)) / 1000);
-            if (seconds < 60) return '방금 전';
-            if (seconds < 3600) return Math.floor(seconds / 60) + '분 전';
-            if (seconds < 86400) return Math.floor(seconds / 3600) + '시간 전';
-            return Math.floor(seconds / 86400) + '일 전';
-        }
-
-        function renderItems(items) {
-            if (!items || !items.length) {
-                list.innerHTML = '<div class="notif-empty">아직 알림이 없습니다</div>';
-                return;
-            }
-            list.innerHTML = items.map((item) => {
-                const avatar = item.actorProfileImageUrl
-                    ? `<img src="${item.actorProfileImageUrl}" alt="">`
-                    : (item.actorNickname || '?')[0];
-                const thumbnail = item.moviePosterUrl
-                    ? `<img class="notif-movie-thumb" src="${item.moviePosterUrl}" alt="">`
-                    : '';
-                const text = item.notifText
-                    || (item.type === 'FOLLOW'
-                        ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우했습니다`
-                        : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>를 인생영화로 추가했습니다`);
-                return `<a class="notif-item${!item.isRead ? ' unread' : ''}" href="${item.linkUrl || '#'}"><div class="notif-avatar">${avatar}</div><div class="notif-content"><div class="notif-text">${text}</div><div class="notif-time">${timeAgo(item.createdAt)}</div></div>${thumbnail}</a>`;
-            }).join('');
-        }
-
-        function updateBadge(count) {
-            badge.textContent = count > 0 ? (count > 99 ? '99+' : count) : '';
-        }
-
-        fetch('/api/notifications')
-            .then((response) => response.ok ? response.json() : null)
-            .then((data) => { if (data) updateBadge(data.unreadCount); })
-            .catch(() => {});
-
-        btn?.addEventListener('click', (event) => {
-            event.stopPropagation();
-            const open = panel.hidden;
-            panel.hidden = !open;
-            if (!open) return;
-            fetch('/api/notifications')
-                .then((response) => response.ok ? response.json() : null)
-                .then((data) => {
-                    if (!data) return;
-                    updateBadge(data.unreadCount);
-                    renderItems(data.items);
-                })
-                .catch(() => {});
-        });
-
-        readAllBtn?.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            fetch('/api/notifications/read-all', { method: 'POST' })
-                .then(() => {
-                    updateBadge(0);
-                    document.querySelectorAll('.notif-item.unread').forEach((element) => element.classList.remove('unread'));
-                })
-                .catch(() => {});
-        });
-
-        document.addEventListener('click', (event) => {
-            if (panel && !panel.hidden && !panel.contains(event.target) && event.target !== btn) {
-                panel.hidden = true;
-            }
-        });
-    })();
-
-    const imageInput = document.getElementById('imageInput');
-    const imageDropzone = document.getElementById('imageDropzone');
-    const imageWarning = document.getElementById('imageWarning');
-    const imagePreviewNote = document.getElementById('imagePreviewNote');
-    const imagePreviewGrid = document.getElementById('imagePreviewGrid');
-    const movieSearchInput = document.getElementById('movieSearchInput');
-    const movieSearchClear = document.getElementById('movieSearchClear');
-    const movieSearchResults = document.getElementById('movieSearchResults');
-    const selectedMovie = document.getElementById('selectedMovie');
-    const selectedMoviePoster = document.getElementById('selectedMoviePoster');
-    const selectedMovieTitle = document.getElementById('selectedMovieTitle');
-    const selectedMovieId = document.getElementById('selectedMovieId');
-    const clearSelectedMovie = document.getElementById('clearSelectedMovie');
-    const postCreateForm = document.getElementById('postCreateForm');
-    const submitBtn = document.getElementById('submitBtn');
-
-    let debounceTimer = null;
-
-    function updateSubmitState() {
-        const hasImages = !!(imageInput.files && imageInput.files.length > 0);
-        const hasMovie = !!selectedMovieId.value;
-        submitBtn.disabled = !(hasImages && hasMovie);
+    function timeAgo(value) {
+        if (!value) return '';
+        const seconds = Math.floor((Date.now() - new Date(value)) / 1000);
+        if (seconds < 60) return '방금 전';
+        if (seconds < 3600) return Math.floor(seconds / 60) + '분 전';
+        if (seconds < 86400) return Math.floor(seconds / 3600) + '시간 전';
+        return Math.floor(seconds / 86400) + '일 전';
     }
-
-    function updateSearchClearVisibility() {
-        movieSearchClear.classList.toggle('visible', movieSearchInput.value.trim().length > 0);
-    }
-
-    function renderImagePreviews(files) {
-        imagePreviewGrid.innerHTML = '';
-        if (!files.length) {
-            imagePreviewGrid.classList.remove('active');
-            imagePreviewNote.style.display = 'none';
-            return;
-        }
-
-        files.forEach((file, index) => {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'image-preview';
-            if (index === 0) {
-                const badge = document.createElement('div');
-                badge.className = 'image-preview-primary';
-                badge.textContent = '대표';
-                wrapper.appendChild(badge);
-            }
-
-            const img = document.createElement('img');
-            img.alt = `선택한 이미지 ${index + 1}`;
-            wrapper.appendChild(img);
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                img.src = String(event.target?.result ?? '');
-            };
-            reader.readAsDataURL(file);
-            imagePreviewGrid.appendChild(wrapper);
-        });
-
-        imagePreviewGrid.classList.add('active');
-        imagePreviewNote.style.display = 'block';
-    }
-
-    function setFiles(files) {
-        const dataTransfer = new DataTransfer();
-        files.forEach((file) => dataTransfer.items.add(file));
-        imageInput.files = dataTransfer.files;
-        renderImagePreviews(files);
-        updateSubmitState();
-    }
-
-    function normalizeFiles(fileList) {
-        const files = Array.from(fileList || []).filter((file) => file && file.size > 0);
-        if (!files.length) {
-            imageWarning.classList.remove('active');
-            return [];
-        }
-
-        let normalized = files;
-        if (normalized.length > 5) {
-            alert('이미지는 최대 5장까지 업로드할 수 있습니다. 앞의 5장만 사용됩니다.');
-            normalized = normalized.slice(0, 5);
-        }
-
-        const oversized = normalized.find((file) => file.size > 10 * 1024 * 1024);
-        if (oversized) {
-            imageWarning.classList.add('active');
-            alert('10MB 이하 이미지와 최대 5장까지만 업로드할 수 있습니다.');
-            normalized = normalized.filter((file) => file.size <= 10 * 1024 * 1024);
-        } else {
-            imageWarning.classList.remove('active');
-        }
-
-        return normalized;
-    }
-
-    imageInput.addEventListener('change', () => {
-        setFiles(normalizeFiles(imageInput.files));
-    });
-
-    ['dragenter', 'dragover'].forEach((eventName) => {
-        imageDropzone.addEventListener(eventName, (event) => {
-            event.preventDefault();
-            imageDropzone.classList.add('dragover');
-        });
-    });
-
-    ['dragleave', 'dragend', 'drop'].forEach((eventName) => {
-        imageDropzone.addEventListener(eventName, (event) => {
-            event.preventDefault();
-            imageDropzone.classList.remove('dragover');
-        });
-    });
-
-    imageDropzone.addEventListener('drop', (event) => {
-        const files = normalizeFiles(event.dataTransfer?.files || []);
-        setFiles(files);
-    });
-
-    function clearResults() {
-        movieSearchResults.innerHTML = '';
-        movieSearchResults.classList.remove('active');
-    }
-
-    function escapeHtml(value) {
-        return String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    function renderSearchResults(items) {
-        if (!items.length) {
-            movieSearchResults.innerHTML = '<div class="movie-search-empty">검색 결과가 없습니다.</div>';
-            movieSearchResults.classList.add('active');
-            return;
-        }
-
-        movieSearchResults.innerHTML = items.map((item) => {
-            const poster = item.posterUrl
-                ? `<div class="movie-search-poster"><img src="${item.posterUrl}" alt="${escapeHtml(item.title)}"></div>`
-                : `<div class="movie-search-fallback">포스터 없음</div>`;
-            return `<button class="movie-search-item" type="button" data-movie-id="${item.movieId}" data-movie-title="${escapeHtml(item.title)}" data-movie-poster="${item.posterUrl || ''}">${poster}<div class="movie-search-copy"><div class="movie-search-title">${escapeHtml(item.title)}</div></div></button>`;
+    function renderItems(items) {
+        if (!items || !items.length) { list.innerHTML = '<div class="notif-empty">아직 알림이 없습니다</div>'; return; }
+        list.innerHTML = items.map(item => {
+            const avatar = item.actorProfileImageUrl ? `<img src="${item.actorProfileImageUrl}" alt="">` : (item.actorNickname || '?')[0];
+            const thumbnail = item.moviePosterUrl ? `<img class="notif-movie-thumb" src="${item.moviePosterUrl}" alt="">` : '';
+            const text = item.notifText || (item.type === 'FOLLOW' ? `<strong>${item.actorNickname}</strong>님이 회원님을 팔로우했습니다` : `<strong>${item.actorNickname}</strong>님이 <strong>${item.movieName}</strong>를 인생영화로 추가했습니다`);
+            return `<a class="notif-item${!item.isRead ? ' unread' : ''}" href="${item.linkUrl || '#'}"><div class="notif-avatar">${avatar}</div><div class="notif-content"><div class="notif-text">${text}</div><div class="notif-time">${timeAgo(item.createdAt)}</div></div>${thumbnail}</a>`;
         }).join('');
+    }
+    function updateBadge(count) { badge.textContent = count > 0 ? (count > 99 ? '99+' : count) : ''; }
+    fetch('/api/notifications').then(r => r.ok ? r.json() : null).then(d => { if (d) updateBadge(d.unreadCount); }).catch(() => {});
+    btn?.addEventListener('click', e => {
+        e.stopPropagation();
+        const open = panel.hidden;
+        panel.hidden = !open;
+        if (!open) return;
+        fetch('/api/notifications').then(r => r.ok ? r.json() : null).then(d => { if (!d) return; updateBadge(d.unreadCount); renderItems(d.items); }).catch(() => {});
+    });
+    readAllBtn?.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        fetch('/api/notifications/read-all', { method: 'POST' }).then(() => { updateBadge(0); document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread')); }).catch(() => {});
+    });
+    document.addEventListener('click', e => { if (panel && !panel.hidden && !panel.contains(e.target) && e.target !== btn) panel.hidden = true; });
+})();
+
+// ── Emoji data ────────────────────────────────────────────────────────────────
+const EMOJI_DATA = {
+    '😀 감정': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🥴','😵','😲','😳','🤯','😱','😨','😰','😢','😥','😓','🤧','😷','🤒','🤕','🤢','🤮','😴','💤'],
+    '❤️ 감성': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','✨','⭐','🌟','💫','🔥','🌈','💯','🎉','🎊','🎀','🌹','🌺'],
+    '👋 제스처': ['👍','👎','👌','🤌','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','👋','🤙','💪','🦾','🙏','🤝','👏','🫶','🤜','🤛','✊','👊'],
+    '🎬 영화': ['🎬','🎥','📽️','🎞️','🍿','🎭','🎪','🎡','🌙','🌠','⚡','🌊','🏆','🥇','🎖️','🎗️','🎟️','🎫','🏅','🔖','📌','💡','🎯','🎲','🃏','🎴','🎮']
+};
+
+let currentEmojiCat = Object.keys(EMOJI_DATA)[0];
+
+function initEmojiPicker() {
+    const catEl = document.getElementById('emojiCategories');
+    const gridEl = document.getElementById('emojiGrid');
+    catEl.innerHTML = Object.keys(EMOJI_DATA).map(cat =>
+        `<button type="button" class="emoji-cat-btn${cat === currentEmojiCat ? ' active' : ''}" onclick="switchEmojiCat('${cat}')">${cat}</button>`
+    ).join('');
+    renderEmojiGrid(currentEmojiCat);
+}
+
+function switchEmojiCat(cat) {
+    currentEmojiCat = cat;
+    document.querySelectorAll('.emoji-cat-btn').forEach(b => b.classList.toggle('active', b.textContent === cat));
+    renderEmojiGrid(cat);
+}
+
+function renderEmojiGrid(cat) {
+    const gridEl = document.getElementById('emojiGrid');
+    gridEl.innerHTML = (EMOJI_DATA[cat] || []).map(e =>
+        `<button type="button" class="emoji-btn" onclick="insertEmoji('${e}')">${e}</button>`
+    ).join('');
+}
+
+function insertEmoji(emoji) {
+    const ta = document.getElementById('contentInput');
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    ta.value = ta.value.slice(0, start) + emoji + ta.value.slice(end);
+    ta.selectionStart = ta.selectionEnd = start + emoji.length;
+    ta.focus();
+}
+
+initEmojiPicker();
+
+// ── Type switching ────────────────────────────────────────────────────────────
+const TYPES = ['emoji', 'photo', 'video', 'file', 'poll', 'quiz'];
+let currentType = 'photo';
+
+function setType(type) {
+    currentType = type;
+    document.getElementById('postTypeInput').value = type === 'emoji' ? 'photo' : type;
+
+    TYPES.forEach(t => {
+        document.getElementById('btn-' + t).classList.toggle('active', t === type);
+        const sec = document.getElementById('section-' + t);
+        if (sec) sec.classList.toggle('active', t === type);
+    });
+    updateSubmit();
+}
+
+// ── Image handling ────────────────────────────────────────────────────────────
+const imageInput = document.getElementById('imageInput');
+const imageDropzone = document.getElementById('imageDropzone');
+const imageWarning = document.getElementById('imageWarning');
+const imagePreviewGrid = document.getElementById('imagePreviewGrid');
+
+function renderImagePreviews(files) {
+    imagePreviewGrid.innerHTML = '';
+    if (!files.length) { imagePreviewGrid.classList.remove('active'); return; }
+    files.forEach((file, i) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'image-preview';
+        if (i === 0) {
+            const badge = document.createElement('div');
+            badge.className = 'image-preview-primary'; badge.textContent = '대표';
+            wrapper.appendChild(badge);
+        }
+        const rm = document.createElement('button');
+        rm.type = 'button'; rm.className = 'image-remove-btn'; rm.textContent = '×';
+        rm.onclick = () => removeImageAt(i);
+        wrapper.appendChild(rm);
+        const img = document.createElement('img');
+        img.alt = `이미지 ${i + 1}`;
+        const reader = new FileReader();
+        reader.onload = e => { img.src = e.target.result; };
+        reader.readAsDataURL(file);
+        wrapper.appendChild(img);
+        imagePreviewGrid.appendChild(wrapper);
+    });
+    imagePreviewGrid.classList.add('active');
+}
+
+let imageFiles = [];
+
+function removeImageAt(idx) {
+    imageFiles.splice(idx, 1);
+    const dt = new DataTransfer();
+    imageFiles.forEach(f => dt.items.add(f));
+    imageInput.files = dt.files;
+    renderImagePreviews(imageFiles);
+    updateSubmit();
+}
+
+function setImageFiles(files) {
+    imageFiles = Array.from(files || []).filter(f => f && f.size > 0);
+    if (imageFiles.length > 5) {
+        alert('이미지는 최대 5장까지 업로드할 수 있습니다. 앞의 5장만 사용됩니다.');
+        imageFiles = imageFiles.slice(0, 5);
+    }
+    const oversized = imageFiles.filter(f => f.size > 10 * 1024 * 1024);
+    if (oversized.length) {
+        imageWarning.classList.add('active');
+        imageFiles = imageFiles.filter(f => f.size <= 10 * 1024 * 1024);
+    } else {
+        imageWarning.classList.remove('active');
+    }
+    const dt = new DataTransfer();
+    imageFiles.forEach(f => dt.items.add(f));
+    imageInput.files = dt.files;
+    renderImagePreviews(imageFiles);
+    updateSubmit();
+}
+
+imageInput.addEventListener('change', () => setImageFiles(imageInput.files));
+['dragenter', 'dragover'].forEach(ev => imageDropzone.addEventListener(ev, e => { e.preventDefault(); imageDropzone.classList.add('dragover'); }));
+['dragleave', 'dragend', 'drop'].forEach(ev => imageDropzone.addEventListener(ev, e => { e.preventDefault(); imageDropzone.classList.remove('dragover'); }));
+imageDropzone.addEventListener('drop', e => { setImageFiles(e.dataTransfer?.files || []); });
+
+// ── Video handling ────────────────────────────────────────────────────────────
+const videoInput = document.getElementById('videoInput');
+const videoPreviewWrap = document.getElementById('videoPreviewWrap');
+const videoPreview = document.getElementById('videoPreview');
+document.getElementById('videoRemoveBtn').addEventListener('click', () => {
+    videoInput.value = '';
+    videoPreview.src = '';
+    videoPreviewWrap.classList.remove('active');
+    document.getElementById('videoPicker').style.display = '';
+    updateSubmit();
+});
+videoInput.addEventListener('change', () => {
+    const file = videoInput.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    videoPreview.src = url;
+    videoPreviewWrap.classList.add('active');
+    document.getElementById('videoPicker').style.display = 'none';
+    updateSubmit();
+});
+
+// ── File handling ─────────────────────────────────────────────────────────────
+const docInput = document.getElementById('docInput');
+const filePreviewCard = document.getElementById('filePreviewCard');
+const EXT_ICONS = { pdf: '📄', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊', ppt: '📑', pptx: '📑', zip: '🗜', hwp: '📃' };
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+document.getElementById('fileRemoveBtn').addEventListener('click', () => {
+    docInput.value = '';
+    filePreviewCard.classList.remove('active');
+    document.getElementById('docPicker').style.display = '';
+    updateSubmit();
+});
+docInput.addEventListener('change', () => {
+    const file = docInput.files[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    document.getElementById('fileIcon').textContent = EXT_ICONS[ext] || '📎';
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatFileSize(file.size);
+    filePreviewCard.classList.add('active');
+    document.getElementById('docPicker').style.display = 'none';
+    updateSubmit();
+});
+
+// ── Poll options management ───────────────────────────────────────────────────
+const pollList = document.getElementById('pollOptionsList');
+
+function updatePollRemoveButtons() {
+    const rows = pollList.querySelectorAll('.poll-option-row');
+    rows.forEach(row => {
+        const btn = row.querySelector('.remove-option-btn');
+        btn.disabled = rows.length <= 2;
+    });
+    document.getElementById('addPollOptionBtn').disabled = rows.length >= 4;
+}
+
+document.getElementById('addPollOptionBtn').addEventListener('click', () => {
+    const rows = pollList.querySelectorAll('.poll-option-row');
+    if (rows.length >= 4) return;
+    const n = rows.length + 1;
+    const div = document.createElement('div');
+    div.className = 'poll-option-row';
+    div.innerHTML = `<input type="text" class="poll-option-input" name="pollOption" placeholder="선택지 ${n}" maxlength="100"><button type="button" class="remove-option-btn" title="삭제">×</button>`;
+    div.querySelector('.remove-option-btn').addEventListener('click', () => { div.remove(); updatePollRemoveButtons(); updateSubmit(); });
+    pollList.appendChild(div);
+    updatePollRemoveButtons();
+});
+
+pollList.querySelectorAll('.remove-option-btn').forEach(btn => {
+    btn.addEventListener('click', () => { btn.closest('.poll-option-row').remove(); updatePollRemoveButtons(); updateSubmit(); });
+});
+
+// ── Quiz options management ───────────────────────────────────────────────────
+const quizList = document.getElementById('quizOptionsList');
+
+function updateQuizRemoveButtons() {
+    const rows = quizList.querySelectorAll('.quiz-option-row');
+    rows.forEach(row => {
+        const btn = row.querySelector('.remove-option-btn');
+        btn.disabled = rows.length <= 2;
+    });
+    document.getElementById('addQuizOptionBtn').disabled = rows.length >= 4;
+}
+
+function updateQuizRadioValues() {
+    quizList.querySelectorAll('.correct-radio').forEach((radio, i) => { radio.value = i; });
+}
+
+document.getElementById('addQuizOptionBtn').addEventListener('click', () => {
+    const rows = quizList.querySelectorAll('.quiz-option-row');
+    if (rows.length >= 4) return;
+    const n = rows.length;
+    const div = document.createElement('div');
+    div.className = 'quiz-option-row';
+    div.innerHTML = `<input type="radio" class="correct-radio" name="quizCorrectIndex" value="${n}" title="정답"><input type="text" class="quiz-option-input" name="quizOption" placeholder="선택지 ${n + 1}" maxlength="100"><button type="button" class="remove-option-btn" title="삭제">×</button>`;
+    div.querySelector('.remove-option-btn').addEventListener('click', () => { div.remove(); updateQuizRemoveButtons(); updateQuizRadioValues(); updateSubmit(); });
+    quizList.appendChild(div);
+    updateQuizRemoveButtons();
+});
+
+quizList.querySelectorAll('.remove-option-btn').forEach(btn => {
+    btn.addEventListener('click', () => { btn.closest('.quiz-option-row').remove(); updateQuizRemoveButtons(); updateQuizRadioValues(); updateSubmit(); });
+});
+
+// ── Movie search ──────────────────────────────────────────────────────────────
+const movieSearchInput = document.getElementById('movieSearchInput');
+const movieSearchClear = document.getElementById('movieSearchClear');
+const movieSearchResults = document.getElementById('movieSearchResults');
+const selectedMovie = document.getElementById('selectedMovie');
+const selectedMoviePoster = document.getElementById('selectedMoviePoster');
+const selectedMovieTitle = document.getElementById('selectedMovieTitle');
+const selectedMovieId = document.getElementById('selectedMovieId');
+const clearSelectedMovie = document.getElementById('clearSelectedMovie');
+let debounceTimer = null;
+
+function escapeHtml(v) {
+    return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function clearResults() {
+    movieSearchResults.innerHTML = '';
+    movieSearchResults.classList.remove('active');
+}
+
+function updateSearchClearVisibility() {
+    movieSearchClear.classList.toggle('visible', movieSearchInput.value.trim().length > 0);
+}
+
+function renderSearchResults(items) {
+    if (!items.length) {
+        movieSearchResults.innerHTML = '<div class="movie-search-empty">검색 결과가 없습니다.</div>';
         movieSearchResults.classList.add('active');
+        return;
     }
+    movieSearchResults.innerHTML = items.map(item => {
+        const poster = item.posterUrl
+            ? `<div class="movie-search-poster"><img src="${item.posterUrl}" alt="${escapeHtml(item.title)}"></div>`
+            : `<div class="movie-search-fallback">포스터 없음</div>`;
+        return `<button class="movie-search-item" type="button" data-movie-id="${item.movieId}" data-movie-title="${escapeHtml(item.title)}" data-movie-poster="${item.posterUrl || ''}">${poster}<div><div class="movie-search-title">${escapeHtml(item.title)}</div></div></button>`;
+    }).join('');
+    movieSearchResults.classList.add('active');
+}
 
-    function setSelectedMovie(movieId, title, posterUrl) {
-        selectedMovieId.value = movieId;
-        selectedMovieTitle.textContent = title;
-        if (posterUrl) {
-            selectedMoviePoster.className = 'selected-movie-poster';
-            selectedMoviePoster.innerHTML = `<img src="${posterUrl}" alt="${escapeHtml(title)}">`;
-        } else {
-            selectedMoviePoster.className = 'selected-movie-fallback';
-            selectedMoviePoster.textContent = '포스터 없음';
-        }
-        selectedMovie.classList.add('active');
-        clearResults();
-        movieSearchInput.value = title;
-        updateSearchClearVisibility();
-        updateSubmitState();
-    }
-
-    function clearSelected() {
-        selectedMovieId.value = '';
-        selectedMovie.classList.remove('active');
-        selectedMoviePoster.innerHTML = '';
+function setSelectedMovie(movieId, title, posterUrl) {
+    selectedMovieId.value = movieId;
+    selectedMovieTitle.textContent = title;
+    if (posterUrl) {
         selectedMoviePoster.className = 'selected-movie-poster';
-        selectedMovieTitle.textContent = '선택된 영화';
-        updateSubmitState();
+        selectedMoviePoster.innerHTML = `<img src="${posterUrl}" alt="${escapeHtml(title)}">`;
+    } else {
+        selectedMoviePoster.className = 'selected-movie-fallback';
+        selectedMoviePoster.textContent = '포스터 없음';
+    }
+    selectedMovie.classList.add('active');
+    clearResults();
+    movieSearchInput.value = title;
+    updateSearchClearVisibility();
+    updateSubmit();
+}
+
+function clearSelected() {
+    selectedMovieId.value = '';
+    selectedMovie.classList.remove('active');
+    selectedMoviePoster.innerHTML = '';
+    selectedMoviePoster.className = 'selected-movie-poster';
+    selectedMovieTitle.textContent = '선택된 영화';
+    updateSubmit();
+}
+
+movieSearchInput.addEventListener('input', () => {
+    const query = movieSearchInput.value.trim();
+    updateSearchClearVisibility();
+    clearTimeout(debounceTimer);
+    if (query.length < 1) { clearResults(); return; }
+    debounceTimer = setTimeout(() => {
+        fetch(`/api/movies/search?query=${encodeURIComponent(query)}`)
+            .then(r => r.ok ? r.json() : [])
+            .then(items => renderSearchResults(items))
+            .catch(() => { movieSearchResults.innerHTML = '<div class="movie-search-empty">검색 중 오류가 발생했습니다.</div>'; movieSearchResults.classList.add('active'); });
+    }, 300);
+});
+
+movieSearchResults.addEventListener('click', e => {
+    const button = e.target.closest('.movie-search-item');
+    if (!button) return;
+    setSelectedMovie(button.dataset.movieId, button.dataset.movieTitle, button.dataset.moviePoster);
+});
+
+clearSelectedMovie.addEventListener('click', clearSelected);
+movieSearchClear.addEventListener('click', () => {
+    movieSearchInput.value = '';
+    updateSearchClearVisibility();
+    clearResults();
+    movieSearchInput.focus();
+});
+
+// ── Submit validation ─────────────────────────────────────────────────────────
+const submitBtn = document.getElementById('submitBtn');
+
+function updateSubmit() {
+    const hasMovie = !!selectedMovieId.value;
+    let hasContent = false;
+
+    if (currentType === 'photo' || currentType === 'emoji') {
+        hasContent = imageFiles.length > 0;
+    } else if (currentType === 'video') {
+        hasContent = !!(videoInput.files && videoInput.files.length > 0);
+    } else if (currentType === 'file') {
+        hasContent = !!(docInput.files && docInput.files.length > 0);
+    } else if (currentType === 'poll') {
+        const q = document.getElementById('pollQuestion').value.trim();
+        const opts = Array.from(pollList.querySelectorAll('.poll-option-input')).map(i => i.value.trim()).filter(Boolean);
+        hasContent = q.length > 0 && opts.length >= 2;
+    } else if (currentType === 'quiz') {
+        const q = document.getElementById('quizQuestion').value.trim();
+        const opts = Array.from(quizList.querySelectorAll('.quiz-option-input')).map(i => i.value.trim()).filter(Boolean);
+        const hasCorrect = !!document.querySelector('.correct-radio:checked');
+        hasContent = q.length > 0 && opts.length >= 2 && hasCorrect;
     }
 
-    movieSearchInput.addEventListener('input', () => {
-        const query = movieSearchInput.value.trim();
-        updateSearchClearVisibility();
-        window.clearTimeout(debounceTimer);
-        if (query.length < 1) {
-            clearResults();
-            return;
-        }
-        debounceTimer = window.setTimeout(() => {
-            fetch(`/api/movies/search?query=${encodeURIComponent(query)}`)
-                .then((response) => response.ok ? response.json() : [])
-                .then((items) => renderSearchResults(items))
-                .catch(() => {
-                    movieSearchResults.innerHTML = '<div class="movie-search-empty">검색 중 오류가 발생했습니다.</div>';
-                    movieSearchResults.classList.add('active');
-                });
-        }, 300);
-    });
+    submitBtn.disabled = !(hasMovie && hasContent);
+}
 
-    movieSearchResults.addEventListener('click', (event) => {
-        const button = event.target.closest('.movie-search-item');
-        if (!button) return;
-        setSelectedMovie(button.dataset.movieId, button.dataset.movieTitle, button.dataset.moviePoster);
-    });
+// Input event listeners for live validation
+document.getElementById('pollQuestion').addEventListener('input', updateSubmit);
+document.getElementById('quizQuestion').addEventListener('input', updateSubmit);
+pollList.addEventListener('input', updateSubmit);
+quizList.addEventListener('input', updateSubmit);
+quizList.addEventListener('change', updateSubmit);
 
-    clearSelectedMovie.addEventListener('click', clearSelected);
-    movieSearchClear.addEventListener('click', () => {
-        movieSearchInput.value = '';
-        updateSearchClearVisibility();
-        clearResults();
+// ── Form submission ───────────────────────────────────────────────────────────
+document.getElementById('postForm').addEventListener('submit', e => {
+    if (!selectedMovieId.value) {
+        e.preventDefault();
         movieSearchInput.focus();
-    });
+        alert('게시물에 연결할 영화를 선택해주세요.');
+        return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = '등록 중...';
+});
 
-    postCreateForm.addEventListener('submit', (event) => {
-        if (!selectedMovieId.value) {
-            event.preventDefault();
-            movieSearchInput.focus();
-            alert('게시물에 연결할 영화를 선택해주세요.');
-            return;
-        }
-        if (!imageInput.files || imageInput.files.length < 1) {
-            event.preventDefault();
-            alert('게시물 이미지를 첨부해주세요.');
-            return;
-        }
-        submitBtn.disabled = true;
-        submitBtn.textContent = '게시 중...';
-    });
-
-    updateSearchClearVisibility();
-    updateSubmitState();
+updateSearchClearVisibility();
+updateSubmit();
 </script>
 </body>
 </html>

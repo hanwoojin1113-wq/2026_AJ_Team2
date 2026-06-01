@@ -260,6 +260,149 @@
             .cards { grid-template-columns: 1fr; }
             .search-form { flex-direction: column; }
         }
+
+        /* ── 취향 맵 ── */
+        .map-legend {
+            display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px;
+        }
+        .legend-item {
+            display: flex; align-items: center; gap: 7px;
+            font-size: 0.82rem; color: var(--sub);
+        }
+        .legend-dot {
+            width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+        }
+        .legend-dot.me     { background: #fbbf24; box-shadow: 0 0 8px rgba(251,191,36,0.7); }
+        .legend-dot.follow { background: #60a5fa; box-shadow: 0 0 6px rgba(96,165,250,0.5); }
+        .legend-dot.other  { background: rgba(255,255,255,0.5); }
+        .map-body {
+            display: flex; gap: 16px; align-items: flex-start;
+        }
+        .map-canvas-wrap {
+            position: relative; flex: 1; min-width: 0;
+            aspect-ratio: 16 / 9;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 14px; overflow: hidden;
+            background: rgba(255,255,255,0.02); cursor: default;
+        }
+        #tasteMapSvg { width: 100%; height: 100%; }
+        .quadrant-label {
+            font-size: 12px; font-weight: 800; letter-spacing: 0.06em;
+            fill: rgba(255,255,255,0.45); text-transform: uppercase; pointer-events: none;
+        }
+        .axis-label {
+            font-size: 11px; font-weight: 600;
+            fill: rgba(255,255,255,0.50); pointer-events: none;
+        }
+        .user-node { cursor: pointer; }
+        .user-node:hover .node-circle { filter: brightness(1.4); }
+        #mapTooltip {
+            position: absolute; pointer-events: none;
+            background: rgba(10,13,22,0.96);
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 12px; padding: 12px 14px;
+            display: none; min-width: 155px; z-index: 10;
+            backdrop-filter: blur(10px);
+        }
+        .tooltip-name { font-size: 0.9rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+        .tooltip-badge {
+            display: inline-block; font-size: 0.68rem; font-weight: 700;
+            padding: 1px 7px; border-radius: 4px;
+            background: rgba(96,165,250,0.2); color: #60a5fa; margin-bottom: 6px;
+        }
+        .tooltip-badge.me-badge { background: rgba(251,191,36,0.2); color: #fbbf24; }
+        .tt-follow-btn {
+            display: block; width: 100%; margin-top: 8px; padding: 6px 0;
+            border-radius: 7px; border: 1px solid rgba(96,165,250,0.5);
+            background: rgba(96,165,250,0.1); color: #60a5fa;
+            font-size: 0.78rem; font-weight: 700; cursor: pointer;
+            pointer-events: all; transition: background 0.15s;
+        }
+        .tt-follow-btn:hover { background: rgba(96,165,250,0.25); }
+        .tt-follow-btn.following { border-color: rgba(52,211,153,0.5); background: rgba(52,211,153,0.1); color: #34d399; }
+        .tt-follow-btn.following:hover { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.4); color: #f87171; }
+        .tooltip-hint { margin-top: 4px; font-size: 0.70rem; color: var(--sub); }
+        #mapLoading {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 12px; color: var(--sub); font-size: 0.88rem;
+        }
+        .loading-spinner {
+            width: 28px; height: 28px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top-color: var(--blue);
+            border-radius: 50%;
+            animation: tm-spin 0.8s linear infinite;
+        }
+        @keyframes tm-spin { to { transform: rotate(360deg); } }
+        #mapEmpty {
+            position: absolute; inset: 0;
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 8px; color: var(--sub); font-size: 0.88rem;
+        }
+        .similar-panel {
+            width: 220px; flex-shrink: 0;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px; padding: 16px 14px;
+        }
+        .similar-title {
+            font-size: 0.75rem; font-weight: 900;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            color: var(--blue); margin: 0 0 12px;
+        }
+        .similar-empty { font-size: 0.82rem; color: var(--sub); line-height: 1.5; }
+        .similar-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            cursor: pointer;
+        }
+        .similar-item:last-child { border-bottom: none; }
+        .similar-avatar {
+            width: 34px; height: 34px; border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.78rem; font-weight: 700; color: rgba(255,255,255,0.5);
+            flex-shrink: 0; overflow: hidden;
+        }
+        .similar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .similar-info { flex: 1; min-width: 0; }
+        .similar-nickname {
+            font-size: 0.83rem; font-weight: 700; color: #fff;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .similar-score { font-size: 0.70rem; color: var(--sub); margin-top: 1px; }
+        .similar-follow-btn {
+            padding: 4px 10px; border-radius: 6px;
+            border: 1px solid rgba(96,165,250,0.4);
+            background: transparent; color: #60a5fa;
+            font-size: 0.70rem; font-weight: 700;
+            cursor: pointer; white-space: nowrap; transition: background 0.15s;
+        }
+        .similar-follow-btn:hover { background: rgba(96,165,250,0.15); }
+        .similar-follow-btn.following { border-color: rgba(52,211,153,0.4); color: #34d399; }
+        .similar-follow-btn.following:hover { border-color: rgba(239,68,68,0.4); color: #f87171; }
+        .genre-guide { margin-top: 20px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
+        .genre-guide-title {
+            font-size: 0.70rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--sub); margin-bottom: 8px;
+        }
+        .genre-tag {
+            display: inline-block; font-size: 0.68rem;
+            padding: 2px 7px; border-radius: 20px;
+            margin: 2px 2px; font-weight: 600;
+        }
+        .genre-tag.intense { background: rgba(239,68,68,0.15);  color: #fca5a5; }
+        .genre-tag.light   { background: rgba(251,191,36,0.15); color: #fde68a; }
+        .genre-tag.imagine { background: rgba(139,92,246,0.15); color: #c4b5fd; }
+        .genre-tag.real    { background: rgba(52,211,153,0.15); color: #6ee7b7; }
+        @media (max-width: 760px) {
+            .map-body { flex-direction: column; }
+            .similar-panel { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -409,6 +552,73 @@
         </div>
     </section>
 
+    <!-- 취향 맵 -->
+    <section class="section">
+        <div class="section-head">
+            <h2>취향 맵</h2>
+        </div>
+        <p style="font-size:0.88rem;color:var(--sub);margin:-4px 0 14px;">
+            장르 취향을 기반으로 유저들의 취향을 2D 공간에 시각화합니다.
+            비슷한 유저일수록 가깝게, 다른 유저일수록 멀리 배치됩니다.
+        </p>
+        <div class="map-legend">
+            <div class="legend-item"><div class="legend-dot me"></div> 나</div>
+            <div class="legend-item"><div class="legend-dot follow"></div> 팔로잉</div>
+            <div class="legend-item"><div class="legend-dot other"></div> 다른 유저</div>
+        </div>
+        <div class="map-body">
+            <div class="map-canvas-wrap" id="mapWrap">
+                <div id="mapLoading">
+                    <div class="loading-spinner"></div>
+                    취향 맵 로딩 중...
+                </div>
+                <div id="mapEmpty">
+                    취향 데이터가 있는 유저가 없습니다.<br>
+                    영화를 더 감상해보세요.
+                </div>
+                <svg id="tasteMapSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+                <div id="mapTooltip">
+                    <div class="tooltip-name" id="ttName"></div>
+                    <div id="ttBadge"></div>
+                    <div id="ttFollow"></div>
+                    <div class="tooltip-hint" id="ttHint"></div>
+                </div>
+            </div>
+            <aside class="similar-panel" id="similarPanel">
+                <p class="similar-title">취향 유사 유저</p>
+                <div id="similarList">
+                    <p class="similar-empty">로딩 중...</p>
+                </div>
+                <div class="genre-guide">
+                    <p class="genre-guide-title">장르 위치 가이드</p>
+                    <span class="genre-tag intense">액션</span>
+                    <span class="genre-tag intense">스릴러</span>
+                    <span class="genre-tag intense">공포</span>
+                    <span class="genre-tag intense">범죄</span>
+                    <span class="genre-tag intense">전쟁</span>
+                    <span class="genre-tag imagine">SF</span>
+                    <span class="genre-tag imagine">판타지</span>
+                    <span class="genre-tag imagine">모험</span>
+                    <span class="genre-tag imagine">애니</span>
+                    <span class="genre-tag light">코미디</span>
+                    <span class="genre-tag light">로맨스</span>
+                    <span class="genre-tag light">가족</span>
+                    <span class="genre-tag light">뮤지컬</span>
+                    <span class="genre-tag real">드라마</span>
+                    <span class="genre-tag real">다큐</span>
+                    <span class="genre-tag real">역사</span>
+                    <span class="genre-tag real">사극</span>
+                    <div style="margin-top:8px;font-size:0.68rem;color:var(--sub);line-height:1.5;">
+                        <span style="color:#fca5a5">■</span> 강렬함(좌)
+                        <span style="color:#fde68a;margin-left:6px">■</span> 가벼움(우)<br>
+                        <span style="color:#c4b5fd">■</span> 상상·환상(상)
+                        <span style="color:#6ee7b7;margin-left:6px">■</span> 현실·일상(하)
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </section>
+
     <!-- 추천 사용자 / 검색 결과 -->
     <section class="section">
         <div class="section-head">
@@ -476,6 +686,226 @@
             } catch (_) {}
         });
     });
+})();
+</script>
+
+<script th:inline="javascript">
+(function () {
+    const IS_LOGGED_IN = /*[[${loginUserId != null}]]*/ false;
+
+    const svg     = document.getElementById('tasteMapSvg');
+    const wrap    = document.getElementById('mapWrap');
+    const tt      = document.getElementById('mapTooltip');
+    const loading = document.getElementById('mapLoading');
+    const empty   = document.getElementById('mapEmpty');
+
+    let allNodes = [];
+
+    const QUADRANT_LABELS = { tl: 'DARK FANTASY', tr: 'ADVENTURE', bl: 'THRILLER · NOIR', br: 'ROMANCE · DRAMA' };
+    const AXIS_LABELS     = { left: '← 강렬함', right: '가벼움 →', top: '↑ 상상·환상', bottom: '현실·일상 ↓' };
+    const PAD = 0.09;
+
+    function toSvgX(nx, W) { return PAD * W + (nx + 1) / 2 * (1 - 2 * PAD) * W; }
+    function toSvgY(ny, H) { return PAD * H + (-ny + 1) / 2 * (1 - 2 * PAD) * H; }
+
+    function svgEl(tag, attrs) {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+        for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+        return el;
+    }
+
+    function renderMap(nodes) {
+        loading.style.display = 'none';
+        if (!nodes || nodes.length === 0) { empty.style.display = 'flex'; return; }
+
+        allNodes = nodes;
+
+        const W = wrap.clientWidth  || 800;
+        const H = wrap.clientHeight || 500;
+        svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+        const CX = W / 2, CY = H / 2;
+
+        const starsG = svgEl('g', {opacity: '0.3'});
+        for (let i = 0; i < 60; i++) {
+            const sx = ((i * 137.508 + 31) % 1) * W;
+            const sy = ((i * 97.3141 + 17) % 1) * H;
+            starsG.appendChild(svgEl('circle', {cx: sx, cy: sy, r: i % 7 === 0 ? 1.2 : 0.5, fill: 'rgba(255,255,255,0.6)'}));
+        }
+        svg.appendChild(starsG);
+
+        [
+            {x:0,  y:0,  w:CX, h:CY, fill:'rgba(124,58,237,0.05)'},
+            {x:CX, y:0,  w:CX, h:CY, fill:'rgba(16,185,129,0.05)'},
+            {x:0,  y:CY, w:CX, h:CY, fill:'rgba(239,68,68,0.05)'},
+            {x:CX, y:CY, w:CX, h:CY, fill:'rgba(59,130,246,0.05)'},
+        ].forEach(q => svg.appendChild(svgEl('rect', {x:q.x, y:q.y, width:q.w, height:q.h, fill:q.fill})));
+
+        const lineStyle = {stroke:'rgba(255,255,255,0.10)', 'stroke-width':'1', 'stroke-dasharray':'5 5'};
+        svg.appendChild(svgEl('line', {x1:0, y1:CY, x2:W, y2:CY, ...lineStyle}));
+        svg.appendChild(svgEl('line', {x1:CX, y1:0, x2:CX, y2:H, ...lineStyle}));
+
+        [
+            {text: QUADRANT_LABELS.tl, x: PAD*W+8,   y: PAD*H+20,    anchor:'start'},
+            {text: QUADRANT_LABELS.tr, x: W-PAD*W-8, y: PAD*H+20,    anchor:'end'},
+            {text: QUADRANT_LABELS.bl, x: PAD*W+8,   y: H-PAD*H-10,  anchor:'start'},
+            {text: QUADRANT_LABELS.br, x: W-PAD*W-8, y: H-PAD*H-10,  anchor:'end'},
+        ].forEach(ql => {
+            const t = svgEl('text', {x:ql.x, y:ql.y, class:'quadrant-label', 'text-anchor':ql.anchor});
+            t.textContent = ql.text;
+            svg.appendChild(t);
+        });
+
+        [
+            {text: AXIS_LABELS.left,   x: PAD*W+5,   y: CY-10, anchor:'start'},
+            {text: AXIS_LABELS.right,  x: W-PAD*W-5, y: CY-10, anchor:'end'},
+            {text: AXIS_LABELS.top,    x: CX,         y: PAD*H+18, anchor:'middle'},
+            {text: AXIS_LABELS.bottom, x: CX,         y: H-PAD*H-6, anchor:'middle'},
+        ].forEach(al => {
+            const t = svgEl('text', {x:al.x, y:al.y, class:'axis-label', 'text-anchor':al.anchor});
+            t.textContent = al.text;
+            svg.appendChild(t);
+        });
+
+        const sorted = [...nodes].sort((a, b) =>
+            (a.isMe ? 2 : a.isFollowing ? 1 : 0) - (b.isMe ? 2 : b.isFollowing ? 1 : 0)
+        );
+        const nodesG = svgEl('g', {});
+        for (const node of sorted) {
+            const cx = toSvgX(node.x, W);
+            const cy = toSvgY(node.y, H);
+            const color  = node.isMe ? '#fbbf24' : node.isFollowing ? '#60a5fa' : 'rgba(255,255,255,0.55)';
+            const radius = node.isMe ? 9 : node.isFollowing ? 7 : 5.5;
+
+            const g = svgEl('g', {class:'user-node', 'data-login': node.loginId});
+
+            if (node.isMe || node.isFollowing) {
+                g.appendChild(svgEl('circle', {cx, cy, r: radius+5, fill:'none', stroke:color, 'stroke-width':'1', opacity:'0.3'}));
+            }
+            const circle = svgEl('circle', {cx, cy, r: radius, fill: color, class:'node-circle'});
+            g.appendChild(circle);
+
+            g.addEventListener('mouseenter', e => showTooltip(e, node));
+            g.addEventListener('mouseleave', () => { tt.style.display = 'none'; });
+            g.addEventListener('click', () => { if (!node.isMe) window.location.href = `/users/${node.loginId}`; });
+            nodesG.appendChild(g);
+        }
+        svg.appendChild(nodesG);
+
+        renderSimilarPanel(nodes);
+    }
+
+    function showTooltip(e, node) {
+        document.getElementById('ttName').textContent = node.nickname;
+
+        const badge = document.getElementById('ttBadge');
+        badge.innerHTML = node.isMe
+            ? '<span class="tooltip-badge me-badge">나</span>'
+            : node.isFollowing ? '<span class="tooltip-badge">팔로잉</span>' : '';
+
+        const followDiv = document.getElementById('ttFollow');
+        if (!node.isMe && IS_LOGGED_IN) {
+            const cls  = node.isFollowing ? 'tt-follow-btn following' : 'tt-follow-btn';
+            const text = node.isFollowing ? '팔로잉 ✓' : '+ 팔로우';
+            followDiv.innerHTML = `<button class="${cls}" data-login="${node.loginId}">${text}</button>`;
+            followDiv.querySelector('button').addEventListener('click', ev => {
+                ev.stopPropagation();
+                handleFollow(node, followDiv.querySelector('button'));
+            });
+        } else {
+            followDiv.innerHTML = '';
+        }
+
+        document.getElementById('ttHint').textContent =
+            IS_LOGGED_IN && !node.isMe ? '클릭하면 프로필로 이동' : '';
+
+        tt.style.display = 'block';
+        const rect = wrap.getBoundingClientRect();
+        let tx = e.clientX - rect.left + 14;
+        let ty = e.clientY - rect.top  + 14;
+        if (tx + 170 > rect.width)  tx = e.clientX - rect.left - 170;
+        if (ty + 110 > rect.height) ty = e.clientY - rect.top  - 110;
+        tt.style.left = tx + 'px';
+        tt.style.top  = ty + 'px';
+    }
+
+    async function handleFollow(node, btn) {
+        const isFollowing = node.isFollowing;
+        const endpoint = isFollowing ? '/api/people/unfollow' : '/api/people/follow';
+        try {
+            const res = await fetch(`${endpoint}?loginId=${node.loginId}`, {method:'POST'});
+            if (!res.ok) return;
+            node.isFollowing = !isFollowing;
+            btn.className   = node.isFollowing ? 'tt-follow-btn following' : 'tt-follow-btn';
+            btn.textContent = node.isFollowing ? '팔로잉 ✓' : '+ 팔로우';
+            svg.innerHTML = '';
+            renderMap(allNodes);
+        } catch (_) {}
+    }
+
+    function renderSimilarPanel(nodes) {
+        const listEl = document.getElementById('similarList');
+        const me = nodes.find(n => n.isMe);
+        if (!me) {
+            listEl.innerHTML = '<p class="similar-empty">로그인 후 유사 유저를 확인할 수 있습니다.</p>';
+            return;
+        }
+
+        const similar = nodes
+            .filter(n => !n.isMe)
+            .map(n => ({...n, dist: Math.hypot(n.x - me.x, n.y - me.y)}))
+            .sort((a, b) => a.dist - b.dist)
+            .slice(0, 5);
+
+        if (similar.length === 0) {
+            listEl.innerHTML = '<p class="similar-empty">비교할 다른 유저가 없습니다.</p>';
+            return;
+        }
+
+        const maxDist = Math.SQRT2;
+        listEl.innerHTML = similar.map(n => {
+            const pct  = Math.round((1 - n.dist / maxDist) * 100);
+            const cls  = n.isFollowing ? 'similar-follow-btn following' : 'similar-follow-btn';
+            const text = n.isFollowing ? '팔로잉' : '팔로우';
+            const avatar = n.profileImageUrl
+                ? `<img src="${n.profileImageUrl}" alt="">`
+                : n.nickname.charAt(0);
+            return `
+            <div class="similar-item" onclick="window.location.href='/users/${n.loginId}'">
+                <div class="similar-avatar">${avatar}</div>
+                <div class="similar-info">
+                    <div class="similar-nickname">${n.nickname}</div>
+                    <div class="similar-score">취향 유사도 ${pct}%</div>
+                </div>
+                <button class="${cls}" data-login="${n.loginId}"
+                    onclick="event.stopPropagation(); tmPanelFollow(this)">${text}</button>
+            </div>`;
+        }).join('');
+    }
+
+    window.tmPanelFollow = async function(btn) {
+        const loginId = btn.dataset.login;
+        const isFollowing = btn.classList.contains('following');
+        const endpoint = isFollowing ? '/api/people/unfollow' : '/api/people/follow';
+        try {
+            const res = await fetch(`${endpoint}?loginId=${loginId}`, {method:'POST'});
+            if (!res.ok) return;
+            const node = allNodes.find(n => n.loginId === loginId);
+            if (node) node.isFollowing = !isFollowing;
+            btn.classList.toggle('following');
+            btn.textContent = btn.classList.contains('following') ? '팔로잉' : '팔로우';
+            svg.innerHTML = '';
+            renderMap(allNodes);
+        } catch (_) {}
+    };
+
+    fetch('/api/taste-map/nodes')
+        .then(r => r.json())
+        .then(nodes => renderMap(nodes))
+        .catch(() => {
+            loading.style.display = 'none';
+            empty.style.display = 'flex';
+            empty.textContent = '데이터를 불러오는 데 실패했습니다.';
+        });
 })();
 </script>
 </body>
