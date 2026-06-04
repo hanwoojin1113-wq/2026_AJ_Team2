@@ -44,6 +44,7 @@ public class NotificationController {
             String actorLoginId = (String) row.get("ACTOR_LOGIN_ID");
             String movieCd = (String) row.get("MOVIE_CD");
             Long postId = row.get("POST_ID") instanceof Number number ? number.longValue() : null;
+            Long battleId = row.get("BATTLE_ID") instanceof Number number ? number.longValue() : null;
             String actor = row.get("ACTOR_NICKNAME") instanceof String nickname && !nickname.isBlank()
                     ? nickname
                     : "누군가";
@@ -60,7 +61,7 @@ public class NotificationController {
             Object createdAt = row.get("CREATED_AT");
             item.put("createdAt", createdAt != null ? createdAt.toString() : null);
             String movieName = row.get("MOVIE_NAME") instanceof String s ? s : null;
-            item.put("linkUrl", buildLinkUrl(notifType, postId, movieCd, actorLoginId));
+            item.put("linkUrl", buildLinkUrl(notifType, postId, battleId, movieCd, actorLoginId));
             item.put("notifText", buildNotificationText(notifType, actor, movieName));
             items.add(item);
         }
@@ -82,7 +83,7 @@ public class NotificationController {
         return Map.of("ok", true);
     }
 
-    private String buildLinkUrl(String notifType, Long postId, String movieCd, String actorLoginId) {
+    private String buildLinkUrl(String notifType, Long postId, Long battleId, String movieCd, String actorLoginId) {
         return switch (notifType != null ? notifType : "") {
             case "NEW_POST" -> (movieCd != null && postId != null)
                     ? "/movies/" + movieCd + "/posts#post-" + postId
@@ -94,6 +95,7 @@ public class NotificationController {
             case "MOVIE_THROW" -> movieCd != null ? "/movies/" + movieCd : "#";
             case "MOVIE_THROW_WATCHING" -> movieCd != null ? "/movies/" + movieCd : "#";
             case "MOVIE_THROW_WATCHED" -> movieCd != null ? "/movies/" + movieCd : "#";
+            case "BATTLE_SHARE" -> battleId != null ? "/battles/" + battleId : "#";
             default -> movieCd != null ? "/movies/" + movieCd : "#";
         };
     }
@@ -124,6 +126,7 @@ public class NotificationController {
                 yield actor + "님이 " + title + eulReul(title) + " 봤습니다!";
             }
             default -> actor + "님이 활동했습니다.";
+            case "BATTLE_SHARE" -> actor + "님이 배틀을 공유했습니다.";
         };
     }
 

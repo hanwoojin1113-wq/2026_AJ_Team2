@@ -6,273 +6,56 @@
     <title>영화 배틀 | CineMatch</title>
     <link rel="stylesheet" href="/css/hp-theme.css">
     <style>
-        body {
-            min-height: 100vh;
-            background:
-                radial-gradient(circle at 80% 0%, rgba(220,38,38,0.12), transparent 30%),
-                radial-gradient(circle at 18% 0%, rgba(2,74,216,0.15), transparent 28%),
-                linear-gradient(180deg, #0f1117 0%, #090b10 100%);
-            color: var(--hp-text);
-        }
-        .battle-page {
-            width: min(100%, 960px);
-            margin: 0 auto;
-            padding: 48px 24px 80px;
-        }
-        .battle-header {
-            margin-bottom: 40px;
-        }
-        .battle-kicker {
-            color: var(--hp-blue-bright);
-            font-size: 0.76rem;
-            font-weight: 900;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-        }
-        .battle-title {
-            margin: 8px 0 6px;
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 900;
-        }
-        .battle-copy {
-            color: var(--hp-text-sub);
-            font-size: 0.95rem;
-        }
-
-        /* 배틀 카드 그리드 */
-        .battle-grid {
-            display: grid;
-            gap: 24px;
-        }
-
-        /* 개별 배틀 카드 */
-        .battle-card {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid var(--hp-border);
-            border-radius: 16px;
-            padding: 24px;
-            transition: border-color 0.2s;
-        }
-        .battle-card:hover {
-            border-color: rgba(96,165,250,0.3);
-        }
-
-        .battle-card-label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .battle-type-badge {
-            font-size: 0.68rem;
-            font-weight: 900;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            padding: 3px 8px;
-            border-radius: 4px;
-            background: rgba(2,74,216,0.25);
-            color: var(--hp-blue-bright);
-        }
-        .battle-type-badge.DIRECTOR { background: rgba(124,58,237,0.25); color: #a78bfa; }
-        .battle-type-badge.ACTOR    { background: rgba(5,150,105,0.25);  color: #34d399; }
-        .battle-type-badge.TAG      { background: rgba(217,119,6,0.25);  color: #fbbf24; }
-        .battle-type-badge.ERA      { background: rgba(220,38,38,0.25);  color: #f87171; }
-
-        .battle-card-title {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: var(--hp-text);
-        }
-
-        /* VS 행 */
-        .battle-vs-row {
-            display: grid;
-            grid-template-columns: 1fr 48px 1fr;
-            gap: 12px;
-            align-items: center;
-        }
-
-        /* 영화 버튼 */
-        .battle-movie-btn {
-            all: unset;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            border-radius: 12px;
-            border: 2px solid transparent;
-            padding: 12px;
-            transition: border-color 0.2s, background 0.2s;
-            background: rgba(255,255,255,0.03);
-        }
-        .battle-movie-btn:hover {
-            background: rgba(255,255,255,0.07);
-        }
-        .battle-movie-btn.voted-a {
-            border-color: #3b82f6;
-            background: rgba(59,130,246,0.08);
-        }
-        .battle-movie-btn.voted-b {
-            border-color: #ef4444;
-            background: rgba(239,68,68,0.08);
-        }
-        .battle-movie-btn:disabled {
-            cursor: default;
-        }
-
-        .battle-poster-wrap {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 2/3;
-            border-radius: 8px;
-            overflow: hidden;
-            background: rgba(255,255,255,0.06);
-        }
-        .battle-poster {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .battle-poster-placeholder {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--hp-text-hint);
-            font-size: 0.75rem;
-        }
-        .battle-voted-mark {
-            position: absolute;
-            inset: 0;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0,0,0,0.45);
-            font-size: 2.5rem;
-        }
-        .voted-a .battle-voted-mark,
-        .voted-b .battle-voted-mark {
-            display: flex;
-        }
-
-        .battle-movie-info {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        .battle-movie-name {
-            font-size: 0.88rem;
-            font-weight: 700;
-            line-height: 1.3;
-        }
-        .battle-movie-rating {
-            font-size: 0.75rem;
-            color: var(--hp-text-sub);
-        }
-
-        /* 투표 바 */
-        .battle-vote-info {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .battle-vote-bar-track {
-            height: 6px;
-            border-radius: 3px;
-            background: rgba(255,255,255,0.1);
-            overflow: hidden;
-        }
-        .battle-vote-bar-fill-a {
-            height: 100%;
-            border-radius: 3px;
-            background: #3b82f6;
-            transition: width 0.5s ease;
-        }
-        .battle-vote-bar-fill-b {
-            height: 100%;
-            border-radius: 3px;
-            background: #ef4444;
-            transition: width 0.5s ease;
-        }
-        .battle-vote-pct {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: var(--hp-text-sub);
-        }
-        .voted-a .battle-vote-pct { color: #3b82f6; }
-        .voted-b .battle-vote-pct { color: #ef4444; }
-
-        /* VS 뱃지 */
-        .battle-vs-badge {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid var(--hp-border);
-            font-size: 0.75rem;
-            font-weight: 900;
-            letter-spacing: 0.05em;
-            color: var(--hp-text-sub);
-            align-self: center;
-        }
-
-        /* 총 투표수 */
-        .battle-total-votes {
-            margin-top: 16px;
-            font-size: 0.78rem;
-            color: var(--hp-text-hint);
-            text-align: center;
-        }
-
-        /* 로그인 필요 안내 */
-        .battle-login-notice {
-            margin-top: 16px;
-            text-align: center;
-            font-size: 0.8rem;
-            color: var(--hp-text-hint);
-        }
-        .battle-login-notice a {
-            color: var(--hp-blue-bright);
-            text-decoration: none;
-        }
-
-        /* 더 생성 버튼 */
-        .battle-more-wrap {
-            display: flex;
-            justify-content: center;
-            margin-top: 40px;
-        }
-        .battle-more-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 28px;
-            border-radius: 8px;
-            border: 1px solid var(--hp-border);
-            background: rgba(255,255,255,0.05);
-            color: var(--hp-text);
-            font: inherit;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: background 0.2s, border-color 0.2s;
-        }
-        .battle-more-btn:hover {
-            background: rgba(255,255,255,0.09);
-            border-color: rgba(96,165,250,0.4);
-        }
-        .battle-more-btn:disabled {
-            opacity: 0.5;
-            cursor: default;
-        }
-
-        @media (min-width: 640px) {
-            .battle-grid {
-                grid-template-columns: 1fr 1fr;
-            }
+        body { min-height: 100vh; background: linear-gradient(180deg, #0f0f0f 0%, #151515 100%); color: var(--hp-text); }
+        .battle-page { width: min(100%, 1040px); margin: 0 auto; padding: 40px 24px 80px; }
+        .battle-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
+        .battle-kicker { color: var(--hp-blue-bright); font-size: 0.76rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+        .battle-title { margin: 8px 0 6px; font-size: clamp(2rem, 4vw, 3rem); font-weight: 900; }
+        .battle-copy { color: var(--hp-text-sub); font-size: 0.95rem; }
+        .battle-grid { display: grid; gap: 24px; }
+        .battle-card { display: block; color: inherit; background: var(--hp-surface); border: 1px solid var(--hp-border); border-radius: 8px; padding: 20px; transition: border-color 0.2s, transform 0.2s; }
+        .battle-card:hover { border-color: rgba(41,110,249,0.45); transform: translateY(-2px); }
+        .battle-card-link { display: block; color: inherit; text-decoration: none; }
+        .battle-card-label { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+        .battle-card-title { font-size: 1rem; font-weight: 800; line-height: 1.35; }
+        .battle-card-meta { margin-top: 4px; color: var(--hp-text-hint); font-size: 0.76rem; }
+        .battle-type-badge { flex: 0 0 auto; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.08em; padding: 4px 8px; border-radius: 4px; background: var(--hp-blue-soft); color: var(--hp-blue-bright); border: 1px solid rgba(41,110,249,0.24); }
+        .battle-preview { display: grid; grid-template-columns: 1fr 44px 1fr; gap: 12px; align-items: center; }
+        .battle-option { min-width: 0; border-radius: 8px; background: var(--hp-surface-2); padding: 12px; }
+        .battle-poster-wrap { width: 100%; aspect-ratio: 2 / 3; border-radius: 6px; overflow: hidden; background: rgba(255,255,255,0.06); }
+        .battle-poster { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .battle-option-name { margin-top: 10px; font-size: 0.88rem; font-weight: 800; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .battle-option-result { display: grid; gap: 6px; margin-top: 8px; }
+        .battle-option-track { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.1); overflow: hidden; }
+        .battle-option-fill { height: 100%; border-radius: 999px; background: var(--hp-blue-bright); }
+        .battle-option-percent { color: var(--hp-text-sub); font-size: 0.76rem; font-weight: 800; text-align: right; }
+        .battle-vs-badge { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid var(--hp-border); font-size: 0.72rem; font-weight: 900; color: var(--hp-text-sub); }
+        .battle-total-votes { margin-top: 14px; font-size: 0.78rem; color: var(--hp-text-hint); text-align: center; }
+        .battle-top-comment { margin-top: 14px; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.04); color: var(--hp-text-sub); font-size: 0.82rem; line-height: 1.45; }
+        .battle-top-comment-meta { display: block; margin-bottom: 4px; color: var(--hp-text-hint); font-size: 0.74rem; font-weight: 800; }
+        .battle-card-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+        .battle-share-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; border: 1px solid rgba(41,110,249,0.34); border-radius: 6px; background: rgba(41,110,249,0.12); color: var(--hp-blue-bright); padding: 0 12px; font-size: 0.82rem; font-weight: 900; cursor: pointer; }
+        .battle-share-btn:hover { background: rgba(41,110,249,0.2); }
+        .battle-login-notice, .battle-empty { margin-bottom: 24px; padding: 14px; border: 1px solid var(--hp-border); border-radius: 8px; color: var(--hp-text-sub); background: var(--hp-surface); text-align: center; font-size: 0.9rem; }
+        .battle-login-notice a { color: var(--hp-blue-bright); text-decoration: none; }
+        .battle-share-modal[hidden] { display: none; }
+        .battle-share-modal { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(0,0,0,0.62); }
+        .battle-share-dialog { width: min(100%, 420px); max-height: min(680px, calc(100vh - 48px)); display: flex; flex-direction: column; background: var(--hp-surface); border: 1px solid var(--hp-border); border-radius: 8px; box-shadow: 0 24px 80px rgba(0,0,0,0.45); overflow: hidden; }
+        .battle-share-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--hp-border); }
+        .battle-share-head strong { font-size: 1rem; }
+        .battle-share-close { width: 34px; height: 34px; border: 1px solid var(--hp-border); border-radius: 6px; background: var(--hp-surface-2); color: var(--hp-text); cursor: pointer; font-size: 1.1rem; }
+        .battle-share-list { display: grid; gap: 8px; padding: 14px; overflow-y: auto; }
+        .battle-share-user { display: flex; align-items: center; gap: 12px; width: 100%; border: 1px solid var(--hp-border); border-radius: 8px; background: var(--hp-surface-2); color: var(--hp-text); padding: 10px; text-align: left; cursor: pointer; }
+        .battle-share-user:hover { border-color: rgba(41,110,249,0.45); }
+        .battle-share-avatar { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: rgba(255,255,255,0.08); }
+        .battle-share-avatar-fallback { display: flex; align-items: center; justify-content: center; color: var(--hp-blue-bright); font-weight: 900; }
+        .battle-share-name { display: block; font-size: 0.92rem; font-weight: 900; }
+        .battle-share-login { display: block; margin-top: 2px; color: var(--hp-text-hint); font-size: 0.76rem; }
+        .battle-share-empty { padding: 28px 16px; color: var(--hp-text-sub); text-align: center; font-size: 0.9rem; }
+        @media (min-width: 700px) { .battle-grid { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 640px) {
+            .battle-header { align-items: stretch; flex-direction: column; }
+            .battle-header .hp-btn { width: 100%; }
         }
     </style>
 </head>
@@ -282,197 +65,184 @@
 <main class="app-main">
     <div class="battle-page">
         <header class="battle-header">
-            <p class="battle-kicker">MOVIE BATTLE</p>
-            <h1 class="battle-title">영화 배틀</h1>
-            <p class="battle-copy">두 영화 중 더 마음에 드는 쪽에 투표하세요. 결과는 실시간으로 반영됩니다.</p>
+            <div>
+                <p class="battle-kicker">MOVIE BATTLE</p>
+                <h1 class="battle-title">영화 배틀</h1>
+                <p class="battle-copy">배틀을 열어 투표하고 댓글로 의견을 남겨보세요.</p>
+            </div>
+            <a th:if="${loginUserId != null}" class="hp-btn hp-btn-primary" th:href="@{/battles/create}">배틀 만들기</a>
         </header>
 
-        <div class="battle-grid" id="battleGrid">
-            <div th:each="b : ${battles}" class="battle-card" th:data-battle-id="${b.id}">
+        <div th:if="${loginUserId == null}" class="battle-login-notice">
+            <a th:href="@{/login}">로그인</a>하면 배틀 생성과 투표를 할 수 있습니다.
+        </div>
+
+        <div class="battle-grid">
+            <article th:each="b : ${battles}" class="battle-card">
+                <a class="battle-card-link" th:href="@{|/battles/${b.id}|}">
                 <div class="battle-card-label">
-                    <span class="battle-type-badge" th:classappend="${b.battleType}" th:text="${
-                        b.battleType == 'GENRE'    ? 'GENRE' :
-                        b.battleType == 'DIRECTOR' ? 'DIRECTOR' :
-                        b.battleType == 'ACTOR'    ? 'ACTOR' :
-                        b.battleType == 'TAG'      ? 'TAG' : 'ERA'
-                    }"></span>
-                    <span class="battle-card-title" th:text="${b.battleLabel}"></span>
+                    <div>
+                        <div class="battle-card-title" th:text="${b.battleLabel}">배틀 타이틀</div>
+                        <div class="battle-card-meta">
+                            <span th:text="${b.creatorNickname != null ? b.creatorNickname : '익명'}">작성자</span>
+                            <span> · </span>
+                            <span th:text="${b.createdAt}">작성일</span>
+                        </div>
+                    </div>
+                    <span class="battle-type-badge">VS</span>
                 </div>
 
-                <div class="battle-vs-row">
-                    <!-- 영화 A -->
-                    <button class="battle-movie-btn"
-                            th:classappend="${b.myVote != null and b.myVote == b.movieAId} ? 'voted-a' : ''"
-                            th:data-battle-id="${b.id}"
-                            th:data-movie-id="${b.movieAId}"
-                            th:disabled="${loginUserId == null}"
-                            onclick="handleVote(this)">
+                <div class="battle-preview">
+                    <div class="battle-option">
                         <div class="battle-poster-wrap">
-                            <img th:if="${b.movieAPoster != null}" class="battle-poster"
-                                 th:src="${b.movieAPoster}" th:alt="${b.movieATitle}" loading="lazy">
-                            <div th:if="${b.movieAPoster == null}" class="battle-poster-placeholder">포스터 없음</div>
-                            <div class="battle-voted-mark">✓</div>
+                            <img class="battle-poster" th:src="${b.optionAImageUrl}" th:alt="${b.optionALabel}" loading="lazy">
                         </div>
-                        <div class="battle-movie-info">
-                            <span class="battle-movie-name" th:text="${b.movieATitle}"></span>
-                            <span class="battle-movie-rating" th:text="'★ ' + ${#numbers.formatDecimal(b.movieARating, 1, 1)}"></span>
-                        </div>
-                        <div class="battle-vote-info">
-                            <div class="battle-vote-bar-track">
-                                <div class="battle-vote-bar-fill-a"
-                                     th:style="'width:' + ${b.pctA} + '%'"></div>
+                        <div class="battle-option-name" th:text="${b.optionALabel}">선택지 A</div>
+                        <div class="battle-option-result">
+                            <div class="battle-option-track">
+                                <div class="battle-option-fill" th:style="'width:' + ${b.pctA} + '%'"></div>
                             </div>
-                            <span class="battle-vote-pct" th:text="${b.pctA} + '%'"></span>
+                            <div class="battle-option-percent" th:text="${b.pctA} + '%'">50%</div>
                         </div>
-                    </button>
-
+                    </div>
                     <div class="battle-vs-badge">VS</div>
-
-                    <!-- 영화 B -->
-                    <button class="battle-movie-btn"
-                            th:classappend="${b.myVote != null and b.myVote == b.movieBId} ? 'voted-b' : ''"
-                            th:data-battle-id="${b.id}"
-                            th:data-movie-id="${b.movieBId}"
-                            th:disabled="${loginUserId == null}"
-                            onclick="handleVote(this)">
+                    <div class="battle-option">
                         <div class="battle-poster-wrap">
-                            <img th:if="${b.movieBPoster != null}" class="battle-poster"
-                                 th:src="${b.movieBPoster}" th:alt="${b.movieBTitle}" loading="lazy">
-                            <div th:if="${b.movieBPoster == null}" class="battle-poster-placeholder">포스터 없음</div>
-                            <div class="battle-voted-mark">✓</div>
+                            <img class="battle-poster" th:src="${b.optionBImageUrl}" th:alt="${b.optionBLabel}" loading="lazy">
                         </div>
-                        <div class="battle-movie-info">
-                            <span class="battle-movie-name" th:text="${b.movieBTitle}"></span>
-                            <span class="battle-movie-rating" th:text="'★ ' + ${#numbers.formatDecimal(b.movieBRating, 1, 1)}"></span>
-                        </div>
-                        <div class="battle-vote-info">
-                            <div class="battle-vote-bar-track">
-                                <div class="battle-vote-bar-fill-b"
-                                     th:style="'width:' + ${b.pctB} + '%'"></div>
+                        <div class="battle-option-name" th:text="${b.optionBLabel}">선택지 B</div>
+                        <div class="battle-option-result">
+                            <div class="battle-option-track">
+                                <div class="battle-option-fill" th:style="'width:' + ${b.pctB} + '%'"></div>
                             </div>
-                            <span class="battle-vote-pct" th:text="${b.pctB} + '%'"></span>
+                            <div class="battle-option-percent" th:text="${b.pctB} + '%'">50%</div>
                         </div>
-                    </button>
+                    </div>
                 </div>
 
                 <p class="battle-total-votes">
-                    총 <span class="total-votes-num" th:text="${b.voteA + b.voteB}"></span>표
+                    총 <span th:text="${b.voteA + b.voteB}"></span>표
                 </p>
-            </div>
 
-            <div th:if="${battles.isEmpty()}" style="text-align:center; padding:60px 0; color:var(--hp-text-hint); grid-column:1/-1;">
-                배틀 데이터를 생성 중입니다. 잠시 후 새로고침 해주세요.
+                <div class="battle-top-comment" th:if="${b.hasTopComment}">
+                    <span class="battle-top-comment-meta">
+                        추천 <span th:text="${b.topComment.likeCount}">0</span> ·
+                        <span th:text="${b.topComment.nickname}">작성자</span>
+                    </span>
+                    <span th:text="${b.topComment.content}">댓글</span>
+                </div>
+                </a>
+                <div class="battle-card-actions" th:if="${loginUserId != null}">
+                    <button class="battle-share-btn" type="button" th:data-battle-id="${b.id}">공유</button>
+                </div>
+            </article>
+
+            <div th:if="${battles.isEmpty()}" class="battle-empty">
+                아직 생성된 배틀이 없습니다.
             </div>
         </div>
+    </div>
 
-        <div th:if="${loginUserId == null}" class="battle-login-notice">
-            <a th:href="@{/login}">로그인</a>하면 투표할 수 있습니다.
-        </div>
-
-        <div class="battle-more-wrap">
-            <button class="battle-more-btn" id="generateBtn" onclick="generateMore()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
-                새 배틀 생성
-            </button>
+    <div class="battle-share-modal" id="battleShareModal" hidden>
+        <div class="battle-share-dialog" role="dialog" aria-modal="true" aria-labelledby="battleShareTitle">
+            <div class="battle-share-head">
+                <strong id="battleShareTitle">배틀 공유</strong>
+                <button class="battle-share-close" type="button" aria-label="닫기" data-share-close>&times;</button>
+            </div>
+            <div class="battle-share-list" id="battleShareList">
+                <div class="battle-share-empty">공유 대상을 불러오는 중입니다.</div>
+            </div>
         </div>
     </div>
 </main>
 
 <script>
-    // 투표 처리
-    async function handleVote(btn) {
-        const battleId = btn.dataset.battleId;
-        const movieId  = btn.dataset.movieId;
-        const card     = btn.closest('.battle-card');
-        const btns     = card.querySelectorAll('.battle-movie-btn');
-
-        btns.forEach(b => b.disabled = true);
-
-        try {
-            const res = await fetch(`/api/battles/${battleId}/vote`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({movieId: Number(movieId)})
-            });
-            if (!res.ok) throw new Error(res.status);
-
-            const data = await res.json();
-            applyVoteResult(card, data, battleId, movieId);
-        } catch (e) {
-            console.error('투표 실패', e);
-        } finally {
-            btns.forEach(b => b.disabled = false);
-        }
-    }
-
-    function applyVoteResult(card, data, battleId, votedMovieId) {
-        const [btnA, btnB] = card.querySelectorAll('.battle-movie-btn');
-        const myVote = data.myVote;  // null이면 취소
-
-        // voted 클래스 리셋
-        btnA.classList.remove('voted-a');
-        btnB.classList.remove('voted-b');
-
-        if (myVote != null) {
-            const votedMovieA = btnA.dataset.movieId;
-            if (String(myVote) === String(votedMovieA)) {
-                btnA.classList.add('voted-a');
-            } else {
-                btnB.classList.add('voted-b');
-            }
-        }
-
-        // 바 & 퍼센트 업데이트
-        const barA  = btnA.querySelector('.battle-vote-bar-fill-a');
-        const barB  = btnB.querySelector('.battle-vote-bar-fill-b');
-        const pctA  = btnA.querySelector('.battle-vote-pct');
-        const pctB  = btnB.querySelector('.battle-vote-pct');
-        const total = card.querySelector('.total-votes-num');
-
-        if (barA)  barA.style.width  = data.pctA + '%';
-        if (barB)  barB.style.width  = data.pctB + '%';
-        if (pctA)  pctA.textContent  = data.pctA + '%';
-        if (pctB)  pctB.textContent  = data.pctB + '%';
-        if (total) total.textContent = data.voteA + data.voteB;
-    }
-
-    // 새 배틀 생성
-    async function generateMore() {
-        const btn = document.getElementById('generateBtn');
-        btn.disabled = true;
-        btn.textContent = '생성 중...';
-
-        try {
-            const res = await fetch('/api/battles/generate', {method: 'POST'});
-            if (!res.ok) {
-                if (res.status === 401) {
-                    alert('로그인이 필요합니다.');
-                    return;
-                }
-                throw new Error(res.status);
-            }
-            const data = await res.json();
-            if (data.generated > 0) {
-                location.reload();
-            } else {
-                btn.textContent = '새 배틀 없음 (잠시 후 다시 시도)';
-                setTimeout(() => {
-                    btn.textContent = '새 배틀 생성';
-                    btn.disabled = false;
-                }, 3000);
-                return;
-            }
-        } catch (e) {
-            console.error(e);
-            btn.disabled = false;
-            btn.textContent = '새 배틀 생성';
-        }
-    }
-
-    // 사이드바 active 표시
     document.querySelectorAll('[data-app-nav]').forEach(el => el.classList.remove('active'));
+    document.querySelector('[data-app-nav="battle"]')?.classList.add('active');
+
+    const shareModal = document.getElementById('battleShareModal');
+    const shareList = document.getElementById('battleShareList');
+    let activeShareBattleId = null;
+
+    document.querySelectorAll('.battle-share-btn').forEach(button => {
+        button.addEventListener('click', () => openShareModal(button.dataset.battleId));
+    });
+
+    document.querySelectorAll('[data-share-close]').forEach(button => {
+        button.addEventListener('click', closeShareModal);
+    });
+
+    shareModal?.addEventListener('click', event => {
+        if (event.target === shareModal) closeShareModal();
+    });
+
+    async function openShareModal(battleId) {
+        activeShareBattleId = battleId;
+        shareModal.hidden = false;
+        shareList.innerHTML = '<div class="battle-share-empty">공유 대상을 불러오는 중입니다.</div>';
+        try {
+            const response = await fetch(`/api/battles/${battleId}/share-targets`);
+            if (!response.ok) throw new Error('failed');
+            const users = await response.json();
+            renderShareTargets(users);
+        } catch (error) {
+            shareList.innerHTML = '<div class="battle-share-empty">공유 대상을 불러오지 못했습니다.</div>';
+        }
+    }
+
+    function closeShareModal() {
+        shareModal.hidden = true;
+        activeShareBattleId = null;
+    }
+
+    function renderShareTargets(users) {
+        if (!Array.isArray(users) || users.length === 0) {
+            shareList.innerHTML = '<div class="battle-share-empty">서로 팔로우 중인 사용자가 없습니다.</div>';
+            return;
+        }
+        shareList.innerHTML = users.map(user => {
+            const nickname = escapeHtml(user.nickname || user.loginId || '사용자');
+            const loginId = escapeHtml(user.loginId || '');
+            const avatar = user.profileImageUrl
+                ? `<img class="battle-share-avatar" src="${escapeHtml(user.profileImageUrl)}" alt="">`
+                : `<span class="battle-share-avatar battle-share-avatar-fallback">${nickname.charAt(0)}</span>`;
+            return `<button class="battle-share-user" type="button" data-user-id="${user.userId}">
+                ${avatar}
+                <span>
+                    <span class="battle-share-name">${nickname}</span>
+                    <span class="battle-share-login">${loginId}</span>
+                </span>
+            </button>`;
+        }).join('');
+        shareList.querySelectorAll('.battle-share-user').forEach(button => {
+            button.addEventListener('click', () => shareBattle(button.dataset.userId));
+        });
+    }
+
+    async function shareBattle(receiverUserId) {
+        if (!activeShareBattleId || !receiverUserId) return;
+        try {
+            const response = await fetch(`/api/battles/${activeShareBattleId}/share`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ receiverUserId })
+            });
+            if (!response.ok) throw new Error('failed');
+            alert('배틀을 공유했습니다.');
+            closeShareModal();
+        } catch (error) {
+            alert('배틀 공유에 실패했습니다.');
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
 </script>
 </body>
 </html>
