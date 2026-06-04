@@ -48,6 +48,37 @@ public class YoutubeTrailerService {
         return new JobStatus(jobRunning, jobProcessed, jobFound, jobNotFound, jobTotal);
     }
 
+    public String searchForMovie(long movieId) {
+        Map<String, Object> row;
+        try {
+            row = jdbcTemplate.queryForMap("""
+                    SELECT COALESCE(m.title, m.movie_name) AS title, m.original_title,
+                           YEAR(m.release_date) AS release_year,
+                           (SELECT p.name FROM movie_director md JOIN person p ON md.person_id = p.id
+                            WHERE md.movie_id = m.id ORDER BY md.display_order LIMIT 1) AS director_name,
+                           (SELECT p.name FROM movie_actor ma JOIN person p ON ma.person_id = p.id
+                            WHERE ma.movie_id = m.id ORDER BY ma.display_order LIMIT 1) AS actor_name
+                    FROM movie m WHERE m.id = ?
+                    """, movieId);
+        } catch (Exception e) {
+            return null;
+        }
+        String title = (String) row.get("title");
+        String originalTitle = (String) row.get("original_title");
+        Integer year = row.get("release_year") != null ? ((Number) row.get("release_year")).intValue() : null;
+        String directorName = (String) row.get("director_name");
+        String actorName = (String) row.get("actor_name");
+
+        String videoKey = searchTrailerKey(title, originalTitle, year, directorName, actorName);
+        if (videoKey != null) {
+            jdbcTemplate.update("""
+                    INSERT INTO movie_video (movie_id, video_key, video_name, video_type, is_official, source, display_order)
+                    VALUES (?, ?, '예고편', 'Trailer', FALSE, 'YOUTUBE', 1)
+                    """, movieId, videoKey);
+        }
+        return videoKey;
+    }
+
     public JobStatus startFillAsync(int limit) {
         if (jobRunning) {
             return getStatus();
@@ -65,7 +96,12 @@ public class YoutubeTrailerService {
         } catch (Exception ignored) {}
 
         List<Map<String, Object>> targets = jdbcTemplate.queryForList("""
-                SELECT m.id, COALESCE(m.title, m.movie_name) AS title, m.original_title
+                SELECT m.id, COALESCE(m.title, m.movie_name) AS title, m.original_title,
+                       YEAR(m.release_date) AS release_year,
+                       (SELECT p.name FROM movie_director md JOIN person p ON md.person_id = p.id
+                        WHERE md.movie_id = m.id ORDER BY md.display_order LIMIT 1) AS director_name,
+                       (SELECT p.name FROM movie_actor ma JOIN person p ON ma.person_id = p.id
+                        WHERE ma.movie_id = m.id ORDER BY ma.display_order LIMIT 1) AS actor_name
                 FROM movie m
                 WHERE NOT EXISTS (
                     SELECT 1 FROM movie_video v WHERE v.movie_id = m.id
@@ -88,8 +124,11 @@ public class YoutubeTrailerService {
                 Long movieId = ((Number) row.get("id")).longValue();
                 String title = (String) row.get("title");
                 String originalTitle = (String) row.get("original_title");
+                Integer year = row.get("release_year") != null ? ((Number) row.get("release_year")).intValue() : null;
+                String directorName = (String) row.get("director_name");
+                String actorName = (String) row.get("actor_name");
 
-                String videoKey = searchTrailerKey(title, originalTitle);
+                String videoKey = searchTrailerKey(title, originalTitle, year, directorName, actorName);
                 if (videoKey != null) {
                     jdbcTemplate.update("""
                             INSERT INTO movie_video (movie_id, video_key, video_name, video_type, is_official, source, display_order)
@@ -108,16 +147,39 @@ public class YoutubeTrailerService {
         return new FillResult(jobTotal, jobFound, jobNotFound, 0);
     }
 
-    private String searchTrailerKey(String title, String originalTitle) {
-        // 한국어 제목으로 먼저 시도
+    private String searchTrailerKey(String title, String originalTitle, Integer year, String directorName, String actorName) {
+        String yearStr = (year != null && year > 0) ? " " + year : "";
+        // 감독 또는 주연 배우 이름 (둘 중 하나)
+        String personStr = (directorName != null && !directorName.isBlank()) ? " " + directorName
+                         : (actorName != null && !actorName.isBlank()) ? " " + actorName : "";
+
+        // 한국어 제목 + 연도 + 인물명으로 먼저 시도
         if (title != null && !title.isBlank()) {
-            String key = queryYoutube(title + " 공식 예고편");
+            String key = queryYoutube(title + yearStr + personStr + " 공식 예고편", title);
             if (key != null) return key;
+            // 인물명 없이 재시도
+            if (!personStr.isBlank()) {
+                key = queryYoutube(title + yearStr + " 공식 예고편", title);
+                if (key != null) return key;
+            }
+            // 연도도 없이 재시도
+            if (!yearStr.isBlank()) {
+                key = queryYoutube(title + " 공식 예고편", title);
+                if (key != null) return key;
+            }
         }
-        // 원제로 재시도
+        // 원제 + 연도 + 인물명으로 재시도
         if (originalTitle != null && !originalTitle.isBlank() && !originalTitle.equals(title)) {
-            String key = queryYoutube(originalTitle + " official trailer");
+            String key = queryYoutube(originalTitle + yearStr + personStr + " official trailer", originalTitle);
             if (key != null) return key;
+            if (!personStr.isBlank()) {
+                key = queryYoutube(originalTitle + yearStr + " official trailer", originalTitle);
+                if (key != null) return key;
+            }
+            if (!yearStr.isBlank()) {
+                key = queryYoutube(originalTitle + " official trailer", originalTitle);
+                if (key != null) return key;
+            }
         }
         return null;
     }
@@ -129,13 +191,13 @@ public class YoutubeTrailerService {
         return t.isBlank() ? null : t;
     }
 
-    private String queryYoutube(String query) {
+    private String queryYoutube(String query, String titleHint) {
         URI uri = UriComponentsBuilder.fromUriString(YOUTUBE_SEARCH_URL)
                 .queryParam("part", "snippet")
                 .queryParam("q", query)
                 .queryParam("type", "video")
                 .queryParam("videoEmbeddable", "true")
-                .queryParam("maxResults", "1")
+                .queryParam("maxResults", "3")
                 .queryParam("key", apiKey)
                 .build()
                 .toUri();
@@ -149,8 +211,17 @@ public class YoutubeTrailerService {
                 JsonNode items = root.path("items");
                 if (!items.isArray() || items.isEmpty()) return null;
 
-                String key = nodeText(items.get(0).path("id").path("videoId"));
-                return (key == null || key.isBlank()) ? null : key;
+                // 영화 제목이 포함된 영상인지 검증 후 반환
+                String normalizedHint = normalize(titleHint);
+                for (JsonNode item : items) {
+                    String videoId = nodeText(item.path("id").path("videoId"));
+                    if (videoId == null) continue;
+                    String videoTitle = nodeText(item.path("snippet").path("title"));
+                    if (videoTitle != null && normalize(videoTitle).contains(normalizedHint)) {
+                        return videoId;
+                    }
+                }
+                return null;
 
             } catch (HttpClientErrorException e) {
                 // 429(분당 제한) or 403(일일 쿼터 초과) → 10초 대기 후 재시도
@@ -165,5 +236,10 @@ public class YoutubeTrailerService {
             }
         }
         return null;
+    }
+
+    private String normalize(String s) {
+        if (s == null) return "";
+        return s.toLowerCase().replaceAll("[^a-z0-9가-힣]", "");
     }
 }

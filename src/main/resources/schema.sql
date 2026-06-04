@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS user_badge_selected;
+DROP TABLE IF EXISTS user_badge_earned;
 DROP TABLE IF EXISTS user_follow;
 DROP TABLE IF EXISTS user_movie_collection;
 DROP TABLE IF EXISTS user_movie_life;
@@ -426,3 +428,18 @@ CREATE TABLE IF NOT EXISTS movie_throw (
 );
 CREATE INDEX IF NOT EXISTS idx_throw_sender   ON movie_throw (sender_user_id,   created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_throw_receiver ON movie_throw (receiver_user_id, created_at DESC);
+
+CREATE TABLE user_badge_earned (
+    user_id    BIGINT      NOT NULL,
+    badge_code VARCHAR(50) NOT NULL,
+    earned_at  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, badge_code),
+    CONSTRAINT fk_user_badge_earned_user FOREIGN KEY (user_id) REFERENCES "USER"(id)
+);
+
+CREATE TABLE user_badge_selected (
+    user_id    BIGINT      NOT NULL PRIMARY KEY,
+    badge_code VARCHAR(50),
+    updated_at TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_badge_selected_user FOREIGN KEY (user_id) REFERENCES "USER"(id)
+);

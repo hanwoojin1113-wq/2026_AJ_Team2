@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -105,6 +106,7 @@ public class MovieController {
     private final NotificationService notificationService;
     private final OttWatchLinkService ottWatchLinkService;
     private final MovieThrowService movieThrowService;
+    private final BadgeService badgeService;
     private final RestTemplate tmdbRestTemplate;
     private final String tmdbBaseUrl;
 
@@ -118,6 +120,7 @@ public class MovieController {
                            NotificationService notificationService,
                            OttWatchLinkService ottWatchLinkService,
                            MovieThrowService movieThrowService,
+                           BadgeService badgeService,
                            @Qualifier("tmdbRestTemplate") RestTemplate tmdbRestTemplate,
                            @Value("${tmdb.base-url}") String tmdbBaseUrl) {
         this.jdbcTemplate = jdbcTemplate;
@@ -130,6 +133,7 @@ public class MovieController {
         this.notificationService = notificationService;
         this.ottWatchLinkService = ottWatchLinkService;
         this.movieThrowService = movieThrowService;
+        this.badgeService = badgeService;
         this.tmdbRestTemplate = tmdbRestTemplate;
         this.tmdbBaseUrl = tmdbBaseUrl;
     }
@@ -191,10 +195,20 @@ public class MovieController {
             return "redirect:/signup?error=1";
         }
 
+        String[] avatarPresets = {
+            "/img/avatars/bear.svg","/img/avatars/cat.svg","/img/avatars/panda.svg",
+            "/img/avatars/koala.svg","/img/avatars/fox.svg","/img/avatars/rabbit.svg",
+            "/img/avatars/lion.svg","/img/avatars/penguin.svg","/img/avatars/frog.svg",
+            "/img/avatars/wolf.svg","/img/avatars/duck.svg","/img/avatars/hamster.svg",
+            "/img/avatars/dog.svg","/img/avatars/pig.svg","/img/avatars/tiger.svg",
+            "/img/avatars/owl.svg","/img/avatars/turtle.svg","/img/avatars/octopus.svg",
+            "/img/avatars/whale.svg","/img/avatars/chicken.svg"
+        };
+        String randomAvatar = avatarPresets[new Random().nextInt(avatarPresets.length)];
         jdbcTemplate.update("""
-                INSERT INTO "USER" (login_id, login_pw, nickname, gender, age)
-                VALUES (?, ?, ?, ?, ?)
-                """, id, pw, nickname.trim(), gender, age);
+                INSERT INTO "USER" (login_id, login_pw, nickname, gender, age, profile_image_url)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, id, pw, nickname.trim(), gender, age, randomAvatar);
 
         session.setAttribute(LOGIN_SESSION_KEY, id);
         session.setAttribute(LOGIN_NICKNAME_SESSION_KEY, nickname.trim());
@@ -390,6 +404,7 @@ public class MovieController {
             model.addAttribute("heroSlides", List.of());
             model.addAttribute("homeKeywordsByMovieCd", Map.of());
             model.addAttribute("trendingKeywordsByDetailUrl", Map.of());
+            model.addAttribute("homeFriendPosts", List.of());
         } else {
             Long userId = getCurrentUserId(session);
             recommendationMaintenanceService.ensureRecommendations(userId, 200);
@@ -515,8 +530,42 @@ public class MovieController {
                     .map(a -> new HomeChartSectionView(ChartEntry.of(a), a.fetch(10)))
                     .toList();
             model.addAttribute("homeChartSections", homeChartSections);
+
+            try {
+                model.addAttribute("homeFriendPosts", userId == null ? List.of() : fetchHomeFriendPosts(userId));
+            } catch (Exception e) {
+                model.addAttribute("homeFriendPosts", List.of());
+            }
         }
         return "index";
+    }
+
+    private List<Map<String, Object>> fetchHomeFriendPosts(Long userId) {
+        return jdbcTemplate.queryForList("""
+                SELECT sp.id,
+                       sp.content,
+                       sp.created_at,
+                       u.nickname,
+                       u.login_id,
+                       COALESCE(m.title, m.movie_name) AS movie_title,
+                       m.movie_cd,
+                       m.poster_image_url,
+                       (SELECT COUNT(*) FROM post_like pl WHERE pl.post_id = sp.id) AS like_count,
+                       (SELECT spi.image_url
+                        FROM social_post_image spi
+                        WHERE spi.post_id = sp.id
+                        ORDER BY spi.display_order
+                        LIMIT 1) AS first_image_url
+                FROM social_post sp
+                JOIN "USER" u ON u.id = sp.user_id
+                LEFT JOIN movie m ON m.id = sp.movie_id
+                WHERE sp.is_deleted = FALSE
+                  AND sp.user_id IN (
+                      SELECT following_user_id FROM user_follow WHERE follower_user_id = ?
+                  )
+                ORDER BY sp.created_at DESC
+                LIMIT 4
+                """, userId);
     }
 
     private static List<String> parseReasonKeywords(String reasonSummary) {
@@ -588,6 +637,9 @@ public class MovieController {
         model.addAttribute("likedMovieCount", countLikedMovies(targetUser.userId()));
         model.addAttribute("profileRedirectPath", "/users/" + targetUser.loginId());
         model.addAttribute("similarityPct", computeCosineSimilarity(currentUserId, targetUser.userId()));
+        model.addAttribute("targetUserSelectedBadgeCode", badgeService.getSelectedBadgeCode(targetUser.userId()));
+        model.addAttribute("targetUserEarnedBadges", badgeService.getBadgeStatuses(targetUser.userId())
+                .stream().filter(BadgeService.BadgeStatus::earned).toList());
         return "user-profile";
     }
 
@@ -648,7 +700,24 @@ public class MovieController {
         model.addAttribute("tasteChart", fetchUserGenreChart(userId));
         model.addAttribute("sentThrows", movieThrowService.getSentThrows(userId));
         model.addAttribute("receivedThrows", movieThrowService.getReceivedThrows(userId));
+        model.addAttribute("badgeStatuses", badgeService.getBadgeStatuses(userId));
+        model.addAttribute("selectedBadgeCode", badgeService.getSelectedBadgeCode(userId));
         return "my-page";
+    }
+
+    @PostMapping("/api/badges/select")
+    @ResponseBody
+    public Map<String, Object> selectBadge(@RequestParam(required = false) String badgeCode,
+                                           HttpSession session) {
+        Long userId = getCurrentUserId(session);
+        if (userId == null) {
+            throw new ResponseStatusException(UNAUTHORIZED);
+        }
+        badgeService.selectBadge(userId, badgeCode);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        result.put("selectedBadgeCode", badgeCode);
+        return result;
     }
 
     @GetMapping("/people")
@@ -914,6 +983,14 @@ public class MovieController {
             }
         }
         model.addAttribute("moviePosts", moviePosts);
+
+        model.addAttribute("friendLikedSignal",     formatFriendSignal(fetchMutualFriendsWhoReacted(userId, movieId, true),   "좋아요를 남겼어요."));
+        model.addAttribute("friendDislikedSignal",  formatFriendSignal(fetchMutualFriendsWhoReacted(userId, movieId, false),  "별로라고 남겼어요."));
+        model.addAttribute("friendStoredSignal",    formatFriendSignal(fetchMutualFriendsWhoStored(userId, movieId),           "나중에 볼래요로 저장했어요."));
+        model.addAttribute("friendWatchingSignal",  formatFriendSignal(fetchMutualFriendsWhoWatched(userId, movieId, "WATCHING"), "보는중이에요."));
+        model.addAttribute("friendWatchedSignal",   formatFriendSignal(fetchMutualFriendsWhoWatched(userId, movieId, "WATCHED"),  "봤어요."));
+        model.addAttribute("friendCollectedSignal", formatFriendSignal(fetchMutualFriendsWhoCollected(userId, movieId),        "컬렉션에 담았어요."));
+
         return "movie-detail";
     }
 
@@ -1299,6 +1376,79 @@ public class MovieController {
 
     private boolean isLoggedIn(HttpSession session) {
         return session.getAttribute(LOGIN_SESSION_KEY) != null;
+    }
+
+    private List<String> fetchMutualFriendsWhoStored(Long userId, Long movieId) {
+        if (userId == null || movieId == null) return List.of();
+        return jdbcTemplate.queryForList("""
+                SELECT u.nickname
+                FROM user_follow f1
+                JOIN user_follow f2
+                    ON f1.following_user_id = f2.follower_user_id
+                    AND f2.following_user_id = f1.follower_user_id
+                JOIN user_movie_store ums ON ums.user_id = f1.following_user_id
+                JOIN "USER" u ON u.id = f1.following_user_id
+                WHERE f1.follower_user_id = ?
+                  AND ums.movie_id = ?
+                LIMIT 3
+                """, String.class, userId, movieId);
+    }
+
+    private List<String> fetchMutualFriendsWhoWatched(Long userId, Long movieId, String status) {
+        if (userId == null || movieId == null) return List.of();
+        return jdbcTemplate.queryForList("""
+                SELECT u.nickname
+                FROM user_follow f1
+                JOIN user_follow f2
+                    ON f1.following_user_id = f2.follower_user_id
+                    AND f2.following_user_id = f1.follower_user_id
+                JOIN user_movie_watched umw ON umw.user_id = f1.following_user_id
+                JOIN "USER" u ON u.id = f1.following_user_id
+                WHERE f1.follower_user_id = ?
+                  AND umw.movie_id = ?
+                  AND COALESCE(umw.status, 'WATCHED') = ?
+                LIMIT 3
+                """, String.class, userId, movieId, status);
+    }
+
+    private List<String> fetchMutualFriendsWhoCollected(Long userId, Long movieId) {
+        if (userId == null || movieId == null) return List.of();
+        return jdbcTemplate.queryForList("""
+                SELECT u.nickname
+                FROM user_follow f1
+                JOIN user_follow f2
+                    ON f1.following_user_id = f2.follower_user_id
+                    AND f2.following_user_id = f1.follower_user_id
+                JOIN user_movie_collection umc ON umc.user_id = f1.following_user_id
+                JOIN "USER" u ON u.id = f1.following_user_id
+                WHERE f1.follower_user_id = ?
+                  AND umc.movie_id = ?
+                LIMIT 3
+                """, String.class, userId, movieId);
+    }
+
+    private List<String> fetchMutualFriendsWhoReacted(Long userId, Long movieId, boolean liked) {
+        if (userId == null || movieId == null) return List.of();
+        return jdbcTemplate.queryForList("""
+                SELECT u.nickname
+                FROM user_follow f1
+                JOIN user_follow f2
+                    ON f1.following_user_id = f2.follower_user_id
+                    AND f2.following_user_id = f1.follower_user_id
+                JOIN user_movie_like uml ON uml.user_id = f1.following_user_id
+                JOIN "USER" u ON u.id = f1.following_user_id
+                WHERE f1.follower_user_id = ?
+                  AND uml.movie_id = ?
+                  AND uml.liked = ?
+                LIMIT 3
+                """, String.class, userId, movieId, liked);
+    }
+
+    private String formatFriendSignal(List<String> nicknames, String verb) {
+        if (nicknames == null || nicknames.isEmpty()) return null;
+        if (nicknames.size() == 1) return nicknames.get(0) + "님이 " + verb;
+        if (nicknames.size() == 2) return nicknames.get(0) + "님, " + nicknames.get(1) + "님이 " + verb;
+        return nicknames.get(0) + "님 외 " + (nicknames.size() - 1) + "명이 " + verb;
     }
 
     private Long getCurrentUserId(HttpSession session) {
