@@ -604,12 +604,76 @@
             .post-card { border-radius: 0; border-left: none; border-right: none; }
             .post-header { padding: 16px; }
             .post-body { padding: 18px 16px; }
-            .movie-tag-poster,
-            .movie-tag-poster-fallback {
-                width: 40px;
-                height: 60px;
-            }
+            .movie-tag-poster, .movie-tag-poster-fallback { width: 40px; height: 60px; }
         }
+        /* ── New post types ── */
+        .post-video { width: 100%; display: block; background: #000; }
+        .post-file-card {
+            display: flex; align-items: center; gap: 14px;
+            margin: 0 0 4px;
+            padding: 16px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.09);
+            text-decoration: none; color: inherit;
+            transition: background 0.15s;
+        }
+        .post-file-card:hover { background: rgba(255,255,255,0.07); }
+        .post-file-icon { font-size: 2.2rem; flex-shrink: 0; }
+        .post-file-name { font-weight: 700; font-size: 0.95rem; word-break: break-all; }
+        .post-file-size { color: var(--sub); font-size: 0.8rem; margin-top: 3px; }
+        .post-poll-wrap, .post-quiz-wrap {
+            padding: 18px;
+            border-radius: 18px;
+            background: rgba(37,99,235,0.07);
+            border: 1px solid rgba(96,165,250,0.14);
+        }
+        .post-poll-question, .post-quiz-question {
+            font-weight: 800; font-size: 1.02rem;
+            margin: 0 0 14px; line-height: 1.5;
+        }
+        .post-poll-options, .post-quiz-options { display: grid; gap: 10px; }
+        .poll-option-bar {
+            position: relative; border-radius: 12px; overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04);
+            cursor: pointer; transition: border-color 0.15s;
+        }
+        .poll-option-bar:hover { border-color: rgba(96,165,250,0.4); }
+        .poll-option-bar.voted { border-color: rgba(96,165,250,0.6); }
+        .poll-option-bar.no-vote { cursor: default; }
+        .poll-option-fill {
+            position: absolute; inset-y: 0; left: 0; top: 0; bottom: 0;
+            background: rgba(37,99,235,0.22); transition: width 0.5s ease; pointer-events: none;
+        }
+        .poll-option-bar.voted .poll-option-fill { background: rgba(37,99,235,0.36); }
+        .poll-option-inner {
+            position: relative;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 11px 14px; font-size: 0.92rem; font-weight: 600;
+        }
+        .poll-option-pct { font-size: 0.8rem; font-weight: 800; color: rgba(255,255,255,0.55); }
+        .poll-voted-mark { color: #60a5fa; margin-left: 6px; }
+        .poll-meta { margin-top: 10px; font-size: 0.78rem; color: var(--sub); }
+        .quiz-option-btn {
+            width: 100%; display: flex; align-items: center; gap: 10px;
+            padding: 12px 16px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04);
+            color: inherit; font: inherit; font-size: 0.92rem; font-weight: 600;
+            cursor: pointer; text-align: left; transition: all 0.15s;
+        }
+        .quiz-option-btn:hover:not(:disabled) { border-color: rgba(96,165,250,0.4); background: rgba(37,99,235,0.1); }
+        .quiz-option-btn:disabled { cursor: default; }
+        .quiz-option-btn.correct { border-color: rgba(34,197,94,0.6); background: rgba(34,197,94,0.12); color: #86efac; }
+        .quiz-option-btn.wrong { border-color: rgba(239,68,68,0.5); background: rgba(239,68,68,0.1); color: #fca5a5; }
+        .quiz-result-banner {
+            margin-top: 12px; padding: 10px 16px; border-radius: 12px;
+            font-weight: 800; font-size: 0.9rem;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .quiz-result-banner.correct { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+        .quiz-result-banner.wrong { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
     </style>
 </head>
 <body>
@@ -642,6 +706,7 @@
             </button>
         </header>
 
+        <!-- Photo carousel -->
         <div class="post-carousel" id="postCarousel" th:if="${post.images != null and !post.images.isEmpty()}">
             <div class="carousel-track" id="carouselTrack">
                 <div class="carousel-slide" th:each="img : ${post.images}">
@@ -661,8 +726,73 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
         </div>
-        <div class="post-image-empty" th:if="${post.images == null or post.images.isEmpty()}">
-            업로드된 이미지가 없습니다.
+
+        <!-- Video -->
+        <div th:if="${post.postType == 'video' and post.attachment != null}">
+            <video class="post-video" controls preload="metadata" th:src="${post.attachment.fileUrl}"></video>
+        </div>
+
+        <!-- File download -->
+        <div class="post-body" style="padding-bottom:0;" th:if="${post.postType == 'file' and post.attachment != null}">
+            <a class="post-file-card" th:href="${post.attachment.fileUrl}" target="_blank" rel="noopener">
+                <span class="post-file-icon">📎</span>
+                <div>
+                    <div class="post-file-name" th:text="${post.attachment.fileName}">파일명</div>
+                    <div class="post-file-size" th:if="${post.attachment.fileSize != null}"
+                         th:text="${post.attachment.fileSize / 1024} + ' KB'"></div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Poll (interactive) -->
+        <div class="post-body" style="padding-bottom:0;" th:if="${post.postType == 'poll' and post.poll != null}">
+            <div class="post-poll-wrap"
+                 th:attr="data-poll-id=${post.poll.pollId},data-has-voted=${post.poll.hasVoted},data-my-vote=${post.poll.myVotedOptionId},data-total=${post.poll.totalVotes}"
+                 id="pollWrap">
+                <p class="post-poll-question" th:text="${post.poll.question}">질문</p>
+                <div class="post-poll-options">
+                    <div th:each="opt : ${post.poll.options}"
+                         class="poll-option-bar"
+                         th:classappend="${opt.isMyVote} ? ' voted' : ''"
+                         th:attr="data-option-id=${opt.optionId}">
+                        <div class="poll-option-fill"
+                             th:style="${post.poll.hasVoted and post.poll.totalVotes > 0} ? 'width:' + ${(opt.voteCount * 100 / post.poll.totalVotes)} + '%' : 'width:0%'"></div>
+                        <div class="poll-option-inner">
+                            <span th:text="${opt.optionText}">선택지</span>
+                            <span>
+                                <span class="poll-option-pct" th:if="${post.poll.hasVoted}"
+                                      th:text="${post.poll.totalVotes > 0} ? ${#numbers.formatDecimal(opt.voteCount * 100.0 / post.poll.totalVotes, 1, 0)} + '%' : '0%'"></span>
+                                <span class="poll-voted-mark" th:if="${opt.isMyVote}">✓</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="poll-meta">
+                    <span th:text="${post.poll.totalVotes} + '명 참여'">0명 참여</span>
+                    <span th:if="${!post.poll.hasVoted}" style="margin-left:8px;color:#60a5fa;">· 투표하기</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz (interactive) -->
+        <div class="post-body" style="padding-bottom:0;" th:if="${post.postType == 'quiz' and post.quiz != null}">
+            <div class="post-quiz-wrap"
+                 th:attr="data-quiz-id=${post.quiz.quizId},data-has-answered=${post.quiz.hasAnswered}"
+                 id="quizWrap">
+                <p class="post-quiz-question" th:text="${post.quiz.question}">질문</p>
+                <div class="post-quiz-options">
+                    <button type="button" class="quiz-option-btn"
+                            th:each="opt : ${post.quiz.options}"
+                            th:classappend="${post.quiz.hasAnswered and opt.isCorrect} ? ' correct' : (${post.quiz.hasAnswered and opt.isMyAnswer and !opt.isCorrect} ? ' wrong my-answer' : (${post.quiz.hasAnswered and opt.isMyAnswer} ? ' my-answer' : ''))"
+                            th:disabled="${post.quiz.hasAnswered}"
+                            th:attr="data-option-id=${opt.optionId}"
+                            th:text="${opt.optionText}">선택지</button>
+                </div>
+                <div th:if="${post.quiz.hasAnswered}" id="quizResult">
+                    <div class="quiz-result-banner correct" th:if="${post.quiz.myAnswerCorrect}">✓ 정답입니다!</div>
+                    <div class="quiz-result-banner wrong" th:if="${post.quiz.hasAnswered and !post.quiz.myAnswerCorrect}">✗ 오답입니다. 정답은 초록색으로 표시됩니다.</div>
+                </div>
+            </div>
         </div>
 
         <div class="post-body">
@@ -924,10 +1054,7 @@
     document.getElementById('postLikeBtn')?.addEventListener('click', async function () {
         const postId = this.dataset.postId;
         const response = await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
-        if (response.status === 401) {
-            window.location.href = '/login';
-            return;
-        }
+        if (response.status === 401) { window.location.href = '/login'; return; }
         if (!response.ok) return;
         const data = await response.json();
         this.classList.toggle('liked', data.liked);
@@ -938,6 +1065,85 @@
         const count = document.getElementById('postLikeCount');
         if (count) rollupCount(count, data.likeCount);
     });
+
+    // Poll voting
+    (function () {
+        const wrap = document.getElementById('pollWrap');
+        if (!wrap) return;
+        wrap.addEventListener('click', async (e) => {
+            const bar = e.target.closest('.poll-option-bar');
+            if (!bar || wrap.dataset.hasVoted === 'true') return;
+            const pollId = wrap.dataset.pollId;
+            const optionId = bar.dataset.optionId;
+            const response = await fetch(`/api/polls/${pollId}/vote`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ optionId })
+            });
+            if (response.status === 401) { window.location.href = '/login'; return; }
+            if (!response.ok) return;
+            const data = await response.json();
+            wrap.dataset.hasVoted = 'true';
+            const total = data.totalVotes;
+            const optionMap = {};
+            data.options.forEach(o => { optionMap[o.optionId] = o.voteCount; });
+            wrap.querySelectorAll('.poll-option-bar').forEach(b => {
+                const oid = b.dataset.optionId;
+                const cnt = optionMap[oid] || 0;
+                const pct = total > 0 ? Math.round(cnt * 100 / total) : 0;
+                b.querySelector('.poll-option-fill').style.width = pct + '%';
+                let pctEl = b.querySelector('.poll-option-pct');
+                if (!pctEl) {
+                    const inner = b.querySelector('.poll-option-inner span:last-child');
+                    if (inner) { inner.insertAdjacentHTML('afterbegin', `<span class="poll-option-pct">${pct}%</span>`); }
+                } else { pctEl.textContent = pct + '%'; }
+                if (String(oid) === String(data.votedOptionId)) {
+                    b.classList.add('voted');
+                    if (!b.querySelector('.poll-voted-mark')) {
+                        const inner = b.querySelector('.poll-option-inner span:last-child');
+                        if (inner) inner.insertAdjacentHTML('beforeend', '<span class="poll-voted-mark">✓</span>');
+                    }
+                }
+            });
+            const meta = wrap.querySelector('.poll-meta');
+            if (meta) meta.innerHTML = `<span>${total}명 참여</span>`;
+        });
+    })();
+
+    // Quiz answering
+    (function () {
+        const wrap = document.getElementById('quizWrap');
+        if (!wrap) return;
+        wrap.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.quiz-option-btn');
+            if (!btn || wrap.dataset.hasAnswered === 'true') return;
+            const quizId = wrap.dataset.quizId;
+            const optionId = btn.dataset.optionId;
+            const response = await fetch(`/api/quizzes/${quizId}/answer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ optionId })
+            });
+            if (response.status === 401) { window.location.href = '/login'; return; }
+            if (response.status === 400) return;
+            if (!response.ok) return;
+            const data = await response.json();
+            wrap.dataset.hasAnswered = 'true';
+            wrap.querySelectorAll('.quiz-option-btn').forEach(b => {
+                b.disabled = true;
+                const oid = String(b.dataset.optionId);
+                const opt = data.options.find(o => String(o.optionId) === oid);
+                if (!opt) return;
+                if (opt.isCorrect) b.classList.add('correct');
+                if (oid === String(data.answeredOptionId) && !opt.isCorrect) b.classList.add('wrong', 'my-answer');
+            });
+            let resultEl = document.getElementById('quizResult');
+            if (!resultEl) { resultEl = document.createElement('div'); resultEl.id = 'quizResult'; wrap.appendChild(resultEl); }
+            resultEl.innerHTML = data.isCorrect
+                ? '<div class="quiz-result-banner correct">✓ 정답입니다!</div>'
+                : '<div class="quiz-result-banner wrong">✗ 오답입니다. 정답은 초록색으로 표시됩니다.</div>';
+        });
+    })();
 
     (function () {
         const section = document.getElementById('comments');

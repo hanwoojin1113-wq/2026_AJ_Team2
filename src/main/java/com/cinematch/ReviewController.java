@@ -110,6 +110,8 @@ public class ReviewController {
         model.addAttribute("hasPrevPage", currentPage > 1);
         model.addAttribute("hasNextPage", currentPage < totalPages);
         model.addAttribute("selectedSort", selectedSort);
+        model.addAttribute("pageStart", Math.max(1, currentPage - 2));
+        model.addAttribute("pageEnd", Math.min(totalPages, currentPage + 2));
         return "review-board";
     }
 

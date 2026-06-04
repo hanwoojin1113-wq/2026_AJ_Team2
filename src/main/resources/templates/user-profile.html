@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CineMatch | User Profile</title>
     <link rel="stylesheet" href="/css/hp-theme.css">
+    <link rel="stylesheet" href="/css/badges.css">
     <style>
         :root {
             --bg: var(--hp-bg); --surface: var(--hp-surface); --surface-soft: rgba(255,255,255,0.05);
@@ -440,7 +441,17 @@
                 </div>
                 <div class="profile-copy">
                     <p>PUBLIC PROFILE</p>
-                    <h1 th:text="${targetUser.loginId}">testuser03</h1>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                        <h1 style="margin:0;" th:text="${targetUser.loginId}">testuser03</h1>
+                        <span th:if="${targetUserSelectedBadgeCode != null}"
+                              th:with="def=${T(com.cinematch.BadgeService).getBadgeDef(targetUserSelectedBadgeCode)}"
+                              th:classappend="'ubadge ubadge-t' + ${def?.tier}"
+                              class="ubadge"
+                              th:title="${def?.name}">
+                            <span class="ubadge-icon" th:text="${def?.icon}"></span>
+                            <span th:text="${def?.name}"></span>
+                        </span>
+                    </div>
                     <span th:text="${targetUser.nickname}">nickname</span>
                     <div class="social-stats">
                         <a class="social-link" th:href="@{/people(user=${targetUser.loginId}, view='followers')}">
@@ -591,6 +602,45 @@
             </a>
         </div>
         <div class="empty" th:if="${#lists.isEmpty(likedMovies)}">아직 좋아요한 영화가 없습니다.</div>
+    </section>
+
+    <!-- 획득 배지 섹션 -->
+    <section class="section" th:if="${targetUserEarnedBadges != null and !#lists.isEmpty(targetUserEarnedBadges)}">
+        <div class="head">
+            <div>
+                <h2>🏅 획득한 배지</h2>
+                <p th:text="|${targetUser.nickname}님이 모은 배지들입니다.|">배지 컬렉션</p>
+            </div>
+        </div>
+        <div class="badge-grid">
+            <div th:each="bs : ${targetUserEarnedBadges}"
+                 th:classappend="'badge-card badge-card--t' + ${bs.def.tier} + (${targetUserSelectedBadgeCode == bs.def.code} ? ' badge-card--selected' : '')"
+                 class="badge-card">
+                <div th:classappend="'badge-hex badge-hex--t' + ${bs.def.tier}" class="badge-hex">
+                    <svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <defs>
+                            <linearGradient th:id="'up-hex-g-' + ${bs.def.code}" x1="0" y1="0" x2="0" y2="1">
+                                <stop th:if="${bs.def.tier == 1}" offset="0%" stop-color="#CD7F32"/>
+                                <stop th:if="${bs.def.tier == 1}" offset="100%" stop-color="#7B4A1A"/>
+                                <stop th:if="${bs.def.tier == 2}" offset="0%" stop-color="#BCC8D4"/>
+                                <stop th:if="${bs.def.tier == 2}" offset="100%" stop-color="#5E7080"/>
+                                <stop th:if="${bs.def.tier == 3}" offset="0%" stop-color="#FFD700"/>
+                                <stop th:if="${bs.def.tier == 3}" offset="100%" stop-color="#8B6914"/>
+                                <stop th:if="${bs.def.tier == 4}" offset="0%" stop-color="#C8B4FF"/>
+                                <stop th:if="${bs.def.tier == 4}" offset="100%" stop-color="#4A36A0"/>
+                            </linearGradient>
+                        </defs>
+                        <path th:attr="fill='url(#up-hex-g-' + ${bs.def.code} + ')'"
+                              d="M36 4 L64 19 L64 53 L36 68 L8 53 L8 19 Z"/>
+                        <path d="M36 4 L64 19 L64 30 L36 15 Z" fill="rgba(255,255,255,0.22)"/>
+                    </svg>
+                    <span class="badge-hex-emoji" th:text="${bs.def.icon}">🎬</span>
+                </div>
+                <div class="badge-card-name" th:text="${bs.def.name}">배지 이름</div>
+                <span th:classappend="'badge-card-condition'" class="badge-card-condition" th:text="${bs.def.conditionLabel}">조건</span>
+                <div class="badge-card-earned-date" th:text="|획득 ${bs.earnedAt}|">획득일</div>
+            </div>
+        </div>
     </section>
 </main>
 <script>
