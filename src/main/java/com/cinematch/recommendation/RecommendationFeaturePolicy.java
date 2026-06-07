@@ -11,7 +11,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class RecommendationFeaturePolicy {
 
-    public static final String ALGORITHM_VERSION = "content-ranking-v4.0";
+    public static final String ALGORITHM_VERSION = "content-ranking-v4.1";
+
+    /** 사용자가 구독한 OTT에서 볼 수 있는(크롤링 연결) 영화에 부여하는 랭킹 점수 가산. */
+    private static final double OTT_SUBSCRIPTION_BOOST = 0.05;
 
     private static final int ACTOR_LIMIT = 3;
     private static final int KEYWORD_LIMIT = 8;
@@ -441,6 +444,10 @@ public class RecommendationFeaturePolicy {
 
     public double trendingBonusMax() {
         return TRENDING_BONUS_MAX;
+    }
+
+    public double ottSubscriptionBoost() {
+        return OTT_SUBSCRIPTION_BOOST;
     }
 
     public double trendingBonusMin() {

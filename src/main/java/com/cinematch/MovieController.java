@@ -44,7 +44,9 @@ import com.cinematch.tag.RecommendationTag;
 import com.cinematch.tag.RecommendationTagType;
 import com.cinematch.kobis.KobisBoxOfficeService;
 import com.cinematch.notification.NotificationService;
+import com.cinematch.ott.OttCatalog;
 import com.cinematch.ott.OttWatchLinkService;
+import com.cinematch.ott.UserOttSubscriptionService;
 
 @Controller
 public class MovieController {
@@ -92,7 +94,6 @@ public class MovieController {
 
     private static final List<String> HOME_CHART_CODES = List.of("top-sales", "million-club", "flash-hit");
     private static final List<String> ONBOARDING_TAGS = List.of("funny", "tense", "dark", "emotional", "romantic");
-    private static final String TMDB_PROVIDER_LOGO_BASE = "https://image.tmdb.org/t/p/w92";
 
     public record HeroSlide(String backdropUrl, String title, List<String> genres, String detailUrl) {}
 
@@ -105,6 +106,8 @@ public class MovieController {
     private final KobisBoxOfficeService kobisBoxOfficeService;
     private final NotificationService notificationService;
     private final OttWatchLinkService ottWatchLinkService;
+    private final OttCatalog ottCatalog;
+    private final UserOttSubscriptionService userOttSubscriptionService;
     private final MovieThrowService movieThrowService;
     private final BadgeService badgeService;
     private final RestTemplate tmdbRestTemplate;
@@ -119,6 +122,8 @@ public class MovieController {
                            KobisBoxOfficeService kobisBoxOfficeService,
                            NotificationService notificationService,
                            OttWatchLinkService ottWatchLinkService,
+                           OttCatalog ottCatalog,
+                           UserOttSubscriptionService userOttSubscriptionService,
                            MovieThrowService movieThrowService,
                            BadgeService badgeService,
                            @Qualifier("tmdbRestTemplate") RestTemplate tmdbRestTemplate,
@@ -132,6 +137,8 @@ public class MovieController {
         this.kobisBoxOfficeService = kobisBoxOfficeService;
         this.notificationService = notificationService;
         this.ottWatchLinkService = ottWatchLinkService;
+        this.ottCatalog = ottCatalog;
+        this.userOttSubscriptionService = userOttSubscriptionService;
         this.movieThrowService = movieThrowService;
         this.badgeService = badgeService;
         this.tmdbRestTemplate = tmdbRestTemplate;
@@ -156,6 +163,7 @@ public class MovieController {
         if (error != null) {
             model.addAttribute("signupError", "이미 사용 중인 ID이거나 입력값이 올바르지 않습니다.");
         }
+        model.addAttribute("ottProviders", ottCatalog.all());
         return "signup-page";
     }
 
@@ -177,8 +185,10 @@ public class MovieController {
     }
 
     @PostMapping("/signup")
+    @Transactional
     public String signup(@RequestParam String id, @RequestParam String pw, @RequestParam String nickname,
-                         @RequestParam String gender, @RequestParam Integer age, HttpSession session) {
+                         @RequestParam String gender, @RequestParam Integer age,
+                         @RequestParam(required = false) List<String> ottCodes, HttpSession session) {
         if (nickname == null || nickname.isBlank()
                 || (!gender.equals("MALE") && !gender.equals("FEMALE"))
                 || age == null || age < 1 || age > 120) {
@@ -209,6 +219,12 @@ public class MovieController {
                 INSERT INTO "USER" (login_id, login_pw, nickname, gender, age, profile_image_url)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """, id, pw, nickname.trim(), gender, age, randomAvatar);
+
+        Long newUserId = findUserIdByLoginId(id);
+        if (newUserId != null && ottCodes != null && !ottCodes.isEmpty()) {
+            userOttSubscriptionService.replaceSubscriptions(newUserId, ottCodes);
+            recommendationRefreshStateService.markDirty(newUserId);
+        }
 
         session.setAttribute(LOGIN_SESSION_KEY, id);
         session.setAttribute(LOGIN_NICKNAME_SESSION_KEY, nickname.trim());
@@ -702,6 +718,8 @@ public class MovieController {
         model.addAttribute("receivedThrows", movieThrowService.getReceivedThrows(userId));
         model.addAttribute("badgeStatuses", badgeService.getBadgeStatuses(userId));
         model.addAttribute("selectedBadgeCode", badgeService.getSelectedBadgeCode(userId));
+        model.addAttribute("ottProviders", ottCatalog.all());
+        model.addAttribute("subscribedOttCodes", userOttSubscriptionService.findSubscribedCodes(userId));
         return "my-page";
     }
 
@@ -897,39 +915,13 @@ public class MovieController {
                 rs.getString("name"),
                 rs.getString("company_role")
         ), movieCode));
-        List<ProviderView> providers = jdbcTemplate.query("""
-                SELECT
-                    p.provider_name,
-                    p.logo_path,
-                    CASE mp.provider_type
-                        WHEN 'FLATRATE' THEN '구독'
-                        WHEN 'RENT' THEN '대여'
-                        WHEN 'BUY' THEN '구매'
-                        ELSE mp.provider_type
-                    END AS provider_type
-                FROM movie_provider mp
-                JOIN provider p ON p.id = mp.provider_id
-                JOIN movie m ON m.id = mp.movie_id
-                WHERE m.movie_cd = ?
-                ORDER BY
-                    CASE mp.provider_type
-                        WHEN 'FLATRATE' THEN 1
-                        WHEN 'RENT' THEN 2
-                        WHEN 'BUY' THEN 3
-                        ELSE 4
-                    END,
-                    mp.display_order
-                """, (rs, rowNum) -> new ProviderView(
-                rs.getString("provider_name"),
-                rs.getString("provider_type"),
-                rs.getString("logo_path")
-        ), movieCode);
-        model.addAttribute("providers", providers);
+        // OTT 정보는 크롤링(movie_ott_link) 기준으로 통일한다. TMDB movie_provider는 사용하지 않으며,
+        // 로고 해석 소스로 서비스 OTT 9종 카탈로그를 넘긴다.
         List<OttWatchLinkService.WatchLinkView> watchLinks = List.of();
         boolean showWatchLinksSection = false;
         if (movieId != null) {
             try {
-                watchLinks = ottWatchLinkService.fetchWatchLinks(movieId, providerLogoUrls(providers));
+                watchLinks = ottWatchLinkService.fetchWatchLinks(movieId, ottCatalog.logoUrlMap());
                 showWatchLinksSection = ottWatchLinkService.hasCrawlStatus(movieId) || !watchLinks.isEmpty();
             } catch (Exception e) {
                 watchLinks = List.of();
@@ -1279,6 +1271,18 @@ public class MovieController {
             }
         }
         return Map.of("shared", loginIds.size());
+    }
+
+    @PostMapping("/mypage/ott")
+    @Transactional
+    public String updateOttSubscriptions(@RequestParam(required = false) List<String> ottCodes, HttpSession session) {
+        if (!isLoggedIn(session)) {
+            return "redirect:/login";
+        }
+        Long userId = getCurrentUserId(session);
+        userOttSubscriptionService.replaceSubscriptions(userId, ottCodes);
+        recommendationRefreshStateService.markDirty(userId);
+        return "redirect:/mypage";
     }
 
     @PostMapping("/mypage/life")
@@ -2348,16 +2352,6 @@ public class MovieController {
         return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getString(1), movieCode);
     }
 
-    private Map<String, String> providerLogoUrls(List<ProviderView> providers) {
-        Map<String, String> result = new LinkedHashMap<>();
-        for (ProviderView provider : providers) {
-            if (provider.logoUrl() != null) {
-                result.put(provider.name(), provider.logoUrl());
-            }
-        }
-        return result;
-    }
-
     private List<String> fetchChartGenres() {
         return jdbcTemplate.query("""
                 SELECT name
@@ -2545,12 +2539,6 @@ public class MovieController {
     }
 
     public record CompanyView(String name, String role) {
-    }
-
-    public record ProviderView(String name, String type, String logoPath) {
-        public String logoUrl() {
-            return logoPath != null ? TMDB_PROVIDER_LOGO_BASE + logoPath : null;
-        }
     }
 
     public record AuditView(String auditNo, String watchGradeName) {

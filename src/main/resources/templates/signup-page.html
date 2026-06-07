@@ -74,6 +74,24 @@
             text-align: center; text-decoration: none; transition: border-color 0.15s, color 0.15s;
         }
         .btn-secondary:hover { border-color: var(--hp-blue-bright); color: var(--hp-blue-bright); }
+        .ott-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+        .ott-option { cursor: pointer; }
+        .ott-option input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .ott-chip {
+            display: flex; align-items: center; gap: 7px; padding: 8px 10px;
+            border: 1px solid var(--hp-border-strong); border-radius: var(--r-md);
+            font-size: 12px; font-weight: 600; color: var(--hp-text-sub);
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+        }
+        .ott-option input:checked + .ott-chip {
+            border-color: var(--hp-blue-bright); background: rgba(0,72,255,0.10); color: var(--hp-text);
+        }
+        .ott-logo { width: 22px; height: 22px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+        .ott-logo-fallback {
+            width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg,#111827,#334155); color: #fff; font-weight: 800; font-size: 11px;
+        }
     </style>
 </head>
 <body>
@@ -130,6 +148,18 @@
 
         <label for="age">나이</label>
         <input id="age" name="age" type="number" min="1" max="120" placeholder="나이를 입력하세요" required>
+
+        <label>구독 중인 OTT <span style="font-weight:400;color:#888;font-size:0.85em;">(선택, 여러 개 가능)</span></label>
+        <div class="ott-grid">
+            <label class="ott-option" th:each="p : ${ottProviders}">
+                <input type="checkbox" name="ottCodes" th:value="${p.code}">
+                <span class="ott-chip">
+                    <img th:if="${p.logoUrl != null}" class="ott-logo" th:src="${p.logoUrl}" th:alt="${p.displayName}">
+                    <span th:unless="${p.logoUrl != null}" class="ott-logo-fallback" th:text="${p.fallbackLabel()}">O</span>
+                    <span th:text="${p.displayName}">OTT</span>
+                </span>
+            </label>
+        </div>
 
         <button class="btn-primary" type="submit">가입 완료</button>
         <a class="btn-secondary" th:href="@{/login}">로그인으로 돌아가기</a>

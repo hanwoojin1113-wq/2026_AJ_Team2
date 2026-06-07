@@ -1102,6 +1102,56 @@
         </div>
     </section>
 
+    <section class="section ott-sub-section">
+        <style>
+        .ott-sub-section { margin: 0 0 32px; }
+        .ott-sub-section .section-head { margin-bottom: 6px; }
+        .ott-sub-desc { font-size: 0.82rem; color: #94a3b8; margin: 0 0 16px; }
+        .ott-sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
+        .ott-sub-option { cursor: pointer; }
+        .ott-sub-option input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .ott-sub-chip {
+            display: flex; align-items: center; gap: 9px; padding: 11px 13px;
+            border: 1px solid rgba(255,255,255,0.12); border-radius: 14px;
+            background: rgba(255,255,255,0.04);
+            font-size: 0.88rem; font-weight: 700; color: #94a3b8; transition: all 0.15s;
+        }
+        .ott-sub-option input:checked + .ott-sub-chip {
+            border-color: #024ad8; background: rgba(2,74,216,0.18); color: #e2e8f0;
+        }
+        .ott-sub-logo { width: 30px; height: 30px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+        .ott-sub-logo-fallback {
+            width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg,#111827,#334155); color: #fff; font-weight: 800; font-size: 0.85rem;
+        }
+        .ott-sub-save {
+            padding: 10px 22px; border-radius: 999px; border: none;
+            background: #024ad8; color: #fff; font-size: 0.85rem; font-weight: 700;
+            font-family: inherit; cursor: pointer; transition: background 0.15s;
+        }
+        .ott-sub-save:hover { background: #0356f5; }
+        </style>
+        <div class="section-head">
+            <h2 class="section-title">🎬 구독 중인 OTT</h2>
+        </div>
+        <p class="ott-sub-desc">구독한 OTT를 선택하면 그 OTT에서 볼 수 있는 영화를 홈에서 따로 추천해드려요. (여러 개 가능)</p>
+        <form th:action="@{/mypage/ott}" method="post">
+            <div class="ott-sub-grid">
+                <label class="ott-sub-option" th:each="p : ${ottProviders}">
+                    <input type="checkbox" name="ottCodes" th:value="${p.code}"
+                           th:checked="${#lists.contains(subscribedOttCodes, p.code)}">
+                    <span class="ott-sub-chip">
+                        <img th:if="${p.logoUrl != null}" class="ott-sub-logo" th:src="${p.logoUrl}" th:alt="${p.displayName}">
+                        <span th:unless="${p.logoUrl != null}" class="ott-sub-logo-fallback" th:text="${p.fallbackLabel()}">O</span>
+                        <span th:text="${p.displayName}">OTT</span>
+                    </span>
+                </label>
+            </div>
+            <button type="submit" class="ott-sub-save">저장</button>
+        </form>
+    </section>
+
     <section th:if="${!#lists.isEmpty(sentThrows) or !#lists.isEmpty(receivedThrows)}" class="throw-history-section">
         <style>
         .throw-history-section { margin: 0 0 32px; }
