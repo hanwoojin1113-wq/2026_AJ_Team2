@@ -39,6 +39,10 @@ public class NotificationService {
                 ALTER TABLE user_notification
                 ADD COLUMN IF NOT EXISTS movie_cd VARCHAR(20)
                 """);
+        jdbcTemplate.execute("""
+                ALTER TABLE user_notification
+                ADD COLUMN IF NOT EXISTS battle_id BIGINT
+                """);
     }
 
     public void createFollowNotification(Long actorUserId, Long recipientUserId) {
@@ -168,6 +172,18 @@ public class NotificationService {
                 """, reviewOwnerId, actorUserId, reviewId, movieCode);
     }
 
+    public void createBattleShareNotification(Long actorUserId, Long recipientUserId, Long battleId) {
+        initializeTable();
+        if (actorUserId == null || recipientUserId == null || battleId == null || actorUserId.equals(recipientUserId)) {
+            return;
+        }
+        jdbcTemplate.update("""
+                INSERT INTO user_notification
+                    (recipient_user_id, actor_user_id, notification_type, battle_id)
+                VALUES (?, ?, 'BATTLE_SHARE', ?)
+                """, recipientUserId, actorUserId, battleId);
+    }
+
     public int countUnread(Long userId) {
         initializeTable();
         Integer count = jdbcTemplate.queryForObject("""
@@ -187,6 +203,7 @@ public class NotificationService {
                     n.created_at,
                     n.post_id,
                     n.review_id,
+                    n.battle_id,
                     n.movie_cd,
                     actor.nickname      AS actor_nickname,
                     actor.login_id      AS actor_login_id,
