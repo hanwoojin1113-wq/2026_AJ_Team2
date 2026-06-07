@@ -20,7 +20,7 @@ public class CollaborativeLifeMovieRecommendationService {
 
     private static final double SIMILARITY_THRESHOLD = 0.45;
     private static final int MAX_SIMILAR_USERS = 5;
-    private static final int MIN_CANDIDATE_COUNT = 2;
+    private static final int MIN_LIFE_MOVIES = 3;
     private static final int MAX_RESULT_COUNT = 10;
 
     private static final String BLOCK_KEY = "COLLABORATIVE_LIFE";
@@ -43,19 +43,33 @@ public class CollaborativeLifeMovieRecommendationService {
                 return Optional.empty();
             }
 
+            // 후보 풀 = (1) 내가 팔로우하는 친구 + (2) 취향이 비슷한 사용자(코사인 유사도 >= threshold).
+            // 둘을 합친 뒤, 인생영화를 MIN_LIFE_MOVIES개 이상 지정한 사용자만 남겨 그중 한 명을 랜덤으로 노출한다.
+            Map<Long, Double> similarityByUser = new LinkedHashMap<>();
+
             Map<String, Double> currentProfile = loadPositiveProfile(userId);
-            if (currentProfile.isEmpty()) {
+            if (!currentProfile.isEmpty()) {
+                for (SimilarUser similarUser : findSimilarUsers(userId, currentProfile)) {
+                    similarityByUser.put(similarUser.userId(), similarUser.similarity());
+                }
+            }
+
+            Set<Long> candidateUserIds = new LinkedHashSet<>(similarityByUser.keySet());
+            candidateUserIds.addAll(loadFollowingUserIds(userId));
+
+            List<Long> qualifiedUserIds = candidateUserIds.stream()
+                    .filter(candidateId -> countLifeMovies(candidateId) >= MIN_LIFE_MOVIES)
+                    .collect(Collectors.toList());
+            if (qualifiedUserIds.isEmpty()) {
                 return Optional.empty();
             }
 
-            Set<Long> excludedMovieIds = loadExcludedMovieIds(userId);
-            List<SimilarUser> similarUsers = findSimilarUsers(userId, currentProfile);
-            if (similarUsers.isEmpty()) {
-                return Optional.empty();
-            }
-
-            for (SimilarUser similarUser : similarUsers) {
-                Optional<CollaborativeLifeSection> section = buildRepresentativeSection(similarUser, excludedMovieIds);
+            // 랜덤 한 명 선택: 셔플 후 섹션 구성이 가능한 첫 사용자를 사용.
+            Collections.shuffle(qualifiedUserIds);
+            for (Long candidateId : qualifiedUserIds) {
+                double similarity = similarityByUser.getOrDefault(candidateId, 0.0);
+                Optional<CollaborativeLifeSection> section =
+                        buildRepresentativeSection(new SimilarUser(candidateId, similarity));
                 if (section.isPresent()) {
                     return section;
                 }
@@ -66,16 +80,32 @@ public class CollaborativeLifeMovieRecommendationService {
         }
     }
 
-    private Optional<CollaborativeLifeSection> buildRepresentativeSection(SimilarUser similarUser, Set<Long> excludedMovieIds) {
+    private List<Long> loadFollowingUserIds(Long userId) {
+        return jdbcTemplate.query("""
+                SELECT following_user_id
+                FROM user_follow
+                WHERE follower_user_id = ?
+                """, (rs, rowNum) -> rs.getLong("following_user_id"), userId);
+    }
+
+    private int countLifeMovies(Long userId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM user_movie_life
+                WHERE user_id = ?
+                """, Integer.class, userId);
+        return count == null ? 0 : count;
+    }
+
+    private Optional<CollaborativeLifeSection> buildRepresentativeSection(SimilarUser similarUser) {
         RepresentativeUser representativeUser = loadRepresentativeUser(similarUser.userId(), similarUser.similarity());
         if (representativeUser == null) {
             return Optional.empty();
         }
 
-        List<Long> candidateMovieIds = loadLifeMovieIds(similarUser.userId()).stream()
-                .filter(movieId -> !excludedMovieIds.contains(movieId))
-                .toList();
-        if (candidateMovieIds.isEmpty()) {
+        // 인생영화를 MIN_LIFE_MOVIES개 이상 지정한 사용자만 노출. 내 활동 기반 중복 제외는 하지 않는다.
+        List<Long> candidateMovieIds = loadLifeMovieIds(similarUser.userId());
+        if (candidateMovieIds.size() < MIN_LIFE_MOVIES) {
             return Optional.empty();
         }
 
@@ -94,7 +124,7 @@ public class CollaborativeLifeMovieRecommendationService {
                 .map(metadata -> metadata.toBlockMovie(BLOCK_REASON))
                 .toList();
 
-        if (items.size() < MIN_CANDIDATE_COUNT) {
+        if (items.isEmpty()) {
             return Optional.empty();
         }
 
@@ -111,7 +141,10 @@ public class CollaborativeLifeMovieRecommendationService {
             ));
         }
 
-        String title = representativeUser.loginId() + "님의 인생영화";
+        String displayName = representativeUser.nickname() != null && !representativeUser.nickname().isBlank()
+                ? representativeUser.nickname()
+                : representativeUser.loginId();
+        String title = displayName + "님의 인생영화";
         String description = "취향이 비슷한 사용자의 인생영화만 골라 보여드려요.";
 
         return Optional.of(new CollaborativeLifeSection(
@@ -173,35 +206,6 @@ public class CollaborativeLifeMovieRecommendationService {
                 .computeIfAbsent(rs.getLong("user_id"), ignored -> new LinkedHashMap<>())
                 .put(vectorKey(rs.getString("feature_type"), rs.getString("feature_name")), rs.getDouble("score")), currentUserId);
         return profiles;
-    }
-
-    private Set<Long> loadExcludedMovieIds(Long userId) {
-        Set<Long> excludedMovieIds = new LinkedHashSet<>();
-        mergeMovieIds(excludedMovieIds, """
-                SELECT movie_id
-                FROM user_movie_life
-                WHERE user_id = ?
-                """, userId);
-        mergeMovieIds(excludedMovieIds, """
-                SELECT movie_id
-                FROM user_movie_like
-                WHERE user_id = ?
-                """, userId);
-        mergeMovieIds(excludedMovieIds, """
-                SELECT movie_id
-                FROM user_movie_store
-                WHERE user_id = ?
-                """, userId);
-        mergeMovieIds(excludedMovieIds, """
-                SELECT movie_id
-                FROM user_movie_watched
-                WHERE user_id = ?
-                """, userId);
-        return excludedMovieIds;
-    }
-
-    private void mergeMovieIds(Set<Long> movieIds, String sql, Long userId) {
-        jdbcTemplate.query(sql, (org.springframework.jdbc.core.RowCallbackHandler) rs -> movieIds.add(rs.getLong("movie_id")), userId);
     }
 
     private List<Long> loadLifeMovieIds(Long userId) {

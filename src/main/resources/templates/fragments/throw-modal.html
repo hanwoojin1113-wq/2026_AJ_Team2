@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"></head>
+<body>
+<!--
+  영화 던지기 공통 모달 fragment.
+  사용법:
+    1) 페이지 하단에 <div th:replace="~{fragments/throw-modal :: throwModal}"></div> 포함
+    2) 던지기 버튼에 다음 속성 부여 → 클릭 시 자동으로 모달이 열림
+       data-throw-open
+       data-throw-login-id="대상 loginId"
+       data-throw-nickname="대상 닉네임"
+    (동적으로 추가된 버튼도 document click 위임으로 동작함)
+  또는 JS에서 window.openThrowModal(loginId, nickname) 직접 호출.
+-->
+<div th:fragment="throwModal">
+    <div class="throw-overlay" id="throwOverlay" hidden aria-modal="true" role="dialog">
+        <div class="throw-modal">
+            <div class="throw-modal-header">
+                <span class="throw-modal-title" id="throwModalTitle">영화 던지기</span>
+                <button class="throw-modal-close" id="throwClose" type="button" aria-label="닫기">✕</button>
+            </div>
+
+            <!-- Step 1: 영화 선택 -->
+            <div id="throwStep1">
+                <div class="throw-tabs">
+                    <button class="throw-tab is-active" data-tab="suggest" type="button">추천</button>
+                    <button class="throw-tab" data-tab="search" type="button">검색</button>
+                    <button class="throw-tab" data-tab="mine" type="button">내 목록</button>
+                </div>
+                <div class="throw-similarity" id="throwSimilarity"></div>
+                <div class="throw-search-bar" id="throwSearchBar" hidden>
+                    <input type="text" id="throwSearchInput" class="throw-search-input"
+                           placeholder="영화 제목으로 검색" autocomplete="off">
+                </div>
+                <div class="throw-movie-grid" id="throwMovieGrid">
+                    <div class="throw-loading">추천 영화를 불러오는 중...</div>
+                </div>
+                <div class="throw-modal-footer">
+                    <button class="throw-send-btn" id="throwSelectBtn" type="button" disabled>선택한 영화 던지기</button>
+                </div>
+            </div>
+
+            <!-- Step 2: 확인 + 한마디 -->
+            <div id="throwStep2" hidden>
+                <div class="throw-confirm-body">
+                    <div class="throw-confirm-poster-wrap">
+                        <img class="throw-confirm-poster" id="throwConfirmPoster" src="" alt="">
+                    </div>
+                    <p class="throw-confirm-text" id="throwConfirmText"></p>
+                    <textarea id="throwMessageInput" class="throw-message-input" maxlength="200"
+                              placeholder="한마디 남기기 (선택)"></textarea>
+                </div>
+                <div class="throw-modal-footer throw-confirm-footer">
+                    <button class="throw-cancel-btn" id="throwCancelBtn" type="button">취소</button>
+                    <button class="throw-send-btn" id="throwConfirmBtn" type="button">던지기 확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    .throw-btn {
+        background: linear-gradient(135deg, #024ad8 0%, #4f46e5 100%);
+        border: none;
+        color: #fff;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+    .throw-btn:hover { opacity: 0.88; }
+    .throw-btn--disabled {
+        background: rgba(30, 41, 59, 0.5) !important;
+        color: #475569 !important;
+        cursor: not-allowed !important;
+        border: 1px solid rgba(148, 163, 184, 0.12) !important;
+        opacity: 1 !important;
+    }
+    .throw-tooltip-wrap { display: inline-block; }
+    .throw-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.7);
+        z-index: 700;
+        display: flex; align-items: center; justify-content: center;
+        padding: 16px;
+    }
+    .throw-overlay[hidden] { display: none; }
+    .throw-modal {
+        background: #13161f;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 24px;
+        width: min(100%, 480px);
+        max-height: 88vh;
+        display: flex; flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    }
+    .throw-modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 24px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+        flex-shrink: 0;
+    }
+    .throw-modal-title { font-size: 1rem; font-weight: 800; color: #fff; }
+    .throw-modal-close {
+        width: 30px; height: 30px; border-radius: 50%;
+        border: none; background: rgba(255,255,255,0.08);
+        color: #94a3b8; font-size: 1rem; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .throw-modal-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .throw-tabs { display: flex; gap: 6px; padding: 14px 20px 0; }
+    .throw-tab {
+        flex: 1; padding: 8px 0;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        color: #94a3b8; font: inherit; font-size: 0.8rem; font-weight: 700;
+        cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .throw-tab:hover { color: #cbd5e1; }
+    .throw-tab.is-active { background: #024ad8; color: #fff; border-color: #024ad8; }
+    .throw-search-bar { padding: 12px 20px 0; flex-shrink: 0; }
+    .throw-search-input {
+        width: 100%; padding: 10px 14px; box-sizing: border-box;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.05);
+        color: #fff; font: inherit; font-size: 0.85rem; outline: none;
+    }
+    .throw-search-input:focus { border-color: rgba(2,74,216,0.5); }
+    .throw-search-input::placeholder { color: #64748b; }
+    .throw-similarity {
+        text-align: center;
+        padding: 12px 24px 4px;
+        font-size: 0.82rem;
+        color: #60a5fa;
+        font-weight: 700;
+    }
+    .throw-movie-grid {
+        display: flex; gap: 12px;
+        padding: 16px 20px;
+        overflow-x: auto;
+        flex-shrink: 0;
+    }
+    .throw-movie-card {
+        flex: 0 0 130px;
+        border-radius: 14px;
+        border: 2px solid rgba(255,255,255,0.08);
+        overflow: hidden;
+        cursor: pointer;
+        transition: border-color 0.15s, transform 0.15s;
+        background: rgba(255,255,255,0.04);
+    }
+    .throw-movie-card:hover { border-color: rgba(2,74,216,0.5); transform: translateY(-2px); }
+    .throw-movie-card.selected { border-color: #024ad8; box-shadow: 0 0 0 2px rgba(2,74,216,0.3); }
+    .throw-movie-card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
+    .throw-movie-card-fallback {
+        width: 100%; aspect-ratio: 2/3;
+        background: rgba(255,255,255,0.06);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.7rem; color: #64748b; text-align: center; padding: 8px;
+    }
+    .throw-movie-card-info { padding: 8px 8px 10px; }
+    .throw-movie-card-title {
+        font-size: 0.75rem; font-weight: 700; color: #e2e8f0;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .throw-movie-card-year { font-size: 0.68rem; color: #64748b; margin-top: 2px; }
+    .throw-loading, .throw-empty {
+        color: #64748b; font-size: 0.85rem;
+        padding: 40px 24px; text-align: center; width: 100%;
+    }
+    .throw-modal-footer {
+        padding: 12px 20px 20px;
+        flex-shrink: 0;
+        border-top: 1px solid rgba(255,255,255,0.07);
+    }
+    .throw-send-btn {
+        width: 100%; padding: 12px;
+        border-radius: 12px; border: none;
+        background: #024ad8; color: #fff;
+        font-size: 0.9rem; font-weight: 700; font-family: inherit;
+        cursor: pointer; transition: opacity 0.15s;
+    }
+    .throw-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .throw-send-btn:not(:disabled):hover { opacity: 0.88; }
+    .throw-confirm-body {
+        padding: 24px 24px 8px;
+        display: flex; flex-direction: column; align-items: center; gap: 14px;
+        overflow-y: auto;
+    }
+    .throw-confirm-poster-wrap { width: 120px; border-radius: 12px; overflow: hidden; }
+    .throw-confirm-poster { width: 100%; display: block; }
+    .throw-confirm-text {
+        text-align: center; font-size: 0.92rem; color: #cbd5e1;
+        line-height: 1.6; max-width: 320px;
+    }
+    .throw-confirm-text strong { color: #fff; }
+    .throw-message-input {
+        width: 100%; min-height: 58px; resize: none; box-sizing: border-box;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.05);
+        color: #fff; font: inherit; font-size: 0.85rem; outline: none;
+    }
+    .throw-message-input:focus { border-color: rgba(2,74,216,0.5); }
+    .throw-message-input::placeholder { color: #64748b; }
+    .throw-confirm-footer { display: flex; gap: 10px; }
+    .throw-cancel-btn {
+        flex: 1; padding: 12px; border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.15);
+        background: rgba(255,255,255,0.06); color: #94a3b8;
+        font-size: 0.9rem; font-weight: 700; font-family: inherit; cursor: pointer;
+    }
+    .throw-cancel-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    </style>
+
+    <script>
+    (function () {
+        const overlay = document.getElementById('throwOverlay');
+        if (!overlay) return;
+
+        const closeBtn   = document.getElementById('throwClose');
+        const step1      = document.getElementById('throwStep1');
+        const step2      = document.getElementById('throwStep2');
+        const movieGrid  = document.getElementById('throwMovieGrid');
+        const simEl      = document.getElementById('throwSimilarity');
+        const titleEl    = document.getElementById('throwModalTitle');
+        const selectBtn  = document.getElementById('throwSelectBtn');
+        const confirmBtn = document.getElementById('throwConfirmBtn');
+        const cancelBtn  = document.getElementById('throwCancelBtn');
+        const confirmPoster = document.getElementById('throwConfirmPoster');
+        const confirmText   = document.getElementById('throwConfirmText');
+        const messageInput  = document.getElementById('throwMessageInput');
+        const tabs       = overlay.querySelectorAll('.throw-tab');
+        const searchBar  = document.getElementById('throwSearchBar');
+        const searchInput= document.getElementById('throwSearchInput');
+
+        let targetLoginId = null;
+        let targetNickname = '친구';
+        let selectedMovie = null;
+        let searchTimer = null;
+
+        function closeModal() { overlay.hidden = true; }
+        function showStep1() { step1.hidden = false; step2.hidden = true; }
+        function showStep2() { step1.hidden = true; step2.hidden = false; }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function renderCards(movies) {
+            if (!movies || !movies.length) {
+                movieGrid.innerHTML = '<div class="throw-empty">표시할 영화가 없습니다.</div>';
+                return;
+            }
+            movieGrid.innerHTML = movies.map((m, i) => {
+                const poster = m.posterImageUrl || m.posterUrl;
+                const title = escapeHtml(m.title || '제목 없음');
+                const img = poster
+                    ? `<img src="${escapeHtml(poster)}" alt="${title}" loading="lazy">`
+                    : `<div class="throw-movie-card-fallback">${title}</div>`;
+                return `<div class="throw-movie-card" data-idx="${i}">
+                    ${img}
+                    <div class="throw-movie-card-info">
+                        <div class="throw-movie-card-title">${title}</div>
+                        <div class="throw-movie-card-year">${escapeHtml(m.year || '')}</div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            movieGrid.querySelectorAll('.throw-movie-card').forEach((card, i) => {
+                card.addEventListener('click', () => {
+                    movieGrid.querySelectorAll('.throw-movie-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    const m = movies[i];
+                    selectedMovie = {
+                        title: m.title,
+                        movieCode: m.movieCode,
+                        posterImageUrl: m.posterImageUrl || m.posterUrl
+                    };
+                    selectBtn.disabled = false;
+                });
+            });
+        }
+
+        async function loadSuggest() {
+            simEl.textContent = '';
+            movieGrid.innerHTML = '<div class="throw-loading">추천 영화를 불러오는 중...</div>';
+            try {
+                const res = await fetch('/api/throw/suggest?targetLoginId=' + encodeURIComponent(targetLoginId));
+                if (!res.ok) { movieGrid.innerHTML = '<div class="throw-empty">추천 영화를 불러오지 못했습니다.</div>'; return; }
+                const data = await res.json();
+                const pct = data.similarityPct || 0;
+                simEl.textContent = pct > 0 ? ('취향 일치율 ' + pct + '%') : '';
+                const movies = data.movies || [];
+                if (!movies.length) {
+                    movieGrid.innerHTML = '<div class="throw-empty">추천할 영화가 없어요. 검색이나 내 목록에서 골라보세요!</div>';
+                    return;
+                }
+                renderCards(movies);
+            } catch (e) {
+                movieGrid.innerHTML = '<div class="throw-empty">오류가 발생했습니다.</div>';
+            }
+        }
+
+        async function loadMine() {
+            simEl.textContent = '';
+            movieGrid.innerHTML = '<div class="throw-loading">내 영화를 불러오는 중...</div>';
+            try {
+                const res = await fetch('/api/throw/my-picks');
+                if (!res.ok) { movieGrid.innerHTML = '<div class="throw-empty">목록을 불러오지 못했습니다.</div>'; return; }
+                const movies = await res.json();
+                if (!movies.length) {
+                    movieGrid.innerHTML = '<div class="throw-empty">인생영화나 좋아요한 영화가 아직 없어요.</div>';
+                    return;
+                }
+                renderCards(movies);
+            } catch (e) {
+                movieGrid.innerHTML = '<div class="throw-empty">오류가 발생했습니다.</div>';
+            }
+        }
+
+        async function loadSearch(q) {
+            if (!q || !q.trim()) { movieGrid.innerHTML = '<div class="throw-empty">검색어를 입력하세요.</div>'; return; }
+            movieGrid.innerHTML = '<div class="throw-loading">검색 중...</div>';
+            try {
+                const res = await fetch('/api/movies/search?query=' + encodeURIComponent(q.trim()));
+                if (!res.ok) { movieGrid.innerHTML = '<div class="throw-empty">검색에 실패했습니다.</div>'; return; }
+                const movies = await res.json();
+                if (!movies.length) { movieGrid.innerHTML = '<div class="throw-empty">검색 결과가 없습니다.</div>'; return; }
+                renderCards(movies);
+            } catch (e) {
+                movieGrid.innerHTML = '<div class="throw-empty">오류가 발생했습니다.</div>';
+            }
+        }
+
+        function switchTab(tab) {
+            selectedMovie = null;
+            selectBtn.disabled = true;
+            tabs.forEach(t => t.classList.toggle('is-active', t.dataset.tab === tab));
+            searchBar.hidden = (tab !== 'search');
+            if (tab === 'suggest') { loadSuggest(); }
+            else if (tab === 'mine') { loadMine(); }
+            else {
+                movieGrid.innerHTML = '<div class="throw-empty">검색어를 입력하세요.</div>';
+                searchInput.value = '';
+                setTimeout(() => searchInput.focus(), 0);
+            }
+        }
+
+        tabs.forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            const q = searchInput.value;
+            searchTimer = setTimeout(() => loadSearch(q), 300);
+        });
+
+        function flyPoster(posterEl) {
+            if (!posterEl || !posterEl.src) return;
+            const rect = posterEl.getBoundingClientRect();
+            const clone = posterEl.cloneNode(true);
+            clone.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;border-radius:16px;pointer-events:none;z-index:9999;transition:transform 0.72s cubic-bezier(0.25,0.46,0.45,0.94),opacity 0.72s ease;transform-origin:center center;`;
+            document.body.appendChild(clone);
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                clone.style.transform = 'translateX(100vw) translateY(-50vh) rotate(30deg) scale(0.2)';
+                clone.style.opacity = '0';
+            }));
+            setTimeout(() => clone.remove(), 800);
+        }
+
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.textContent = msg;
+            toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#024ad8;color:#fff;padding:10px 22px;border-radius:999px;font-size:0.88rem;font-weight:700;z-index:800;pointer-events:none;white-space:nowrap;';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2800);
+        }
+
+        selectBtn.addEventListener('click', () => {
+            if (!selectedMovie) return;
+            const title = selectedMovie.title || '영화';
+            const particle = /[가-힣]/.test(title.slice(-1))
+                ? ((title.charCodeAt(title.length - 1) - 0xAC00) % 28 === 0 ? '를' : '을')
+                : '을(를)';
+            confirmPoster.src = selectedMovie.posterImageUrl || '';
+            confirmPoster.style.display = selectedMovie.posterImageUrl ? 'block' : 'none';
+            confirmText.innerHTML = '<strong>' + escapeHtml(targetNickname) + '</strong>님에게<br><strong>'
+                + escapeHtml(title) + '</strong>' + particle + ' 던지시겠습니까?';
+            if (messageInput) messageInput.value = '';
+            showStep2();
+        });
+
+        cancelBtn.addEventListener('click', showStep1);
+
+        confirmBtn.addEventListener('click', async () => {
+            if (!selectedMovie) return;
+            confirmBtn.disabled = true;
+            flyPoster(confirmPoster);
+            try {
+                const res = await fetch('/api/throw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        targetLoginId,
+                        movieCode: selectedMovie.movieCode,
+                        message: messageInput ? messageInput.value : ''
+                    })
+                });
+                if (res.ok) {
+                    closeModal();
+                    showToast('🎬 ' + targetNickname + '님에게 던졌습니다!');
+                } else {
+                    confirmBtn.disabled = false;
+                    alert('전송에 실패했습니다. 다시 시도해 주세요.');
+                }
+            } catch (e) {
+                confirmBtn.disabled = false;
+            }
+        });
+
+        closeBtn.addEventListener('click', closeModal);
+        overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+        // 전역 진입점: 버튼에서 직접 호출하거나, data-throw-open 위임으로 자동 호출
+        window.openThrowModal = function (loginId, nickname) {
+            if (!loginId) return;
+            targetLoginId = loginId;
+            targetNickname = nickname || '친구';
+            selectedMovie = null;
+            selectBtn.disabled = true;
+            confirmBtn.disabled = false;
+            if (messageInput) messageInput.value = '';
+            titleEl.textContent = targetNickname + '님에게 영화 던지기';
+            showStep1();
+            overlay.hidden = false;
+            switchTab('suggest');
+        };
+
+        // data-throw-open 속성을 가진 버튼 클릭 위임 (서버 렌더된 동적 카드 포함)
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-throw-open]');
+            if (!btn) return;
+            e.preventDefault();
+            window.openThrowModal(btn.dataset.throwLoginId, btn.dataset.throwNickname);
+        });
+    })();
+    </script>
+</div>
+</body>
+</html>

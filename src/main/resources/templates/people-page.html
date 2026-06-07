@@ -225,7 +225,18 @@
             border: 1px solid rgba(59,130,246,0.25);
         }
 
-        .user-actions { display: flex; align-items: center; flex-shrink: 0; }
+        .user-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+        .throw-pill {
+            height: 32px; min-width: 32px; padding: 0 9px;
+            border: 1px solid rgba(2,74,216,0.4);
+            border-radius: 999px;
+            background: rgba(2,74,216,0.12);
+            font-size: 0.92rem; line-height: 1;
+            cursor: pointer; white-space: nowrap;
+            transition: background 0.15s;
+        }
+        .throw-pill:hover { background: rgba(2,74,216,0.28); }
 
         .follow-btn {
             height: 32px; padding: 0 13px;
@@ -488,6 +499,12 @@
                             </div>
                         </div>
                         <div class="user-actions">
+                            <button type="button" class="throw-pill"
+                                    th:if="${userCard.followingByCurrentUser}"
+                                    data-throw-open
+                                    th:data-throw-login-id="${userCard.loginId}"
+                                    th:data-throw-nickname="${userCard.nickname}"
+                                    title="영화 던지기">🎬</button>
                             <form th:if="${!userCard.followingByCurrentUser}"
                                   th:action="@{/people/follow}" method="post">
                                 <input type="hidden" name="loginId" th:value="${userCard.loginId}">
@@ -530,6 +547,12 @@
                             </div>
                         </div>
                         <div class="user-actions">
+                            <button type="button" class="throw-pill"
+                                    th:if="${userCard.followingByCurrentUser}"
+                                    data-throw-open
+                                    th:data-throw-login-id="${userCard.loginId}"
+                                    th:data-throw-nickname="${userCard.nickname}"
+                                    title="영화 던지기">🎬</button>
                             <form th:if="${!userCard.followingByCurrentUser}"
                                   th:action="@{/people/follow}" method="post">
                                 <input type="hidden" name="loginId" th:value="${userCard.loginId}">
@@ -647,6 +670,12 @@
                     </div>
                 </div>
                 <div class="user-actions">
+                    <button type="button" class="throw-pill"
+                            th:if="${userCard.followingByCurrentUser}"
+                            data-throw-open
+                            th:data-throw-login-id="${userCard.loginId}"
+                            th:data-throw-nickname="${userCard.nickname}"
+                            title="영화 던지기">🎬</button>
                     <button class="follow-btn suggest-follow-btn"
                             th:classappend="${!userCard.followingByCurrentUser} ? ' active' : ''"
                             th:data-login-id="${userCard.loginId}"
@@ -660,6 +689,10 @@
     </section>
 
 </main>
+
+<!-- 영화 던지기 공통 모달 -->
+<div th:replace="~{fragments/throw-modal :: throwModal}"></div>
+
 <script>
 (function () {
     document.querySelectorAll('.suggest-follow-btn').forEach(function (btn) {

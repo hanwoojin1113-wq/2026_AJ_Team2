@@ -43,6 +43,10 @@ public class NotificationService {
                 ALTER TABLE user_notification
                 ADD COLUMN IF NOT EXISTS battle_id BIGINT
                 """);
+        jdbcTemplate.execute("""
+                ALTER TABLE user_notification
+                ADD COLUMN IF NOT EXISTS comment VARCHAR(200)
+                """);
     }
 
     public void createFollowNotification(Long actorUserId, Long recipientUserId) {
@@ -124,16 +128,16 @@ public class NotificationService {
                 """, recipientUserId, actorUserId, movieId, movieCode);
     }
 
-    public void createMovieThrowNotification(Long actorUserId, Long recipientUserId, Long movieId, String movieCode) {
+    public void createMovieThrowNotification(Long actorUserId, Long recipientUserId, Long movieId, String movieCode, String comment) {
         initializeTable();
         if (actorUserId == null || recipientUserId == null || actorUserId.equals(recipientUserId)) {
             return;
         }
         jdbcTemplate.update("""
                 INSERT INTO user_notification
-                    (recipient_user_id, actor_user_id, notification_type, movie_id, movie_cd)
-                VALUES (?, ?, 'MOVIE_THROW', ?, ?)
-                """, recipientUserId, actorUserId, movieId, movieCode);
+                    (recipient_user_id, actor_user_id, notification_type, movie_id, movie_cd, comment)
+                VALUES (?, ?, 'MOVIE_THROW', ?, ?, ?)
+                """, recipientUserId, actorUserId, movieId, movieCode, comment);
     }
 
     public void createMovieThrowWatchingNotification(Long actorUserId, Long recipientUserId, Long movieId, String movieCode) {
@@ -205,6 +209,7 @@ public class NotificationService {
                     n.review_id,
                     n.battle_id,
                     n.movie_cd,
+                    n.comment,
                     actor.nickname      AS actor_nickname,
                     actor.login_id      AS actor_login_id,
                     actor.profile_image_url AS actor_profile_image_url,

@@ -60,8 +60,9 @@ public class NotificationController {
             item.put("isRead", row.get("IS_READ"));
             Object createdAt = row.get("CREATED_AT");
             item.put("createdAt", createdAt != null ? createdAt.toString() : null);
+            String comment = stringValue(row.get("COMMENT"));
             item.put("linkUrl", buildLinkUrl(notifType, postId, battleId, movieCd, actorLoginId));
-            item.put("notifText", buildNotificationText(notifType, actor, movieName));
+            item.put("notifText", buildNotificationText(notifType, actor, movieName, comment));
             items.add(item);
         }
 
@@ -98,7 +99,7 @@ public class NotificationController {
         };
     }
 
-    private String buildNotificationText(String notifType, String actor, String movieName) {
+    private String buildNotificationText(String notifType, String actor, String movieName, String comment) {
         return switch (notifType != null ? notifType : "") {
             case "NEW_POST" -> actor + "님이 새 게시물을 올렸습니다.";
             case "POST_LIKE" -> actor + "님이 내 게시물에 좋아요를 눌렀습니다.";
@@ -113,7 +114,8 @@ public class NotificationController {
             }
             case "MOVIE_THROW" -> {
                 String title = movieName != null && !movieName.isBlank() ? movieName : "영화";
-                yield actor + "님이 " + title + eulReul(title) + " 추천했습니다.";
+                String base = actor + "님이 " + title + eulReul(title) + " 추천했습니다.";
+                yield comment != null && !comment.isBlank() ? base + " \"" + comment + "\"" : base;
             }
             case "MOVIE_THROW_WATCHING" -> {
                 String title = movieName != null && !movieName.isBlank() ? movieName : "영화";

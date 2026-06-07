@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.FORBIDDEN;
@@ -18,6 +19,8 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
 public class MovieThrowService {
+
+    private static final Set<String> ALLOWED_REACTIONS = Set.of("THANKS", "WILL_WATCH", "NOT_INTERESTED");
 
     private final JdbcTemplate jdbcTemplate;
     private final NotificationService notificationService;
@@ -34,7 +37,7 @@ public class MovieThrowService {
      */
     public List<Map<String, Object>> getSuggestedMovies(Long userIdA, Long userIdB) {
         initializeThrowTable();
-        requireMutualFollow(userIdA, userIdB);
+        requireFollowing(userIdA, userIdB);
         String primarySql =
             "SELECT m.id, m.movie_cd," +
             "       COALESCE(m.title, m.movie_name) AS title," +
@@ -115,6 +118,25 @@ public class MovieThrowService {
     }
 
     /**
+     * 내가 던질 수 있는 영화 목록 (내 인생영화 + 좋아요). 자유 선택 모달의 "내 목록" 탭용.
+     */
+    public List<Map<String, Object>> getMyThrowableMovies(Long userId) {
+        return jdbcTemplate.query("""
+                SELECT m.id, m.movie_cd,
+                       COALESCE(m.title, m.movie_name) AS title,
+                       m.poster_image_url, m.production_year
+                FROM movie m
+                WHERE m.id IN (
+                    SELECT movie_id FROM user_movie_life WHERE user_id = ?
+                    UNION
+                    SELECT movie_id FROM user_movie_like WHERE user_id = ?
+                )
+                ORDER BY m.production_year DESC NULLS LAST
+                LIMIT 30
+                """, (rs, rowNum) -> toMovieRow(rs), userId, userId);
+    }
+
+    /**
      * 두 사용자의 TAG+GENRE 벡터 코사인 유사도 (0~100%).
      */
     public int getSimilarityPercent(Long userIdA, Long userIdB) {
@@ -136,7 +158,7 @@ public class MovieThrowService {
     /**
      * 영화 던지기 실행: movie_throw INSERT + 알림 발송.
      */
-    public void throwMovie(Long senderUserId, String targetLoginId, String movieCode) {
+    public void throwMovie(Long senderUserId, String targetLoginId, String movieCode, String message) {
         initializeThrowTable();
         Long receiverUserId = jdbcTemplate.query(
                 "SELECT id FROM \"USER\" WHERE login_id = ?",
@@ -147,18 +169,26 @@ public class MovieThrowService {
         if (senderUserId.equals(receiverUserId)) {
             throw new ResponseStatusException(BAD_REQUEST, "자신에게 던질 수 없습니다.");
         }
-        requireMutualFollow(senderUserId, receiverUserId);
+        requireFollowing(senderUserId, receiverUserId);
         Long movieId = jdbcTemplate.query(
                 "SELECT id FROM movie WHERE movie_cd = ?",
                 rs -> rs.next() ? rs.getLong("id") : null, movieCode);
         if (movieId == null) {
             throw new ResponseStatusException(NOT_FOUND, "영화를 찾을 수 없습니다.");
         }
+        String trimmedMessage = normalizeMessage(message);
         jdbcTemplate.update("""
-                INSERT INTO movie_throw (sender_user_id, receiver_user_id, movie_id, movie_cd)
-                VALUES (?, ?, ?, ?)
-                """, senderUserId, receiverUserId, movieId, movieCode);
-        notificationService.createMovieThrowNotification(senderUserId, receiverUserId, movieId, movieCode);
+                INSERT INTO movie_throw (sender_user_id, receiver_user_id, movie_id, movie_cd, message)
+                VALUES (?, ?, ?, ?, ?)
+                """, senderUserId, receiverUserId, movieId, movieCode, trimmedMessage);
+        notificationService.createMovieThrowNotification(senderUserId, receiverUserId, movieId, movieCode, trimmedMessage);
+    }
+
+    private static String normalizeMessage(String message) {
+        if (message == null) return null;
+        String trimmed = message.trim();
+        if (trimmed.isEmpty()) return null;
+        return trimmed.length() > 200 ? trimmed.substring(0, 200) : trimmed;
     }
 
     /**
@@ -167,7 +197,7 @@ public class MovieThrowService {
     public List<Map<String, Object>> getSentThrows(Long userId) {
         initializeThrowTable();
         return jdbcTemplate.query("""
-                SELECT mt.id, mt.created_at, mt.movie_cd,
+                SELECT mt.id, mt.created_at, mt.movie_cd, mt.message, mt.reaction,
                        COALESCE(m.title, m.movie_name) AS movie_title,
                        m.poster_image_url,
                        u.nickname          AS receiver_nickname,
@@ -192,7 +222,7 @@ public class MovieThrowService {
     public List<Map<String, Object>> getReceivedThrows(Long userId) {
         initializeThrowTable();
         return jdbcTemplate.query("""
-                SELECT mt.id, mt.created_at, mt.movie_cd,
+                SELECT mt.id, mt.created_at, mt.movie_cd, mt.message, mt.reaction,
                        COALESCE(m.title, m.movie_name) AS movie_title,
                        m.poster_image_url,
                        u.nickname          AS sender_nickname,
@@ -225,6 +255,24 @@ public class MovieThrowService {
                 receiverUserId, movieId);
     }
 
+    /**
+     * 받은 영화에 대한 반응 저장 (수신자 본인만 가능). reaction 값은 화이트리스트 검증.
+     */
+    public void reactToThrow(Long currentUserId, Long throwId, String reaction) {
+        initializeThrowTable();
+        if (reaction == null || !ALLOWED_REACTIONS.contains(reaction)) {
+            throw new ResponseStatusException(BAD_REQUEST, "유효하지 않은 반응입니다.");
+        }
+        int updated = jdbcTemplate.update("""
+                UPDATE movie_throw
+                SET reaction = ?, reacted_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND receiver_user_id = ?
+                """, reaction, throwId, currentUserId);
+        if (updated == 0) {
+            throw new ResponseStatusException(NOT_FOUND, "반응할 수 있는 던지기를 찾을 수 없습니다.");
+        }
+    }
+
     private void initializeThrowTable() {
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS movie_throw (
@@ -240,17 +288,21 @@ public class MovieThrowService {
                 """);
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_throw_sender   ON movie_throw (sender_user_id,   created_at DESC)");
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_throw_receiver ON movie_throw (receiver_user_id, created_at DESC)");
+        jdbcTemplate.execute("ALTER TABLE movie_throw ADD COLUMN IF NOT EXISTS message    VARCHAR(200)");
+        jdbcTemplate.execute("ALTER TABLE movie_throw ADD COLUMN IF NOT EXISTS reaction   VARCHAR(20)");
+        jdbcTemplate.execute("ALTER TABLE movie_throw ADD COLUMN IF NOT EXISTS reacted_at TIMESTAMP");
     }
 
-    private void requireMutualFollow(Long userIdA, Long userIdB) {
-        Boolean aFollowsB = jdbcTemplate.queryForObject(
+    /**
+     * 단방향 팔로우 검증: 발신자가 수신자를 팔로우하고 있어야 던질 수 있다.
+     * (인자 순서 중요 — sender → receiver 방향)
+     */
+    private void requireFollowing(Long senderUserId, Long receiverUserId) {
+        Boolean follows = jdbcTemplate.queryForObject(
                 "SELECT EXISTS(SELECT 1 FROM user_follow WHERE follower_user_id = ? AND following_user_id = ?)",
-                Boolean.class, userIdA, userIdB);
-        Boolean bFollowsA = jdbcTemplate.queryForObject(
-                "SELECT EXISTS(SELECT 1 FROM user_follow WHERE follower_user_id = ? AND following_user_id = ?)",
-                Boolean.class, userIdB, userIdA);
-        if (!Boolean.TRUE.equals(aFollowsB) || !Boolean.TRUE.equals(bFollowsA)) {
-            throw new ResponseStatusException(FORBIDDEN, "서로 팔로우 관계일 때만 영화 던지기가 가능합니다.");
+                Boolean.class, senderUserId, receiverUserId);
+        if (!Boolean.TRUE.equals(follows)) {
+            throw new ResponseStatusException(FORBIDDEN, "팔로우한 친구에게만 영화 던지기가 가능합니다.");
         }
     }
 
@@ -288,6 +340,8 @@ public class MovieThrowService {
         row.put(party + "Nickname", rs.getString(party + "_nickname"));
         row.put(party + "LoginId", rs.getString(party + "_login_id"));
         row.put(party + "ProfileImageUrl", rs.getString(party + "_profile_image_url"));
+        row.put("message", rs.getString("message"));
+        row.put("reaction", rs.getString("reaction"));
         Object ca = rs.getObject("created_at");
         row.put("createdAt", ca != null ? ca.toString() : null);
         return row;
