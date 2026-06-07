@@ -1,6 +1,9 @@
 package com.cinematch.recommendation;
 
 import com.cinematch.kobis.KobisBoxOfficeService;
+import com.cinematch.ott.OttCatalog;
+import com.cinematch.ott.OttWatchLinkService;
+import com.cinematch.ott.UserOttSubscriptionService;
 
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
@@ -35,6 +38,9 @@ public class RecommendationRankingService {
     private final RecommendationMovieFilterService recommendationMovieFilterService;
     private final KobisBoxOfficeService kobisBoxOfficeService;
     private final MovieCoOccurrenceService movieCoOccurrenceService;
+    private final OttCatalog ottCatalog;
+    private final UserOttSubscriptionService userOttSubscriptionService;
+    private final OttWatchLinkService ottWatchLinkService;
 
     public RecommendationRankingService(
             JdbcTemplate jdbcTemplate,
@@ -42,7 +48,10 @@ public class RecommendationRankingService {
             RecommendationFeaturePolicy recommendationFeaturePolicy,
             RecommendationMovieFilterService recommendationMovieFilterService,
             KobisBoxOfficeService kobisBoxOfficeService,
-            MovieCoOccurrenceService movieCoOccurrenceService
+            MovieCoOccurrenceService movieCoOccurrenceService,
+            OttCatalog ottCatalog,
+            UserOttSubscriptionService userOttSubscriptionService,
+            OttWatchLinkService ottWatchLinkService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.recommendationRefreshStateService = recommendationRefreshStateService;
@@ -50,6 +59,9 @@ public class RecommendationRankingService {
         this.recommendationMovieFilterService = recommendationMovieFilterService;
         this.kobisBoxOfficeService = kobisBoxOfficeService;
         this.movieCoOccurrenceService = movieCoOccurrenceService;
+        this.ottCatalog = ottCatalog;
+        this.userOttSubscriptionService = userOttSubscriptionService;
+        this.ottWatchLinkService = ottWatchLinkService;
     }
 
     public RankingRebuildResult rebuildRanking(Long userId, Integer limit) {
@@ -182,6 +194,14 @@ public class RecommendationRankingService {
                 recommendationFeaturePolicy.preferredProviderRegionCode()
         ));
 
+        // 구독 OTT 점수 부스트용: 사용자가 구독한 OTT의 정규화 키 + 후보 영화의 크롤링 OTT 가용성 맵
+        List<String> subscribedOttKeys = userOttSubscriptionService.findSubscribedProviders(userId).stream()
+                .map(ottCatalog::normalizedKey)
+                .toList();
+        Map<Long, Set<String>> subscribedOttByMovie = subscribedOttKeys.isEmpty()
+                ? Collections.emptyMap()
+                : loadNormalizedOttMap(candidateMovieIds);
+
         List<ScoredRecommendation> rankedRecommendations = new ArrayList<>();
         for (CandidateMovie movie : candidateMovies) {
             MatchSummary tagMatch = computeMatch(
@@ -236,6 +256,13 @@ public class RecommendationRankingService {
                     boxOfficeRanksByMovieCode.get(movie.movieCode())
             );
             double cfScore = cfScores.getOrDefault(movie.movieId(), 0.0);
+            double ottBoost = 0.0;
+            if (!subscribedOttKeys.isEmpty()) {
+                Set<String> movieOtt = subscribedOttByMovie.getOrDefault(movie.movieId(), Collections.emptySet());
+                if (subscribedOttKeys.stream().anyMatch(movieOtt::contains)) {
+                    ottBoost = recommendationFeaturePolicy.ottSubscriptionBoost();
+                }
+            }
 
             int matchedSignalCount = countMatchedSignals(tagScore, genreScore, peopleScore, keywordScore, providerScore);
             double matchCoverage = tagScore + genreScore + peopleScore + keywordScore + providerScore;
@@ -254,6 +281,7 @@ public class RecommendationRankingService {
                             + (recommendationFeaturePolicy.rankingWeight("CF") * cfScore)
                             + recommendationFeaturePolicy.multiSignalBonus(matchedSignalCount)
                             + trendingBonus
+                            + ottBoost
                             - penaltyScore
             );
 
@@ -616,6 +644,27 @@ public class RecommendationRankingService {
         }, params.toArray());
 
         return featuresByMovie;
+    }
+
+    /** 후보 영화의 크롤링 OTT 가용성을 정규화 키 집합으로 로드 (구독 부스트 판정용). */
+    private Map<Long, Set<String>> loadNormalizedOttMap(Set<Long> movieIds) {
+        ottWatchLinkService.initializeTables();
+        Map<Long, Set<String>> rawOtt = loadNamedFeatureSetMap(movieIds, """
+                SELECT DISTINCT movie_id, provider_name AS feature_name
+                FROM movie_ott_link
+                WHERE movie_id IN (%s)
+                  AND watch_url IS NOT NULL
+                  AND watch_url <> ''
+                """);
+        Map<Long, Set<String>> normalized = new LinkedHashMap<>();
+        for (Map.Entry<Long, Set<String>> entry : rawOtt.entrySet()) {
+            Set<String> keys = new LinkedHashSet<>();
+            for (String providerName : entry.getValue()) {
+                keys.add(OttWatchLinkService.normalizeProviderName(providerName));
+            }
+            normalized.put(entry.getKey(), keys);
+        }
+        return normalized;
     }
 
     private Map<String, Integer> loadBoxOfficeRanks(Set<String> movieCodes) {

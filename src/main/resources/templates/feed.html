@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>피드 | CineMatch</title>
     <link rel="stylesheet" href="/css/hp-theme.css">
+    <link rel="stylesheet" href="/css/badges.css">
     <style>
         :root {
             --bg: var(--hp-bg);
@@ -437,6 +438,8 @@
             color: #fff;
             font-weight: 900;
         }
+        .friend-signal { display:flex; align-items:center; gap:6px; font-size:0.78rem; color:rgba(255,255,255,0.52); padding:4px 0 0; }
+        .friend-signal span:first-child { font-size:0.72rem; }
         .movie-tag-card {
             display: flex;
             align-items: center;
@@ -570,6 +573,114 @@
                 margin-bottom: 14px;
             }
         }
+        /* ── New post types ── */
+        .post-video-wrap {
+            background: #000;
+            border-radius: 0;
+        }
+        .post-video {
+            width: 100%;
+            max-height: 400px;
+            display: block;
+        }
+        .post-file-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin: 0 16px 4px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.15s;
+        }
+        .post-file-card:hover { background: rgba(255,255,255,0.07); }
+        .post-file-icon { font-size: 2rem; flex-shrink: 0; }
+        .post-file-info { min-width: 0; }
+        .post-file-name { font-weight: 700; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .post-file-size { color: var(--hint); font-size: 0.76rem; margin-top: 2px; }
+        .post-poll-wrap, .post-quiz-wrap {
+            margin: 0 16px 4px;
+            padding: 16px;
+            border-radius: 16px;
+            background: rgba(37,99,235,0.07);
+            border: 1px solid rgba(96,165,250,0.14);
+        }
+        .post-poll-question, .post-quiz-question {
+            font-weight: 800;
+            font-size: 0.96rem;
+            margin: 0 0 12px;
+            line-height: 1.5;
+        }
+        .post-poll-options, .post-quiz-options { display: grid; gap: 8px; }
+        .poll-option-bar {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            background: rgba(255,255,255,0.04);
+            transition: border-color 0.15s;
+        }
+        .poll-option-bar:hover { border-color: rgba(96,165,250,0.4); }
+        .poll-option-bar.voted { border-color: rgba(96,165,250,0.6); }
+        .poll-option-fill {
+            position: absolute; inset-y-0: 0; left: 0; top: 0; bottom: 0;
+            background: rgba(37,99,235,0.22);
+            transition: width 0.5s ease;
+            pointer-events: none;
+        }
+        .poll-option-bar.voted .poll-option-fill { background: rgba(37,99,235,0.36); }
+        .poll-option-inner {
+            position: relative;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 9px 12px;
+            font-size: 0.88rem; font-weight: 600;
+        }
+        .poll-option-pct {
+            font-size: 0.78rem; font-weight: 800;
+            color: rgba(255,255,255,0.55);
+        }
+        .poll-voted-mark { margin-left: 6px; color: #60a5fa; font-size: 0.75rem; }
+        .poll-meta {
+            margin-top: 8px;
+            font-size: 0.76rem; color: var(--hint);
+        }
+        .quiz-option-btn {
+            width: 100%;
+            display: flex; align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04);
+            color: inherit; font: inherit; font-size: 0.88rem; font-weight: 600;
+            cursor: pointer; text-align: left;
+            transition: all 0.15s;
+        }
+        .quiz-option-btn:hover:not(:disabled) { border-color: rgba(96,165,250,0.4); background: rgba(37,99,235,0.1); }
+        .quiz-option-btn:disabled { cursor: default; }
+        .quiz-option-btn.correct { border-color: rgba(34,197,94,0.6); background: rgba(34,197,94,0.12); color: #86efac; }
+        .quiz-option-btn.wrong { border-color: rgba(239,68,68,0.5); background: rgba(239,68,68,0.1); color: #fca5a5; }
+        .quiz-option-btn.my-answer { font-weight: 800; }
+        .quiz-result-badge {
+            margin-top: 10px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem; font-weight: 800;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .quiz-result-badge.correct { background: rgba(34,197,94,0.15); color: #86efac; }
+        .quiz-result-badge.wrong { background: rgba(239,68,68,0.12); color: #fca5a5; }
+        .post-type-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 8px; border-radius: 999px;
+            font-size: 0.68rem; font-weight: 800;
+            background: rgba(255,255,255,0.06); color: #64748b;
+            margin-bottom: 4px;
+        }
     </style>
 </head>
 <body data-app-shell-notif="true">
@@ -623,7 +734,16 @@
                         </svg>
                     </div>
                     <div class="author-copy">
-                        <div class="author-name" th:text="${post.nickname}">nickname</div>
+                        <div class="author-name-row" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                            <span class="author-name" th:text="${post.nickname}">nickname</span>
+                            <span th:if="${post.badgeCode != null}"
+                                  th:classappend="'ubadge ubadge-t' + ${post.badgeTier}"
+                                  class="ubadge"
+                                  th:title="${post.badgeName}">
+                                <span class="ubadge-icon" th:text="${post.badgeIcon}"></span>
+                                <span th:text="${post.badgeName}"></span>
+                            </span>
+                        </div>
                         <div class="post-date" th:attr="data-created-at=${post.createdAt}" th:text="${post.createdAtLabel}">2026.05.15</div>
                     </div>
                 </a>
@@ -637,6 +757,7 @@
                 </button>
             </header>
 
+            <!-- Photo carousel -->
             <div class="post-carousel" th:if="${post.images != null and !post.images.isEmpty()}" data-carousel>
                 <div class="carousel-track">
                     <div class="carousel-slide" th:each="img : ${post.images}">
@@ -659,8 +780,72 @@
                 </button>
             </div>
 
+            <!-- Video -->
+            <div class="post-video-wrap" th:if="${post.postType == 'video' and post.attachment != null}">
+                <video class="post-video" controls preload="metadata"
+                       th:src="${post.attachment.fileUrl}"></video>
+            </div>
+
+            <!-- File attachment -->
+            <a class="post-file-card" th:if="${post.postType == 'file' and post.attachment != null}"
+               th:href="${post.attachment.fileUrl}" target="_blank" rel="noopener">
+                <span class="post-file-icon">📎</span>
+                <div class="post-file-info">
+                    <div class="post-file-name" th:text="${post.attachment.fileName}">파일명</div>
+                    <div class="post-file-size" th:text="${post.attachment.fileSize != null ? (post.attachment.fileSize / 1024) + ' KB' : ''}"></div>
+                </div>
+            </a>
+
+            <!-- Poll -->
+            <div class="post-poll-wrap" th:if="${post.postType == 'poll' and post.poll != null}"
+                 th:attr="data-poll-id=${post.poll.pollId},data-has-voted=${post.poll.hasVoted},data-my-vote=${post.poll.myVotedOptionId},data-total=${post.poll.totalVotes}">
+                <p class="post-poll-question" th:text="${post.poll.question}">투표 질문</p>
+                <div class="post-poll-options">
+                    <div th:each="opt : ${post.poll.options}"
+                         class="poll-option-bar"
+                         th:classappend="${opt.isMyVote} ? ' voted' : ''"
+                         th:attr="data-option-id=${opt.optionId}">
+                        <div class="poll-option-fill"
+                             th:style="${post.poll.hasVoted and post.poll.totalVotes > 0} ? 'width:' + ${(opt.voteCount * 100 / post.poll.totalVotes)} + '%' : 'width:0%'"></div>
+                        <div class="poll-option-inner">
+                            <span th:text="${opt.optionText}">선택지</span>
+                            <span>
+                                <span class="poll-option-pct" th:if="${post.poll.hasVoted}"
+                                      th:text="${post.poll.totalVotes > 0} ? ${#numbers.formatDecimal(opt.voteCount * 100.0 / post.poll.totalVotes, 1, 0)} + '%' : '0%'"></span>
+                                <span class="poll-voted-mark" th:if="${opt.isMyVote}">✓</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="poll-meta">
+                    <span th:text="${post.poll.totalVotes} + '명 참여'">0명 참여</span>
+                    <span th:if="${!post.poll.hasVoted}" style="margin-left:8px;color:#60a5fa;">· 투표하기</span>
+                </div>
+            </div>
+
+            <!-- Quiz -->
+            <div class="post-quiz-wrap" th:if="${post.postType == 'quiz' and post.quiz != null}"
+                 th:attr="data-quiz-id=${post.quiz.quizId},data-has-answered=${post.quiz.hasAnswered},data-my-answer=${post.quiz.myAnswerOptionId},data-my-correct=${post.quiz.myAnswerCorrect}">
+                <p class="post-quiz-question" th:text="${post.quiz.question}">퀴즈 질문</p>
+                <div class="post-quiz-options">
+                    <button type="button" class="quiz-option-btn"
+                            th:each="opt : ${post.quiz.options}"
+                            th:classappend="${post.quiz.hasAnswered and opt.isCorrect} ? ' correct' : (${post.quiz.hasAnswered and opt.isMyAnswer and !opt.isCorrect} ? ' wrong my-answer' : (${post.quiz.hasAnswered and opt.isMyAnswer} ? ' my-answer' : ''))"
+                            th:disabled="${post.quiz.hasAnswered}"
+                            th:attr="data-option-id=${opt.optionId}"
+                            th:text="${opt.optionText}">선택지</button>
+                </div>
+                <div th:if="${post.quiz.hasAnswered}">
+                    <span class="quiz-result-badge correct" th:if="${post.quiz.myAnswerCorrect}">✓ 정답!</span>
+                    <span class="quiz-result-badge wrong" th:if="${post.quiz.hasAnswered and !post.quiz.myAnswerCorrect}">✗ 오답</span>
+                </div>
+            </div>
 
             <div class="post-body">
+                <span class="post-type-badge" th:if="${post.postType == 'video'}">🎥 동영상</span>
+                <span class="post-type-badge" th:if="${post.postType == 'file'}">📎 파일</span>
+                <span class="post-type-badge" th:if="${post.postType == 'poll'}">☑ 투표</span>
+                <span class="post-type-badge" th:if="${post.postType == 'quiz'}">❓ 퀴즈</span>
                 <p class="post-content" th:if="${post.content != null and !#strings.isEmpty(post.content)}" th:text="${post.content}">게시물 설명</p>
                 <div class="post-actions">
                     <button class="icon-btn like-btn" type="button"
@@ -687,6 +872,9 @@
                 <div class="post-engagement">
                     <span>좋아요 <span class="like-count" th:text="${post.likeCount}">0</span>개</span>
                     <span>댓글 <span class="comment-count" th:text="${post.commentCount}">0</span>개</span>
+                </div>
+                <div th:if="${post.friendLikedSignal != null}" class="friend-signal">
+                    <span>❤️</span><span th:text="${post.friendLikedSignal}"></span>
                 </div>
                 <a class="movie-tag-card" th:href="@{|/movies/${post.movieCode}|}">
                     <img class="movie-tag-poster"
@@ -722,7 +910,6 @@
             </div>
         </article>
     </div>
-    <div class="feed" id="feedList" th:if="${posts == null or posts.isEmpty()}"></div>
     <div class="feed-empty" th:if="${posts == null or posts.isEmpty()}">아직 올라온 게시물이 없습니다.</div>
     <div class="feed-status" id="feedStatus">게시물을 불러오는 중입니다.</div>
     <div id="feedSentinel" style="height:1px"></div>
@@ -781,6 +968,9 @@
 </main>
 
 <script>
+window.addEventListener('pageshow', function(e) {
+    if (e.persisted) window.location.reload();
+});
 (function () {
     const page = document.getElementById('feedPage');
     const feedList = document.getElementById('feedList');
@@ -810,20 +1000,27 @@
         return `${Math.floor(seconds / 86400)}일 전`;
     }
 
+    function badgeMarkup(post) {
+        if (!post.badgeCode) return '';
+        return `<span class="ubadge ubadge-t${post.badgeTier}" title="${escapeHtml(post.badgeName || '')}"><span class="ubadge-icon">${escapeHtml(post.badgeIcon || '')}</span><span>${escapeHtml(post.badgeName || '')}</span></span>`;
+    }
+
     function avatarMarkup(post) {
         const name = escapeHtml(post.nickname || '?');
         const href = `/users/${encodeURIComponent(post.loginId || '')}`;
+        const badge = badgeMarkup(post);
+        const nameLine = `<div class="author-name-row" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;"><span class="author-name">${name}</span>${badge}</div>`;
         if (post.profileImageUrl) {
             return `<a class="author-link" href="${href}">
                 <div class="author-avatar"><img src="${escapeHtml(post.profileImageUrl)}" alt="${name}"></div>
-                <div class="author-copy"><div class="author-name">${name}</div><div class="post-date">${timeAgo(post.createdAt)}</div></div>
+                <div class="author-copy">${nameLine}<div class="post-date">${timeAgo(post.createdAt)}</div></div>
             </a>`;
         }
         return `<a class="author-link" href="${href}">
             <div class="author-avatar-fallback">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.2c2.6 0 4.6-2 4.6-4.5S14.6 3.2 12 3.2 7.4 5.2 7.4 7.7s2 4.5 4.6 4.5Zm0 2.3c-4.1 0-7.5 2.4-8.3 5.8-.1.5.2.9.7.9h15.2c.5 0 .8-.4.7-.9-.8-3.4-4.2-5.8-8.3-5.8Z"/></svg>
             </div>
-            <div class="author-copy"><div class="author-name">${name}</div><div class="post-date">${timeAgo(post.createdAt)}</div></div>
+            <div class="author-copy">${nameLine}<div class="post-date">${timeAgo(post.createdAt)}</div></div>
         </a>`;
     }
 
@@ -871,6 +1068,7 @@
                     <span>좋아요 <span class="like-count">${post.likeCount || 0}</span>개</span>
                     <span>댓글 <span class="comment-count">${post.commentCount || 0}</span>개</span>
                 </div>
+                ${post.friendLikedSignal ? `<div class="friend-signal"><span>❤️</span><span>${escapeHtml(post.friendLikedSignal)}</span></div>` : ''}
                 <a class="movie-tag-card" href="/movies/${encodeURIComponent(post.movieCode || '')}">
                     ${moviePosterMarkup(post)}
                     <div>
@@ -945,7 +1143,10 @@
                 window.location.href = '/login';
                 return;
             }
-            if (!response.ok) return;
+            if (!response.ok) {
+                hasMore = false;
+                return;
+            }
             const data = await response.json();
             if (Array.isArray(data.posts) && data.posts.length) {
                 feedList.insertAdjacentHTML('beforeend', data.posts.map(renderPost).join(''));
@@ -1065,26 +1266,103 @@
         }
 
         const followButton = event.target.closest('[data-follow-toggle]');
-        if (!followButton) return;
-        const following = followButton.dataset.following === 'true';
-        const endpoint = following ? '/api/people/unfollow' : '/api/people/follow';
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ loginId: followButton.dataset.loginId })
-        });
-        if (response.status === 401) {
-            window.location.href = '/login';
+        if (followButton) {
+            const following = followButton.dataset.following === 'true';
+            const endpoint = following ? '/api/people/unfollow' : '/api/people/follow';
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ loginId: followButton.dataset.loginId })
+            });
+            if (response.status === 401) { window.location.href = '/login'; return; }
+            if (!response.ok) return;
+            const payload = await response.json();
+            document.querySelectorAll(`[data-follow-toggle][data-login-id="${payload.loginId}"]`).forEach((button) => {
+                button.dataset.following = String(payload.followingByCurrentUser);
+                button.classList.toggle('following', payload.followingByCurrentUser);
+                const label = button.querySelector('span');
+                if (label) label.textContent = payload.followingByCurrentUser ? '팔로잉' : '팔로우';
+            });
             return;
         }
-        if (!response.ok) return;
-        const payload = await response.json();
-        document.querySelectorAll(`[data-follow-toggle][data-login-id="${payload.loginId}"]`).forEach((button) => {
-            button.dataset.following = String(payload.followingByCurrentUser);
-            button.classList.toggle('following', payload.followingByCurrentUser);
-            const label = button.querySelector('span');
-            if (label) label.textContent = payload.followingByCurrentUser ? '팔로잉' : '팔로우';
-        });
+
+        // Poll vote
+        const pollBar = event.target.closest('.poll-option-bar');
+        if (pollBar) {
+            const wrap = pollBar.closest('.post-poll-wrap');
+            if (!wrap || wrap.dataset.hasVoted === 'true') return;
+            const pollId = wrap.dataset.pollId;
+            const optionId = pollBar.dataset.optionId;
+            const response = await fetch(`/api/polls/${pollId}/vote`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ optionId })
+            });
+            if (response.status === 401) { window.location.href = '/login'; return; }
+            if (!response.ok) return;
+            const data = await response.json();
+            wrap.dataset.hasVoted = 'true';
+            wrap.dataset.myVote = data.votedOptionId;
+            wrap.dataset.total = data.totalVotes;
+            const total = data.totalVotes;
+            const optionMap = {};
+            data.options.forEach(o => { optionMap[o.optionId] = o.voteCount; });
+            wrap.querySelectorAll('.poll-option-bar').forEach(bar => {
+                const oid = bar.dataset.optionId;
+                const cnt = optionMap[oid] || 0;
+                const pct = total > 0 ? Math.round(cnt * 100 / total) : 0;
+                bar.querySelector('.poll-option-fill').style.width = pct + '%';
+                const pctEl = bar.querySelector('.poll-option-pct');
+                if (pctEl) pctEl.textContent = pct + '%';
+                else {
+                    const inner = bar.querySelector('.poll-option-inner');
+                    if (inner) inner.insertAdjacentHTML('beforeend', `<span class="poll-option-pct">${pct}%</span>`);
+                }
+                if (String(oid) === String(data.votedOptionId)) {
+                    bar.classList.add('voted');
+                    if (!bar.querySelector('.poll-voted-mark')) {
+                        const inner = bar.querySelector('.poll-option-inner span:last-child');
+                        if (inner) inner.insertAdjacentHTML('beforeend', '<span class="poll-voted-mark">✓</span>');
+                    }
+                }
+            });
+            const meta = wrap.querySelector('.poll-meta');
+            if (meta) meta.innerHTML = `<span>${total}명 참여</span>`;
+            return;
+        }
+
+        // Quiz answer
+        const quizBtn = event.target.closest('.quiz-option-btn');
+        if (quizBtn) {
+            const wrap = quizBtn.closest('.post-quiz-wrap');
+            if (!wrap || wrap.dataset.hasAnswered === 'true') return;
+            const quizId = wrap.dataset.quizId;
+            const optionId = quizBtn.dataset.optionId;
+            const response = await fetch(`/api/quizzes/${quizId}/answer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ optionId })
+            });
+            if (response.status === 401) { window.location.href = '/login'; return; }
+            if (response.status === 400) return;
+            if (!response.ok) return;
+            const data = await response.json();
+            wrap.dataset.hasAnswered = 'true';
+            wrap.querySelectorAll('.quiz-option-btn').forEach(btn => {
+                btn.disabled = true;
+                const oid = String(btn.dataset.optionId);
+                const opt = data.options.find(o => String(o.optionId) === oid);
+                if (!opt) return;
+                if (opt.isCorrect) btn.classList.add('correct');
+                if (String(oid) === String(data.answeredOptionId) && !opt.isCorrect) { btn.classList.add('wrong'); btn.classList.add('my-answer'); }
+            });
+            const resultEl = document.createElement('div');
+            resultEl.innerHTML = data.isCorrect
+                ? '<span class="quiz-result-badge correct">✓ 정답!</span>'
+                : '<span class="quiz-result-badge wrong">✗ 오답</span>';
+            wrap.querySelector('.post-quiz-options').after(resultEl);
+            return;
+        }
     });
 
     initializeCarousels(document);

@@ -32,7 +32,7 @@ public class TmdbTrendingChart implements ChartAlgorithm {
     public String title() { return "실시간 인기 작품"; }
 
     @Override
-    public String description() { return "TMDB 기준 오늘의 실시간 인기 작품 Top 10"; }
+    public String description() { return "박스오피스 기준 오늘의 실시간 인기 작품 Top 10"; }
 
     @Override
     public ChartCategory category() { return ChartCategory.TRENDING; }
@@ -42,18 +42,17 @@ public class TmdbTrendingChart implements ChartAlgorithm {
 
     @Override
     public List<ChartMovieRow> fetch(int limit) {
-        // TMDB trending 스냅샷 우선 사용
-        List<ChartMovieRow> rows = tmdbTrendingService.fetchTrendingChartRows(limit);
-        if (!rows.isEmpty()) {
-            return rows;
-        }
-        // TMDB 데이터 없으면 KOBIS 박스오피스 fallback
+        // /charts 홈과 동일하게 KOBIS 박스오피스를 우선 사용 (공연/콘서트 제외 + 백필 적용된 동일 소스)
         List<TmdbTrendingService.TrendingMovieView> kobisMovies = kobisBoxOfficeService.fetchBoxOffice(limit).stream()
                 .filter(m -> m.posterImageUrl() != null && !m.posterImageUrl().isBlank())
                 .toList();
-        return IntStream.range(0, kobisMovies.size())
-                .mapToObj(i -> toKobisRow(i + 1, kobisMovies.get(i)))
-                .toList();
+        if (!kobisMovies.isEmpty()) {
+            return IntStream.range(0, kobisMovies.size())
+                    .mapToObj(i -> toKobisRow(i + 1, kobisMovies.get(i)))
+                    .toList();
+        }
+        // KOBIS 데이터 없으면(예: API 키 미설정) TMDB trending fallback
+        return tmdbTrendingService.fetchTrendingChartRows(limit);
     }
 
     private ChartMovieRow toKobisRow(int rankNo, TmdbTrendingService.TrendingMovieView movie) {

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>배틀 만들기 | CineMatch</title>
+    <link rel="stylesheet" href="/css/hp-theme.css">
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #0f0f0f 0%, #151515 100%);
+            color: var(--hp-text);
+        }
+        .battle-page {
+            width: min(100%, 960px);
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+        .battle-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+        .battle-kicker {
+            color: var(--hp-blue-bright);
+            font-size: 0.76rem;
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        .battle-title {
+            margin: 8px 0 6px;
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 900;
+        }
+        .battle-copy {
+            color: var(--hp-text-sub);
+            font-size: 0.95rem;
+        }
+        .battle-create {
+            padding: 20px;
+            border: 1px solid var(--hp-border);
+            border-radius: 8px;
+            background: var(--hp-surface);
+        }
+        .battle-form-grid {
+            display: grid;
+            gap: 16px;
+        }
+        .battle-field-label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--hp-text-sub);
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .battle-wide {
+            grid-column: 1 / -1;
+        }
+        .battle-choice-grid {
+            display: grid;
+            gap: 12px;
+        }
+        .battle-search-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+        }
+        .battle-search-results {
+            display: grid;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .battle-search-item {
+            display: grid;
+            grid-template-columns: 42px 1fr auto auto;
+            align-items: center;
+            gap: 10px;
+            min-height: 54px;
+            padding: 8px;
+            border: 1px solid var(--hp-border);
+            border-radius: 6px;
+            background: var(--hp-surface-2);
+        }
+        .battle-search-poster,
+        .battle-selected-poster {
+            width: 42px;
+            aspect-ratio: 2 / 3;
+            border-radius: 4px;
+            object-fit: cover;
+            background: var(--hp-card);
+        }
+        .battle-search-name {
+            min-width: 0;
+            font-size: 0.88rem;
+            font-weight: 700;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .battle-slot-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        .battle-slot {
+            display: grid;
+            grid-template-columns: 42px 1fr auto;
+            align-items: center;
+            gap: 10px;
+            min-height: 58px;
+            padding: 8px;
+            border: 1px dashed var(--hp-border-strong);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.03);
+        }
+        .battle-slot-empty {
+            color: var(--hp-text-hint);
+            font-size: 0.86rem;
+        }
+        .battle-create-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .battle-error {
+            margin-top: 10px;
+            min-height: 18px;
+            color: #ff7a7a;
+            font-size: 0.82rem;
+        }
+        .battle-hidden {
+            display: none;
+        }
+        .battle-file-input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .battle-upload-button {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: min(100%, 180px);
+            aspect-ratio: 2 / 3;
+            margin-top: 10px;
+            border: 1px dashed var(--hp-border-strong);
+            border-radius: 8px;
+            background: var(--hp-surface-2);
+            color: var(--hp-text-sub);
+            cursor: pointer;
+            overflow: hidden;
+            text-align: center;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .battle-upload-button:hover {
+            border-color: var(--hp-blue-bright);
+            background: var(--hp-card);
+        }
+        .battle-upload-button img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .battle-upload-copy {
+            position: relative;
+            z-index: 1;
+            padding: 12px;
+            font-size: 0.86rem;
+            font-weight: 700;
+            line-height: 1.4;
+        }
+        .battle-field-hint {
+            margin-top: 6px;
+            color: var(--hp-text-hint);
+            font-size: 0.76rem;
+            line-height: 1.4;
+        }
+        @media (min-width: 760px) {
+            .battle-form-grid,
+            .battle-choice-grid,
+            .battle-slot-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        @media (max-width: 640px) {
+            .battle-header {
+                align-items: stretch;
+                flex-direction: column;
+            }
+            .battle-create-actions {
+                flex-direction: column-reverse;
+            }
+            .battle-create-actions .hp-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/app-shell :: shell}"></div>
+
+<main class="app-main">
+    <div class="battle-page">
+        <header class="battle-header">
+            <div>
+                <p class="battle-kicker">CREATE BATTLE</p>
+                <h1 class="battle-title">배틀 만들기</h1>
+                <p class="battle-copy">영화를 하나 이상 연결하고, 투표 선택지는 두 개 모두 직접 작성하세요.</p>
+            </div>
+            <a class="hp-btn hp-btn-surface" th:href="@{/battles}">목록으로</a>
+        </header>
+
+        <section class="battle-create" aria-label="새 배틀 만들기">
+            <div class="battle-form-grid">
+                <label class="battle-wide">
+                    <span class="battle-field-label">배틀 타이틀</span>
+                    <input class="hp-input" id="battleTitleInput" type="text" maxlength="200" placeholder="예: 오늘 밤 뭐 볼까?">
+                </label>
+
+                <div class="battle-wide battle-choice-grid">
+                    <label>
+                        <span class="battle-field-label">선택지 1 이름</span>
+                        <input class="hp-input" id="optionALabelInput" type="text" maxlength="100" placeholder="예: 액션으로 간다">
+                    </label>
+                    <label>
+                        <span class="battle-field-label">선택지 2 이름</span>
+                        <input class="hp-input" id="optionBLabelInput" type="text" maxlength="100" placeholder="예: 로맨스로 간다">
+                    </label>
+                    <label>
+                        <span class="battle-field-label">선택지 1 이미지</span>
+                        <label class="battle-upload-button" for="optionAImageFileInput" id="optionAUploadButton">
+                            <span class="battle-upload-copy">이미지 파일 선택</span>
+                        </label>
+                        <input class="battle-file-input" id="optionAImageFileInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp">
+                        <div class="battle-field-hint">포스터 영역을 클릭해 이미지 파일을 첨부하세요.</div>
+                    </label>
+                    <label>
+                        <span class="battle-field-label">선택지 2 이미지</span>
+                        <label class="battle-upload-button" for="optionBImageFileInput" id="optionBUploadButton">
+                            <span class="battle-upload-copy">이미지 파일 선택</span>
+                        </label>
+                        <input class="battle-file-input" id="optionBImageFileInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp">
+                        <div class="battle-field-hint">JPG, PNG, GIF, WEBP 파일을 사용할 수 있습니다.</div>
+                    </label>
+                </div>
+
+                <div>
+                    <span class="battle-field-label">영화 검색</span>
+                    <div class="battle-search-row">
+                        <input class="hp-input" id="movieSearchInput" type="search" placeholder="영화 제목 입력">
+                        <button class="hp-btn hp-btn-surface hp-btn-sm" type="button" onclick="searchMovies()">검색</button>
+                    </div>
+                    <div class="battle-search-results" id="movieSearchResults"></div>
+                </div>
+
+                <div>
+                    <span class="battle-field-label">연결된 영화</span>
+                    <div class="battle-slot-grid">
+                        <div class="battle-slot" id="movieSlotA">
+                            <div class="battle-selected-poster"></div>
+                            <div class="battle-slot-empty">첫 번째 영화는 필수입니다.</div>
+                            <button class="hp-btn hp-btn-surface hp-btn-sm battle-hidden" type="button" onclick="clearSlot('A')">삭제</button>
+                        </div>
+                        <div class="battle-slot" id="movieSlotB">
+                            <div class="battle-selected-poster"></div>
+                            <div class="battle-slot-empty">두 번째 영화는 선택 사항입니다.</div>
+                            <button class="hp-btn hp-btn-surface hp-btn-sm battle-hidden" type="button" onclick="clearSlot('B')">삭제</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="battle-error" id="battleCreateError" aria-live="polite"></div>
+            <div class="battle-create-actions">
+                <a class="hp-btn hp-btn-surface" th:href="@{/battles}">취소</a>
+                <button class="hp-btn hp-btn-primary" id="createBattleBtn" type="button" onclick="createBattle()">생성</button>
+            </div>
+        </section>
+    </div>
+</main>
+
+<script>
+    const selectedMovies = { A: null, B: null };
+    let lastSearchResults = [];
+
+    document.getElementById('movieSearchInput').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            searchMovies();
+        }
+    });
+    document.getElementById('optionAImageFileInput').addEventListener('change', () => previewUpload('A'));
+    document.getElementById('optionBImageFileInput').addEventListener('change', () => previewUpload('B'));
+
+    function previewUpload(slot) {
+        const input = document.getElementById(`option${slot}ImageFileInput`);
+        const button = document.getElementById(`option${slot}UploadButton`);
+        const file = input.files[0];
+        button.innerHTML = '<span class="battle-upload-copy">이미지 파일 선택</span>';
+        if (!file) return;
+
+        const image = document.createElement('img');
+        image.alt = `선택지 ${slot} 이미지 미리보기`;
+        image.src = URL.createObjectURL(file);
+        image.onload = () => URL.revokeObjectURL(image.src);
+        button.innerHTML = '';
+        button.appendChild(image);
+    }
+
+    async function searchMovies() {
+        const input = document.getElementById('movieSearchInput');
+        const results = document.getElementById('movieSearchResults');
+        const query = input.value.trim();
+        results.innerHTML = '';
+        if (!query) return;
+
+        const res = await fetch(`/api/movies/search?query=${encodeURIComponent(query)}`);
+        if (!res.ok) return;
+        lastSearchResults = await res.json();
+        if (!lastSearchResults.length) {
+            results.innerHTML = '<div class="battle-slot-empty">검색 결과가 없습니다.</div>';
+            return;
+        }
+        results.innerHTML = lastSearchResults.map((movie, index) => `
+            <div class="battle-search-item">
+                ${movie.posterUrl ? `<img class="battle-search-poster" src="${escapeAttr(movie.posterUrl)}" alt="">` : '<div class="battle-search-poster"></div>'}
+                <div class="battle-search-name">${escapeHtml(movie.title)}</div>
+                <button class="hp-btn hp-btn-surface hp-btn-sm" type="button" onclick="selectMovieFromSearch('A', ${index})">1번</button>
+                <button class="hp-btn hp-btn-surface hp-btn-sm" type="button" onclick="selectMovieFromSearch('B', ${index})">2번</button>
+            </div>
+        `).join('');
+    }
+
+    function selectMovieFromSearch(slot, index) {
+        const movie = lastSearchResults[index];
+        if (movie) selectMovie(slot, movie);
+    }
+
+    function selectMovie(slot, movie) {
+        const other = slot === 'A' ? 'B' : 'A';
+        if (selectedMovies[other]?.movieId === movie.movieId) {
+            showCreateError('같은 영화는 두 번 선택할 수 없습니다.');
+            return;
+        }
+        selectedMovies[slot] = movie;
+        renderSlot(slot);
+        showCreateError('');
+    }
+
+    function clearSlot(slot) {
+        selectedMovies[slot] = null;
+        renderSlot(slot);
+    }
+
+    function renderSlot(slot) {
+        const movie = selectedMovies[slot];
+        const el = document.getElementById(`movieSlot${slot}`);
+        if (!movie) {
+            el.innerHTML = `
+                <div class="battle-selected-poster"></div>
+                <div class="battle-slot-empty">${slot === 'A' ? '첫 번째 영화는 필수입니다.' : '두 번째 영화는 선택 사항입니다.'}</div>
+                <button class="hp-btn hp-btn-surface hp-btn-sm battle-hidden" type="button" onclick="clearSlot('${slot}')">삭제</button>
+            `;
+            return;
+        }
+        el.innerHTML = `
+            ${movie.posterUrl ? `<img class="battle-selected-poster" src="${escapeAttr(movie.posterUrl)}" alt="">` : '<div class="battle-selected-poster"></div>'}
+            <div class="battle-search-name">${escapeHtml(movie.title)}</div>
+            <button class="hp-btn hp-btn-surface hp-btn-sm" type="button" onclick="clearSlot('${slot}')">삭제</button>
+        `;
+    }
+
+    async function createBattle() {
+        const btn = document.getElementById('createBattleBtn');
+        const title = readValue('battleTitleInput');
+        const optionALabel = readValue('optionALabelInput');
+        const optionBLabel = readValue('optionBLabelInput');
+        const optionAImageFile = document.getElementById('optionAImageFileInput').files[0];
+        const optionBImageFile = document.getElementById('optionBImageFileInput').files[0];
+
+        if (!title) return showCreateError('배틀 타이틀을 입력해주세요.');
+        if (!optionALabel) return showCreateError('선택지 1 이름을 입력해주세요.');
+        if (!optionBLabel) return showCreateError('선택지 2 이름을 입력해주세요.');
+        if (!optionAImageFile) return showCreateError('선택지 1 이미지 파일을 첨부해주세요.');
+        if (!optionBImageFile) return showCreateError('선택지 2 이미지 파일을 첨부해주세요.');
+        if (!selectedMovies.A) return showCreateError('영화를 하나 이상 선택해주세요.');
+
+        btn.disabled = true;
+        try {
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('movieAId', selectedMovies.A.movieId);
+            if (selectedMovies.B?.movieId) formData.append('movieBId', selectedMovies.B.movieId);
+            formData.append('optionALabel', optionALabel);
+            formData.append('optionBLabel', optionBLabel);
+            if (optionAImageFile) formData.append('optionAImageFile', optionAImageFile);
+            if (optionBImageFile) formData.append('optionBImageFile', optionBImageFile);
+
+            const res = await fetch('/api/battles', {
+                method: 'POST',
+                body: formData
+            });
+            if (!res.ok) throw new Error(res.status);
+            location.href = '/battles';
+        } catch (error) {
+            showCreateError('배틀 생성에 실패했습니다.');
+            btn.disabled = false;
+        }
+    }
+
+    function readValue(id) {
+        return document.getElementById(id).value.trim();
+    }
+
+    function showCreateError(message) {
+        document.getElementById('battleCreateError').textContent = message;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[ch]));
+    }
+
+    function escapeAttr(value) {
+        return escapeHtml(value).replace(/`/g, '&#096;');
+    }
+
+    document.querySelectorAll('[data-app-nav]').forEach(el => el.classList.remove('active'));
+    document.querySelector('[data-app-nav="battle"]')?.classList.add('active');
+</script>
+</body>
+</html>

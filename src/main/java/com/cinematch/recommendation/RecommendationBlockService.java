@@ -15,21 +15,34 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import com.cinematch.ott.OttCatalog;
+import com.cinematch.ott.OttWatchLinkService;
+import com.cinematch.ott.UserOttSubscriptionService;
+
 @Service
 public class RecommendationBlockService {
 
     private final JdbcTemplate jdbcTemplate;
     private final RecommendationFeaturePolicy recommendationFeaturePolicy;
     private final RecommendationMovieFilterService recommendationMovieFilterService;
+    private final OttCatalog ottCatalog;
+    private final UserOttSubscriptionService userOttSubscriptionService;
+    private final OttWatchLinkService ottWatchLinkService;
 
     public RecommendationBlockService(
             JdbcTemplate jdbcTemplate,
             RecommendationFeaturePolicy recommendationFeaturePolicy,
-            RecommendationMovieFilterService recommendationMovieFilterService
+            RecommendationMovieFilterService recommendationMovieFilterService,
+            OttCatalog ottCatalog,
+            UserOttSubscriptionService userOttSubscriptionService,
+            OttWatchLinkService ottWatchLinkService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.recommendationFeaturePolicy = recommendationFeaturePolicy;
         this.recommendationMovieFilterService = recommendationMovieFilterService;
+        this.ottCatalog = ottCatalog;
+        this.userOttSubscriptionService = userOttSubscriptionService;
+        this.ottWatchLinkService = ottWatchLinkService;
     }
 
     public RecommendationBlockResponse buildBlocks(Long userId) {
@@ -96,22 +109,10 @@ public class RecommendationBlockService {
                 WHERE ma.movie_id IN (%s)
                   AND ma.display_order <= %d
                 """.formatted("%s", recommendationFeaturePolicy.actorLimit()));
-        Map<Long, Set<String>> providersByMovie = loadNamedFeatureSetMap(movieIds, """
-                SELECT DISTINCT mp.movie_id, p.provider_name AS feature_name
-                FROM movie_provider mp
-                JOIN provider p ON p.id = mp.provider_id
-                WHERE mp.movie_id IN (%s)
-                  AND mp.provider_type = '%s'
-                  AND mp.region_code = '%s'
-                """.formatted("%s",
-                recommendationFeaturePolicy.preferredProviderType(),
-                recommendationFeaturePolicy.preferredProviderRegionCode()));
-
         Map<String, Double> tagProfileScores = loadProfileScores(userId, "TAG");
         Map<String, Double> genreProfileScores = loadProfileScores(userId, "GENRE");
         Map<String, Double> directorProfileScores = loadProfileScores(userId, "DIRECTOR");
         Map<String, Double> actorProfileScores = loadProfileScores(userId, "ACTOR");
-        Map<String, Double> providerProfileScores = loadProfileScores(userId, "PROVIDER");
 
         PeopleEvidenceSnapshot peopleEvidence = loadPeopleEvidence(userId);
 
@@ -152,15 +153,6 @@ public class RecommendationBlockService {
                 1,
                 peopleEvidence.actorEvidence()
         ));
-        thematicBlocks.addAll(collectFeatureBlocks(
-                "PROVIDER",
-                rankingSlice,
-                providersByMovie,
-                providerProfileScores,
-                normalizedItemLimit,
-                1,
-                Map.of()
-        ));
 
         Map<Long, Set<String>> thematicMembershipByMovieId = buildThematicMembershipMap(thematicBlocks);
         RecommendationBlock personalizedBlock = buildPersonalizedBlock(
@@ -186,9 +178,69 @@ public class RecommendationBlockService {
         thematicBlocks.stream()
                 .map(InternalBlock::toExternalBlock)
                 .forEach(blocks::add);
+        blocks.addAll(buildOttBlocks(userId, rankingSlice, movieIds, normalizedItemLimit));
         serendipityBlock.ifPresent(blocks::add);
 
         return new RecommendationBlockResponse(userId, normalizedSliceLimit, normalizedItemLimit, blocks.size(), blocks);
+    }
+
+    /**
+     * 사용자가 구독한 OTT별로 "해당 OTT에서 볼 수 있는 추천" 블록을 만든다.
+     * OTT 가용성은 크롤링 데이터({@code movie_ott_link})를 기준으로 하며,
+     * 비교는 {@link OttWatchLinkService#normalizeProviderName(String)} 정규화 키로 한다.
+     * 구독이 없으면 빈 리스트, 블록당 아이템이 최소치 미만이면 해당 OTT 블록은 생략한다.
+     */
+    private List<RecommendationBlock> buildOttBlocks(
+            Long userId,
+            List<RankedMovie> rankingSlice,
+            Set<Long> movieIds,
+            int itemLimit
+    ) {
+        List<OttCatalog.OttProvider> subscribed = userOttSubscriptionService.findSubscribedProviders(userId);
+        if (subscribed.isEmpty()) {
+            return List.of();
+        }
+
+        ottWatchLinkService.initializeTables();
+        Map<Long, Set<String>> ottByMovie = loadNamedFeatureSetMap(movieIds, """
+                SELECT DISTINCT movie_id, provider_name AS feature_name
+                FROM movie_ott_link
+                WHERE movie_id IN (%s)
+                  AND watch_url IS NOT NULL
+                  AND watch_url <> ''
+                """);
+
+        // 영화별 OTT 가용성을 정규화 키 집합으로 변환 (provider_name 특수문자/공백 대응)
+        Map<Long, Set<String>> normalizedOttByMovie = new LinkedHashMap<>();
+        for (Map.Entry<Long, Set<String>> entry : ottByMovie.entrySet()) {
+            Set<String> keys = new LinkedHashSet<>();
+            for (String providerName : entry.getValue()) {
+                keys.add(OttWatchLinkService.normalizeProviderName(providerName));
+            }
+            normalizedOttByMovie.put(entry.getKey(), keys);
+        }
+
+        List<RecommendationBlock> ottBlocks = new ArrayList<>();
+        for (OttCatalog.OttProvider provider : subscribed) {
+            String providerKey = ottCatalog.normalizedKey(provider);
+            List<BlockMovie> items = rankingSlice.stream()
+                    .filter(movie -> normalizedOttByMovie
+                            .getOrDefault(movie.movieId(), Collections.emptySet())
+                            .contains(providerKey))
+                    .limit(itemLimit)
+                    .map(RankedMovie::toBlockMovie)
+                    .toList();
+            if (items.size() < recommendationFeaturePolicy.blockMinimumSize()) {
+                continue;
+            }
+            ottBlocks.add(new RecommendationBlock(
+                    "OTT:" + provider.code(),
+                    provider.displayName() + "에서 볼 수 있는 추천",
+                    provider.displayName() + " 구독자 맞춤 추천",
+                    items
+            ));
+        }
+        return ottBlocks;
     }
 
     private List<InternalBlock> collectFeatureBlocks(

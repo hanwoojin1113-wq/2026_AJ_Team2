@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CineMatch | My Page</title>
     <link rel="stylesheet" href="/css/hp-theme.css">
+    <link rel="stylesheet" href="/css/badges.css">
     <style>
         :root {
             --bg: var(--hp-bg); --bg-soft: var(--hp-surface);
@@ -1040,7 +1041,7 @@
                             </svg>
                         </div>
                     </div>
-                    <button class="profile-edit-btn" type="button" aria-label="프로필 사진 편집 준비중" title="프로필 사진 편집 준비중">
+                    <button class="profile-edit-btn" type="button" id="avatarPickerBtn" aria-label="프로필 사진 변경">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M12 20h9"/>
                             <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/>
@@ -1049,7 +1050,17 @@
                 </div>
                 <div class="hero-copy">
                     <p>My Collection</p>
-                    <h1 th:text="${userProfile.nickname}">nickname</h1>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                        <h1 style="margin:0;" th:text="${userProfile.nickname}">nickname</h1>
+                        <span th:if="${selectedBadgeCode != null}"
+                              th:with="def=${T(com.cinematch.BadgeService).getBadgeDef(selectedBadgeCode)}"
+                              th:classappend="'ubadge ubadge-t' + ${def?.tier}"
+                              class="ubadge"
+                              th:title="${def?.name}">
+                            <span class="ubadge-icon" th:text="${def?.icon}"></span>
+                            <span th:text="${def?.name}"></span>
+                        </span>
+                    </div>
                     <span th:text="|ID ${userProfile.loginId} · 활동 기록과 관계를 한 번에 관리해보세요.|">ID user · 활동 기록과 관계를 한 번에 관리해보세요.</span>
                 </div>
             </div>
@@ -1089,6 +1100,56 @@
             <article class="summary-card watch"><div class="summary-label">보는중</div><div class="summary-value" th:text="${watchingMovieCount}">0</div></article>
             <article class="summary-card done"><div class="summary-label">봤어요</div><div class="summary-value" th:text="${watchedMovieCount}">0</div></article>
         </div>
+    </section>
+
+    <section class="section ott-sub-section">
+        <style>
+        .ott-sub-section { margin: 0 0 32px; }
+        .ott-sub-section .section-head { margin-bottom: 6px; }
+        .ott-sub-desc { font-size: 0.82rem; color: #94a3b8; margin: 0 0 16px; }
+        .ott-sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
+        .ott-sub-option { cursor: pointer; }
+        .ott-sub-option input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .ott-sub-chip {
+            display: flex; align-items: center; gap: 9px; padding: 11px 13px;
+            border: 1px solid rgba(255,255,255,0.12); border-radius: 14px;
+            background: rgba(255,255,255,0.04);
+            font-size: 0.88rem; font-weight: 700; color: #94a3b8; transition: all 0.15s;
+        }
+        .ott-sub-option input:checked + .ott-sub-chip {
+            border-color: #024ad8; background: rgba(2,74,216,0.18); color: #e2e8f0;
+        }
+        .ott-sub-logo { width: 30px; height: 30px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+        .ott-sub-logo-fallback {
+            width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg,#111827,#334155); color: #fff; font-weight: 800; font-size: 0.85rem;
+        }
+        .ott-sub-save {
+            padding: 10px 22px; border-radius: 999px; border: none;
+            background: #024ad8; color: #fff; font-size: 0.85rem; font-weight: 700;
+            font-family: inherit; cursor: pointer; transition: background 0.15s;
+        }
+        .ott-sub-save:hover { background: #0356f5; }
+        </style>
+        <div class="section-head">
+            <h2 class="section-title">🎬 구독 중인 OTT</h2>
+        </div>
+        <p class="ott-sub-desc">구독한 OTT를 선택하면 그 OTT에서 볼 수 있는 영화를 홈에서 따로 추천해드려요. (여러 개 가능)</p>
+        <form th:action="@{/mypage/ott}" method="post">
+            <div class="ott-sub-grid">
+                <label class="ott-sub-option" th:each="p : ${ottProviders}">
+                    <input type="checkbox" name="ottCodes" th:value="${p.code}"
+                           th:checked="${#lists.contains(subscribedOttCodes, p.code)}">
+                    <span class="ott-sub-chip">
+                        <img th:if="${p.logoUrl != null}" class="ott-sub-logo" th:src="${p.logoUrl}" th:alt="${p.displayName}">
+                        <span th:unless="${p.logoUrl != null}" class="ott-sub-logo-fallback" th:text="${p.fallbackLabel()}">O</span>
+                        <span th:text="${p.displayName}">OTT</span>
+                    </span>
+                </label>
+            </div>
+            <button type="submit" class="ott-sub-save">저장</button>
+        </form>
     </section>
 
     <section th:if="${!#lists.isEmpty(sentThrows) or !#lists.isEmpty(receivedThrows)}" class="throw-history-section">
@@ -1360,7 +1421,220 @@
         </div>
         <div class="empty" th:if="${#lists.isEmpty(watchedMovies)}">No watched movies yet.</div>
     </section>
+
+    <!-- ── 배지 컬렉션 섹션 ─────────────────────────────────────── -->
+    <section class="section" id="badgeSection">
+        <div class="head">
+            <div>
+                <h2>🏅 배지 컬렉션</h2>
+                <p>활동을 통해 배지를 획득하고, 대표 배지를 선택해 프로필에 표시하세요.</p>
+            </div>
+            <div th:if="${selectedBadgeCode != null}"
+                 th:with="def=${T(com.cinematch.BadgeService).getBadgeDef(selectedBadgeCode)}"
+                 style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:0.8rem;color:rgba(255,255,255,0.5);">현재 대표 배지</span>
+                <span th:classappend="'ubadge ubadge-t' + ${def?.tier}"
+                      class="ubadge"
+                      th:title="${def?.name}">
+                    <span class="ubadge-icon" th:text="${def?.icon}"></span>
+                    <span th:text="${def?.name}"></span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Tier 1 -->
+        <div class="badge-tier-header">
+            <span class="badge-tier-label badge-tier-label--t1">브론즈</span>
+            <div class="badge-tier-line"></div>
+        </div>
+        <div class="badge-grid">
+            <div th:each="bs : ${badgeStatuses}" th:if="${bs.def.tier == 1}"
+                 th:classappend="'badge-card badge-card--t1' + (${bs.earned} ? '' : ' badge-card--locked') + (${selectedBadgeCode == bs.def.code} ? ' badge-card--selected' : '')"
+                 class="badge-card">
+                <div class="badge-hex badge-hex--t1">
+                    <svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="hex-grad-t1" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#CD7F32"/>
+                                <stop offset="100%" stop-color="#7B4A1A"/>
+                            </linearGradient>
+                        </defs>
+                        <path class="badge-hex-shape" d="M36 4 L64 19 L64 53 L36 68 L8 53 L8 19 Z"/>
+                        <path d="M36 4 L64 19 L64 30 L36 15 Z" fill="rgba(255,200,140,0.22)"/>
+                    </svg>
+                    <span class="badge-hex-emoji" th:text="${bs.def.icon}">🎬</span>
+                </div>
+                <div class="badge-card-name" th:text="${bs.def.name}">배지 이름</div>
+                <div class="badge-card-desc" th:text="${bs.def.description}">설명</div>
+                <span class="badge-card-condition" th:text="${bs.def.conditionLabel}">조건</span>
+                <div th:if="${bs.earned}">
+                    <div class="badge-card-earned-date" th:text="|획득 ${bs.earnedAt}|">획득일</div>
+                    <button class="badge-select-btn"
+                            th:classappend="${selectedBadgeCode == bs.def.code} ? ' selected' : ''"
+                            th:attr="data-badge-code=${bs.def.code}"
+                            th:text="${selectedBadgeCode == bs.def.code} ? '✓ 대표 배지' : '대표 배지로 설정'"
+                            onclick="selectBadge(this)">대표 배지로 설정</button>
+                </div>
+                <div th:if="${!bs.earned}">
+                    <div class="badge-progress-bar">
+                        <div class="badge-progress-fill"
+                             th:style="|width:${bs.goal > 0 ? (bs.progress * 100 / bs.goal) : 100}%|"></div>
+                    </div>
+                    <div class="badge-progress-text" th:text="|${bs.progress} / ${bs.goal}|">0/1</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tier 2 -->
+        <div class="badge-tier-header">
+            <span class="badge-tier-label badge-tier-label--t2">실버</span>
+            <div class="badge-tier-line"></div>
+        </div>
+        <div class="badge-grid">
+            <div th:each="bs : ${badgeStatuses}" th:if="${bs.def.tier == 2}"
+                 th:classappend="'badge-card badge-card--t2' + (${bs.earned} ? '' : ' badge-card--locked') + (${selectedBadgeCode == bs.def.code} ? ' badge-card--selected' : '')"
+                 class="badge-card">
+                <div class="badge-hex badge-hex--t2">
+                    <svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="hex-grad-t2" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#BCC8D4"/>
+                                <stop offset="100%" stop-color="#5E7080"/>
+                            </linearGradient>
+                        </defs>
+                        <path class="badge-hex-shape" d="M36 4 L64 19 L64 53 L36 68 L8 53 L8 19 Z"/>
+                        <path d="M36 4 L64 19 L64 30 L36 15 Z" fill="rgba(255,255,255,0.28)"/>
+                    </svg>
+                    <span class="badge-hex-emoji" th:text="${bs.def.icon}">🎭</span>
+                </div>
+                <div class="badge-card-name" th:text="${bs.def.name}">배지 이름</div>
+                <div class="badge-card-desc" th:text="${bs.def.description}">설명</div>
+                <span class="badge-card-condition" th:text="${bs.def.conditionLabel}">조건</span>
+                <div th:if="${bs.earned}">
+                    <div class="badge-card-earned-date" th:text="|획득 ${bs.earnedAt}|">획득일</div>
+                    <button class="badge-select-btn"
+                            th:classappend="${selectedBadgeCode == bs.def.code} ? ' selected' : ''"
+                            th:attr="data-badge-code=${bs.def.code}"
+                            th:text="${selectedBadgeCode == bs.def.code} ? '✓ 대표 배지' : '대표 배지로 설정'"
+                            onclick="selectBadge(this)">대표 배지로 설정</button>
+                </div>
+                <div th:if="${!bs.earned}">
+                    <div class="badge-progress-bar">
+                        <div class="badge-progress-fill"
+                             th:style="|width:${bs.goal > 0 ? (bs.progress * 100 / bs.goal) : 100}%|"></div>
+                    </div>
+                    <div class="badge-progress-text" th:text="|${bs.progress} / ${bs.goal}|">0/1</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tier 3 -->
+        <div class="badge-tier-header">
+            <span class="badge-tier-label badge-tier-label--t3">골드</span>
+            <div class="badge-tier-line"></div>
+        </div>
+        <div class="badge-grid">
+            <div th:each="bs : ${badgeStatuses}" th:if="${bs.def.tier == 3}"
+                 th:classappend="'badge-card badge-card--t3' + (${bs.earned} ? '' : ' badge-card--locked') + (${selectedBadgeCode == bs.def.code} ? ' badge-card--selected' : '')"
+                 class="badge-card">
+                <div class="badge-hex badge-hex--t3">
+                    <svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="hex-grad-t3" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#FFD700"/>
+                                <stop offset="100%" stop-color="#8B6914"/>
+                            </linearGradient>
+                        </defs>
+                        <path class="badge-hex-shape" d="M36 4 L64 19 L64 53 L36 68 L8 53 L8 19 Z"/>
+                        <path d="M36 4 L64 19 L64 30 L36 15 Z" fill="rgba(255,255,180,0.32)"/>
+                    </svg>
+                    <span class="badge-hex-emoji" th:text="${bs.def.icon}">🎞</span>
+                </div>
+                <div class="badge-card-name" th:text="${bs.def.name}">배지 이름</div>
+                <div class="badge-card-desc" th:text="${bs.def.description}">설명</div>
+                <span class="badge-card-condition" th:text="${bs.def.conditionLabel}">조건</span>
+                <div th:if="${bs.earned}">
+                    <div class="badge-card-earned-date" th:text="|획득 ${bs.earnedAt}|">획득일</div>
+                    <button class="badge-select-btn"
+                            th:classappend="${selectedBadgeCode == bs.def.code} ? ' selected' : ''"
+                            th:attr="data-badge-code=${bs.def.code}"
+                            th:text="${selectedBadgeCode == bs.def.code} ? '✓ 대표 배지' : '대표 배지로 설정'"
+                            onclick="selectBadge(this)">대표 배지로 설정</button>
+                </div>
+                <div th:if="${!bs.earned}">
+                    <div class="badge-progress-bar">
+                        <div class="badge-progress-fill"
+                             th:style="|width:${bs.goal > 0 ? (bs.progress * 100 / bs.goal) : 100}%|"></div>
+                    </div>
+                    <div class="badge-progress-text" th:text="|${bs.progress} / ${bs.goal}|">0/1</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tier 4 -->
+        <div class="badge-tier-header">
+            <span class="badge-tier-label badge-tier-label--t4">플래티넘</span>
+            <div class="badge-tier-line"></div>
+        </div>
+        <div class="badge-grid">
+            <div th:each="bs : ${badgeStatuses}" th:if="${bs.def.tier == 4}"
+                 th:classappend="'badge-card badge-card--t4' + (${bs.earned} ? '' : ' badge-card--locked') + (${selectedBadgeCode == bs.def.code} ? ' badge-card--selected' : '')"
+                 class="badge-card">
+                <div class="badge-hex badge-hex--t4">
+                    <svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="hex-grad-t4" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#C8B4FF"/>
+                                <stop offset="100%" stop-color="#4A36A0"/>
+                            </linearGradient>
+                        </defs>
+                        <path class="badge-hex-shape" d="M36 4 L64 19 L64 53 L36 68 L8 53 L8 19 Z"/>
+                        <path d="M36 4 L64 19 L64 30 L36 15 Z" fill="rgba(255,255,255,0.28)"/>
+                    </svg>
+                    <span class="badge-hex-emoji" th:text="${bs.def.icon}">👑</span>
+                </div>
+                <div class="badge-card-name" th:text="${bs.def.name}">배지 이름</div>
+                <div class="badge-card-desc" th:text="${bs.def.description}">설명</div>
+                <span class="badge-card-condition" th:text="${bs.def.conditionLabel}">조건</span>
+                <div th:if="${bs.earned}">
+                    <div class="badge-card-earned-date" th:text="|획득 ${bs.earnedAt}|">획득일</div>
+                    <button class="badge-select-btn"
+                            th:classappend="${selectedBadgeCode == bs.def.code} ? ' selected' : ''"
+                            th:attr="data-badge-code=${bs.def.code}"
+                            th:text="${selectedBadgeCode == bs.def.code} ? '✓ 대표 배지' : '대표 배지로 설정'"
+                            onclick="selectBadge(this)">대표 배지로 설정</button>
+                </div>
+                <div th:if="${!bs.earned}">
+                    <div class="badge-progress-bar">
+                        <div class="badge-progress-fill"
+                             th:style="|width:${bs.goal > 0 ? (bs.progress * 100 / bs.goal) : 100}%|"></div>
+                    </div>
+                    <div class="badge-progress-text" th:text="|${bs.progress} / ${bs.goal}|">0/1</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="badge-deselect-wrap" th:if="${selectedBadgeCode != null}" style="margin-top:18px;text-align:right;">
+            <button class="ghost" style="font-size:0.8rem;height:34px;padding:0 14px;" onclick="selectBadge(null)">
+                대표 배지 해제
+            </button>
+        </div>
+    </section>
 </main>
+
+<script>
+(function () {
+    function selectBadge(btnOrNull) {
+        const code = btnOrNull ? btnOrNull.dataset.badgeCode : null;
+        fetch('/api/badges/select', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: code ? 'badgeCode=' + encodeURIComponent(code) : 'badgeCode='
+        }).then(r => r.ok ? location.reload() : alert('배지 설정에 실패했습니다.'));
+    }
+    window.selectBadge = selectBadge;
+})();
+</script>
 
 <div class="modal-backdrop" id="life-modal" th:classappend="${showLifePicker} ? ' open' : ''">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="life-modal-title">
@@ -1728,6 +2002,153 @@
             setTimeout(function () { form.submit(); }, 380);
         });
     });
+})();
+</script>
+
+<!-- ── Avatar Picker Modal ─────────────────────────────────────────── -->
+<style>
+.avatar-modal-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 9000;
+    background: rgba(0,0,0,0.72);
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+}
+.avatar-modal-overlay.open { display: flex; }
+.avatar-modal {
+    background: #161a26;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 28px 24px 24px;
+    width: min(480px, 94vw);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+}
+.avatar-modal-title {
+    font-size: 1.05rem; font-weight: 900; margin: 0 0 6px;
+}
+.avatar-modal-sub {
+    font-size: 0.82rem; color: var(--hp-text-hint); margin: 0 0 22px;
+}
+.avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.avatar-option {
+    position: relative;
+    cursor: pointer;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    transition: border-color 0.15s, transform 0.15s;
+    aspect-ratio: 1;
+}
+.avatar-option img {
+    width: 100%; height: 100%; border-radius: 50%; display: block;
+}
+.avatar-option:hover { transform: scale(1.08); }
+.avatar-option.selected { border-color: #60A5FA; }
+.avatar-option.selected::after {
+    content: '✓';
+    position: absolute; bottom: -2px; right: -2px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #60A5FA; color: #fff;
+    font-size: 11px; font-weight: 900;
+    display: flex; align-items: center; justify-content: center;
+}
+.avatar-modal-actions {
+    display: flex; gap: 10px; justify-content: flex-end;
+}
+.avatar-cancel-btn {
+    padding: 0 18px; height: 40px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: transparent; color: var(--hp-text-sub);
+    font: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer;
+}
+.avatar-save-btn {
+    padding: 0 22px; height: 40px; border-radius: 999px;
+    border: none; background: #fff; color: #0f172a;
+    font: inherit; font-size: 0.88rem; font-weight: 900; cursor: pointer;
+    transition: opacity 0.15s;
+}
+.avatar-save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+
+<div class="avatar-modal-overlay" id="avatarPickerOverlay">
+    <div class="avatar-modal">
+        <p class="avatar-modal-title">프로필 아바타 선택</p>
+        <p class="avatar-modal-sub">마음에 드는 동물 아바타를 골라보세요.</p>
+        <div class="avatar-grid" id="avatarGrid">
+            <div class="avatar-option" data-src="/img/avatars/bear.svg"><img src="/img/avatars/bear.svg" alt="곰"></div>
+            <div class="avatar-option" data-src="/img/avatars/cat.svg"><img src="/img/avatars/cat.svg" alt="고양이"></div>
+            <div class="avatar-option" data-src="/img/avatars/panda.svg"><img src="/img/avatars/panda.svg" alt="판다"></div>
+            <div class="avatar-option" data-src="/img/avatars/koala.svg"><img src="/img/avatars/koala.svg" alt="코알라"></div>
+            <div class="avatar-option" data-src="/img/avatars/fox.svg"><img src="/img/avatars/fox.svg" alt="여우"></div>
+            <div class="avatar-option" data-src="/img/avatars/rabbit.svg"><img src="/img/avatars/rabbit.svg" alt="토끼"></div>
+            <div class="avatar-option" data-src="/img/avatars/lion.svg"><img src="/img/avatars/lion.svg" alt="사자"></div>
+            <div class="avatar-option" data-src="/img/avatars/penguin.svg"><img src="/img/avatars/penguin.svg" alt="펭귄"></div>
+            <div class="avatar-option" data-src="/img/avatars/frog.svg"><img src="/img/avatars/frog.svg" alt="개구리"></div>
+            <div class="avatar-option" data-src="/img/avatars/wolf.svg"><img src="/img/avatars/wolf.svg" alt="늑대"></div>
+            <div class="avatar-option" data-src="/img/avatars/duck.svg"><img src="/img/avatars/duck.svg" alt="오리"></div>
+            <div class="avatar-option" data-src="/img/avatars/hamster.svg"><img src="/img/avatars/hamster.svg" alt="햄스터"></div>
+            <div class="avatar-option" data-src="/img/avatars/dog.svg"><img src="/img/avatars/dog.svg" alt="강아지"></div>
+            <div class="avatar-option" data-src="/img/avatars/pig.svg"><img src="/img/avatars/pig.svg" alt="돼지"></div>
+            <div class="avatar-option" data-src="/img/avatars/tiger.svg"><img src="/img/avatars/tiger.svg" alt="호랑이"></div>
+            <div class="avatar-option" data-src="/img/avatars/owl.svg"><img src="/img/avatars/owl.svg" alt="올빼미"></div>
+            <div class="avatar-option" data-src="/img/avatars/turtle.svg"><img src="/img/avatars/turtle.svg" alt="거북이"></div>
+            <div class="avatar-option" data-src="/img/avatars/octopus.svg"><img src="/img/avatars/octopus.svg" alt="문어"></div>
+            <div class="avatar-option" data-src="/img/avatars/whale.svg"><img src="/img/avatars/whale.svg" alt="고래"></div>
+            <div class="avatar-option" data-src="/img/avatars/chicken.svg"><img src="/img/avatars/chicken.svg" alt="닭"></div>
+        </div>
+        <form method="post" action="/mypage/profile-image" id="avatarForm">
+            <input type="hidden" name="profileImageUrl" id="avatarInput">
+        </form>
+        <div class="avatar-modal-actions">
+            <button class="avatar-cancel-btn" id="avatarCancelBtn">취소</button>
+            <button class="avatar-save-btn" id="avatarSaveBtn" disabled>저장</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const overlay = document.getElementById('avatarPickerOverlay');
+    const grid = document.getElementById('avatarGrid');
+    const input = document.getElementById('avatarInput');
+    const saveBtn = document.getElementById('avatarSaveBtn');
+    const cancelBtn = document.getElementById('avatarCancelBtn');
+    const pickerBtn = document.getElementById('avatarPickerBtn');
+
+    let selected = null;
+
+    pickerBtn?.addEventListener('click', () => {
+        overlay.classList.add('open');
+        document.body.classList.add('modal-open');
+    });
+
+    grid?.querySelectorAll('.avatar-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            grid.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+            selected = opt.dataset.src;
+            input.value = selected;
+            saveBtn.disabled = false;
+        });
+    });
+
+    saveBtn?.addEventListener('click', () => {
+        if (!selected) return;
+        document.getElementById('avatarForm').submit();
+    });
+
+    cancelBtn?.addEventListener('click', closeModal);
+    overlay?.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    function closeModal() {
+        overlay.classList.remove('open');
+        document.body.classList.remove('modal-open');
+    }
 })();
 </script>
 </body>

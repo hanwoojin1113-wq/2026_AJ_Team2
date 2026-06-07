@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -43,7 +44,9 @@ import com.cinematch.tag.RecommendationTag;
 import com.cinematch.tag.RecommendationTagType;
 import com.cinematch.kobis.KobisBoxOfficeService;
 import com.cinematch.notification.NotificationService;
+import com.cinematch.ott.OttCatalog;
 import com.cinematch.ott.OttWatchLinkService;
+import com.cinematch.ott.UserOttSubscriptionService;
 
 @Controller
 public class MovieController {
@@ -91,7 +94,6 @@ public class MovieController {
 
     private static final List<String> HOME_CHART_CODES = List.of("top-sales", "million-club", "flash-hit");
     private static final List<String> ONBOARDING_TAGS = List.of("funny", "tense", "dark", "emotional", "romantic");
-    private static final String TMDB_PROVIDER_LOGO_BASE = "https://image.tmdb.org/t/p/w92";
 
     public record HeroSlide(String backdropUrl, String title, List<String> genres, String detailUrl) {}
 
@@ -104,7 +106,10 @@ public class MovieController {
     private final KobisBoxOfficeService kobisBoxOfficeService;
     private final NotificationService notificationService;
     private final OttWatchLinkService ottWatchLinkService;
+    private final OttCatalog ottCatalog;
+    private final UserOttSubscriptionService userOttSubscriptionService;
     private final MovieThrowService movieThrowService;
+    private final BadgeService badgeService;
     private final RestTemplate tmdbRestTemplate;
     private final String tmdbBaseUrl;
 
@@ -117,7 +122,10 @@ public class MovieController {
                            KobisBoxOfficeService kobisBoxOfficeService,
                            NotificationService notificationService,
                            OttWatchLinkService ottWatchLinkService,
+                           OttCatalog ottCatalog,
+                           UserOttSubscriptionService userOttSubscriptionService,
                            MovieThrowService movieThrowService,
+                           BadgeService badgeService,
                            @Qualifier("tmdbRestTemplate") RestTemplate tmdbRestTemplate,
                            @Value("${tmdb.base-url}") String tmdbBaseUrl) {
         this.jdbcTemplate = jdbcTemplate;
@@ -129,7 +137,10 @@ public class MovieController {
         this.kobisBoxOfficeService = kobisBoxOfficeService;
         this.notificationService = notificationService;
         this.ottWatchLinkService = ottWatchLinkService;
+        this.ottCatalog = ottCatalog;
+        this.userOttSubscriptionService = userOttSubscriptionService;
         this.movieThrowService = movieThrowService;
+        this.badgeService = badgeService;
         this.tmdbRestTemplate = tmdbRestTemplate;
         this.tmdbBaseUrl = tmdbBaseUrl;
     }
@@ -152,6 +163,7 @@ public class MovieController {
         if (error != null) {
             model.addAttribute("signupError", "이미 사용 중인 ID이거나 입력값이 올바르지 않습니다.");
         }
+        model.addAttribute("ottProviders", ottCatalog.all());
         return "signup-page";
     }
 
@@ -173,8 +185,10 @@ public class MovieController {
     }
 
     @PostMapping("/signup")
+    @Transactional
     public String signup(@RequestParam String id, @RequestParam String pw, @RequestParam String nickname,
-                         @RequestParam String gender, @RequestParam Integer age, HttpSession session) {
+                         @RequestParam String gender, @RequestParam Integer age,
+                         @RequestParam(required = false) List<String> ottCodes, HttpSession session) {
         if (nickname == null || nickname.isBlank()
                 || (!gender.equals("MALE") && !gender.equals("FEMALE"))
                 || age == null || age < 1 || age > 120) {
@@ -191,10 +205,26 @@ public class MovieController {
             return "redirect:/signup?error=1";
         }
 
+        String[] avatarPresets = {
+            "/img/avatars/bear.svg","/img/avatars/cat.svg","/img/avatars/panda.svg",
+            "/img/avatars/koala.svg","/img/avatars/fox.svg","/img/avatars/rabbit.svg",
+            "/img/avatars/lion.svg","/img/avatars/penguin.svg","/img/avatars/frog.svg",
+            "/img/avatars/wolf.svg","/img/avatars/duck.svg","/img/avatars/hamster.svg",
+            "/img/avatars/dog.svg","/img/avatars/pig.svg","/img/avatars/tiger.svg",
+            "/img/avatars/owl.svg","/img/avatars/turtle.svg","/img/avatars/octopus.svg",
+            "/img/avatars/whale.svg","/img/avatars/chicken.svg"
+        };
+        String randomAvatar = avatarPresets[new Random().nextInt(avatarPresets.length)];
         jdbcTemplate.update("""
-                INSERT INTO "USER" (login_id, login_pw, nickname, gender, age)
-                VALUES (?, ?, ?, ?, ?)
-                """, id, pw, nickname.trim(), gender, age);
+                INSERT INTO "USER" (login_id, login_pw, nickname, gender, age, profile_image_url)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, id, pw, nickname.trim(), gender, age, randomAvatar);
+
+        Long newUserId = findUserIdByLoginId(id);
+        if (newUserId != null && ottCodes != null && !ottCodes.isEmpty()) {
+            userOttSubscriptionService.replaceSubscriptions(newUserId, ottCodes);
+            recommendationRefreshStateService.markDirty(newUserId);
+        }
 
         session.setAttribute(LOGIN_SESSION_KEY, id);
         session.setAttribute(LOGIN_NICKNAME_SESSION_KEY, nickname.trim());
@@ -390,6 +420,7 @@ public class MovieController {
             model.addAttribute("heroSlides", List.of());
             model.addAttribute("homeKeywordsByMovieCd", Map.of());
             model.addAttribute("trendingKeywordsByDetailUrl", Map.of());
+            model.addAttribute("homeFriendPosts", List.of());
         } else {
             Long userId = getCurrentUserId(session);
             recommendationMaintenanceService.ensureRecommendations(userId, 200);
@@ -515,8 +546,42 @@ public class MovieController {
                     .map(a -> new HomeChartSectionView(ChartEntry.of(a), a.fetch(10)))
                     .toList();
             model.addAttribute("homeChartSections", homeChartSections);
+
+            try {
+                model.addAttribute("homeFriendPosts", userId == null ? List.of() : fetchHomeFriendPosts(userId));
+            } catch (Exception e) {
+                model.addAttribute("homeFriendPosts", List.of());
+            }
         }
         return "index";
+    }
+
+    private List<Map<String, Object>> fetchHomeFriendPosts(Long userId) {
+        return jdbcTemplate.queryForList("""
+                SELECT sp.id,
+                       sp.content,
+                       sp.created_at,
+                       u.nickname,
+                       u.login_id,
+                       COALESCE(m.title, m.movie_name) AS movie_title,
+                       m.movie_cd,
+                       m.poster_image_url,
+                       (SELECT COUNT(*) FROM post_like pl WHERE pl.post_id = sp.id) AS like_count,
+                       (SELECT spi.image_url
+                        FROM social_post_image spi
+                        WHERE spi.post_id = sp.id
+                        ORDER BY spi.display_order
+                        LIMIT 1) AS first_image_url
+                FROM social_post sp
+                JOIN "USER" u ON u.id = sp.user_id
+                LEFT JOIN movie m ON m.id = sp.movie_id
+                WHERE sp.is_deleted = FALSE
+                  AND sp.user_id IN (
+                      SELECT following_user_id FROM user_follow WHERE follower_user_id = ?
+                  )
+                ORDER BY sp.created_at DESC
+                LIMIT 4
+                """, userId);
     }
 
     private static List<String> parseReasonKeywords(String reasonSummary) {
@@ -588,6 +653,9 @@ public class MovieController {
         model.addAttribute("likedMovieCount", countLikedMovies(targetUser.userId()));
         model.addAttribute("profileRedirectPath", "/users/" + targetUser.loginId());
         model.addAttribute("similarityPct", computeCosineSimilarity(currentUserId, targetUser.userId()));
+        model.addAttribute("targetUserSelectedBadgeCode", badgeService.getSelectedBadgeCode(targetUser.userId()));
+        model.addAttribute("targetUserEarnedBadges", badgeService.getBadgeStatuses(targetUser.userId())
+                .stream().filter(BadgeService.BadgeStatus::earned).toList());
         return "user-profile";
     }
 
@@ -648,7 +716,26 @@ public class MovieController {
         model.addAttribute("tasteChart", fetchUserGenreChart(userId));
         model.addAttribute("sentThrows", movieThrowService.getSentThrows(userId));
         model.addAttribute("receivedThrows", movieThrowService.getReceivedThrows(userId));
+        model.addAttribute("badgeStatuses", badgeService.getBadgeStatuses(userId));
+        model.addAttribute("selectedBadgeCode", badgeService.getSelectedBadgeCode(userId));
+        model.addAttribute("ottProviders", ottCatalog.all());
+        model.addAttribute("subscribedOttCodes", userOttSubscriptionService.findSubscribedCodes(userId));
         return "my-page";
+    }
+
+    @PostMapping("/api/badges/select")
+    @ResponseBody
+    public Map<String, Object> selectBadge(@RequestParam(required = false) String badgeCode,
+                                           HttpSession session) {
+        Long userId = getCurrentUserId(session);
+        if (userId == null) {
+            throw new ResponseStatusException(UNAUTHORIZED);
+        }
+        badgeService.selectBadge(userId, badgeCode);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        result.put("selectedBadgeCode", badgeCode);
+        return result;
     }
 
     @GetMapping("/people")
@@ -828,39 +915,13 @@ public class MovieController {
                 rs.getString("name"),
                 rs.getString("company_role")
         ), movieCode));
-        List<ProviderView> providers = jdbcTemplate.query("""
-                SELECT
-                    p.provider_name,
-                    p.logo_path,
-                    CASE mp.provider_type
-                        WHEN 'FLATRATE' THEN '구독'
-                        WHEN 'RENT' THEN '대여'
-                        WHEN 'BUY' THEN '구매'
-                        ELSE mp.provider_type
-                    END AS provider_type
-                FROM movie_provider mp
-                JOIN provider p ON p.id = mp.provider_id
-                JOIN movie m ON m.id = mp.movie_id
-                WHERE m.movie_cd = ?
-                ORDER BY
-                    CASE mp.provider_type
-                        WHEN 'FLATRATE' THEN 1
-                        WHEN 'RENT' THEN 2
-                        WHEN 'BUY' THEN 3
-                        ELSE 4
-                    END,
-                    mp.display_order
-                """, (rs, rowNum) -> new ProviderView(
-                rs.getString("provider_name"),
-                rs.getString("provider_type"),
-                rs.getString("logo_path")
-        ), movieCode);
-        model.addAttribute("providers", providers);
+        // OTT 정보는 크롤링(movie_ott_link) 기준으로 통일한다. TMDB movie_provider는 사용하지 않으며,
+        // 로고 해석 소스로 서비스 OTT 9종 카탈로그를 넘긴다.
         List<OttWatchLinkService.WatchLinkView> watchLinks = List.of();
         boolean showWatchLinksSection = false;
         if (movieId != null) {
             try {
-                watchLinks = ottWatchLinkService.fetchWatchLinks(movieId, providerLogoUrls(providers));
+                watchLinks = ottWatchLinkService.fetchWatchLinks(movieId, ottCatalog.logoUrlMap());
                 showWatchLinksSection = ottWatchLinkService.hasCrawlStatus(movieId) || !watchLinks.isEmpty();
             } catch (Exception e) {
                 watchLinks = List.of();
@@ -914,6 +975,14 @@ public class MovieController {
             }
         }
         model.addAttribute("moviePosts", moviePosts);
+
+        model.addAttribute("friendLikedSignal",     formatFriendSignal(fetchMutualFriendsWhoReacted(userId, movieId, true),   "좋아요를 남겼어요."));
+        model.addAttribute("friendDislikedSignal",  formatFriendSignal(fetchMutualFriendsWhoReacted(userId, movieId, false),  "별로라고 남겼어요."));
+        model.addAttribute("friendStoredSignal",    formatFriendSignal(fetchMutualFriendsWhoStored(userId, movieId),           "나중에 볼래요로 저장했어요."));
+        model.addAttribute("friendWatchingSignal",  formatFriendSignal(fetchMutualFriendsWhoWatched(userId, movieId, "WATCHING"), "보는중이에요."));
+        model.addAttribute("friendWatchedSignal",   formatFriendSignal(fetchMutualFriendsWhoWatched(userId, movieId, "WATCHED"),  "봤어요."));
+        model.addAttribute("friendCollectedSignal", formatFriendSignal(fetchMutualFriendsWhoCollected(userId, movieId),        "컬렉션에 담았어요."));
+
         return "movie-detail";
     }
 
@@ -1204,6 +1273,18 @@ public class MovieController {
         return Map.of("shared", loginIds.size());
     }
 
+    @PostMapping("/mypage/ott")
+    @Transactional
+    public String updateOttSubscriptions(@RequestParam(required = false) List<String> ottCodes, HttpSession session) {
+        if (!isLoggedIn(session)) {
+            return "redirect:/login";
+        }
+        Long userId = getCurrentUserId(session);
+        userOttSubscriptionService.replaceSubscriptions(userId, ottCodes);
+        recommendationRefreshStateService.markDirty(userId);
+        return "redirect:/mypage";
+    }
+
     @PostMapping("/mypage/life")
     @Transactional
     public String addLifeMovie(@RequestParam String movieCode, HttpSession session) {
@@ -1299,6 +1380,79 @@ public class MovieController {
 
     private boolean isLoggedIn(HttpSession session) {
         return session.getAttribute(LOGIN_SESSION_KEY) != null;
+    }
+
+    private List<String> fetchMutualFriendsWhoStored(Long userId, Long movieId) {
+        if (userId == null || movieId == null) return List.of();
+        return jdbcTemplate.queryForList("""
+                SELECT u.nickname
+                FROM user_follow f1
+                JOIN user_follow f2
+                    ON f1.following_user_id = f2.follower_user_id
+                    AND f2.following_user_id = f1.follower_user_id
+                JOIN user_movie_store ums ON ums.user_id = f1.following_user_id
+                JOIN "USER" u ON u.id = f1.following_user_id
+                WHERE f1.follower_user_id = ?
+                  AND ums.movie_id = ?
+                LIMIT 3
+                """, String.class, userId, movieId);
+    }
+
+    private List<String> fetchMutualFriendsWhoWatched(Long userId, Long movieId, String status) {
+        if (userId == null || movieId == null) return List.of();
+        return jdbcTemplate.queryForList("""
+                SELECT u.nickname
+                FROM user_follow f1
+                JOIN user_follow f2
+                    ON f1.following_user_id = f2.follower_user_id
+                    AND f2.following_user_id = f1.follower_user_id
+                JOIN user_movie_watched umw ON umw.user_id = f1.following_user_id
+                JOIN "USER" u ON u.id = f1.following_user_id
+                WHERE f1.follower_user_id = ?
+                  AND umw.movie_id = ?
+                  AND COALESCE(umw.status, 'WATCHED') = ?
+                LIMIT 3
+                """, String.class, userId, movieId, status);
+    }
+
+    private List<String> fetchMutualFriendsWhoCollected(Long userId, Long movieId) {
+        if (userId == null || movieId == null) return List.of();
+        return jdbcTemplate.queryForList("""
+                SELECT u.nickname
+                FROM user_follow f1
+                JOIN user_follow f2
+                    ON f1.following_user_id = f2.follower_user_id
+                    AND f2.following_user_id = f1.follower_user_id
+                JOIN user_movie_collection umc ON umc.user_id = f1.following_user_id
+                JOIN "USER" u ON u.id = f1.following_user_id
+                WHERE f1.follower_user_id = ?
+                  AND umc.movie_id = ?
+                LIMIT 3
+                """, String.class, userId, movieId);
+    }
+
+    private List<String> fetchMutualFriendsWhoReacted(Long userId, Long movieId, boolean liked) {
+        if (userId == null || movieId == null) return List.of();
+        return jdbcTemplate.queryForList("""
+                SELECT u.nickname
+                FROM user_follow f1
+                JOIN user_follow f2
+                    ON f1.following_user_id = f2.follower_user_id
+                    AND f2.following_user_id = f1.follower_user_id
+                JOIN user_movie_like uml ON uml.user_id = f1.following_user_id
+                JOIN "USER" u ON u.id = f1.following_user_id
+                WHERE f1.follower_user_id = ?
+                  AND uml.movie_id = ?
+                  AND uml.liked = ?
+                LIMIT 3
+                """, String.class, userId, movieId, liked);
+    }
+
+    private String formatFriendSignal(List<String> nicknames, String verb) {
+        if (nicknames == null || nicknames.isEmpty()) return null;
+        if (nicknames.size() == 1) return nicknames.get(0) + "님이 " + verb;
+        if (nicknames.size() == 2) return nicknames.get(0) + "님, " + nicknames.get(1) + "님이 " + verb;
+        return nicknames.get(0) + "님 외 " + (nicknames.size() - 1) + "명이 " + verb;
     }
 
     private Long getCurrentUserId(HttpSession session) {
@@ -2198,16 +2352,6 @@ public class MovieController {
         return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getString(1), movieCode);
     }
 
-    private Map<String, String> providerLogoUrls(List<ProviderView> providers) {
-        Map<String, String> result = new LinkedHashMap<>();
-        for (ProviderView provider : providers) {
-            if (provider.logoUrl() != null) {
-                result.put(provider.name(), provider.logoUrl());
-            }
-        }
-        return result;
-    }
-
     private List<String> fetchChartGenres() {
         return jdbcTemplate.query("""
                 SELECT name
@@ -2395,12 +2539,6 @@ public class MovieController {
     }
 
     public record CompanyView(String name, String role) {
-    }
-
-    public record ProviderView(String name, String type, String logoPath) {
-        public String logoUrl() {
-            return logoPath != null ? TMDB_PROVIDER_LOGO_BASE + logoPath : null;
-        }
     }
 
     public record AuditView(String auditNo, String watchGradeName) {
