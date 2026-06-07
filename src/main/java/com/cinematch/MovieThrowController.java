@@ -55,10 +55,33 @@ public class MovieThrowController {
         Long currentUserId = requireCurrentUserId(session);
         String targetLoginId = body.get("targetLoginId");
         String movieCode = body.get("movieCode");
+        String message = body.get("message");
         if (targetLoginId == null || movieCode == null) {
             throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST);
         }
-        movieThrowService.throwMovie(currentUserId, targetLoginId, movieCode);
+        movieThrowService.throwMovie(currentUserId, targetLoginId, movieCode, message);
+        return Map.of("ok", true);
+    }
+
+    /**
+     * GET /api/throw/my-picks — 내가 던질 수 있는 영화(인생영화+좋아요) 목록.
+     */
+    @GetMapping("/my-picks")
+    public List<Map<String, Object>> myPicks(HttpSession session) {
+        Long currentUserId = requireCurrentUserId(session);
+        return movieThrowService.getMyThrowableMovies(currentUserId);
+    }
+
+    /**
+     * POST /api/throw/{throwId}/react
+     * body: { reaction: "THANKS" | "WILL_WATCH" | "NOT_INTERESTED" }
+     */
+    @PostMapping("/{throwId}/react")
+    public Map<String, Object> react(@PathVariable Long throwId,
+                                     @RequestBody Map<String, String> body,
+                                     HttpSession session) {
+        Long currentUserId = requireCurrentUserId(session);
+        movieThrowService.reactToThrow(currentUserId, throwId, body.get("reaction"));
         return Map.of("ok", true);
     }
 

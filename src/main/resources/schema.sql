@@ -428,6 +428,9 @@ CREATE TABLE IF NOT EXISTS movie_throw (
 );
 CREATE INDEX IF NOT EXISTS idx_throw_sender   ON movie_throw (sender_user_id,   created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_throw_receiver ON movie_throw (receiver_user_id, created_at DESC);
+ALTER TABLE movie_throw ADD COLUMN IF NOT EXISTS message    VARCHAR(200);
+ALTER TABLE movie_throw ADD COLUMN IF NOT EXISTS reaction   VARCHAR(20);
+ALTER TABLE movie_throw ADD COLUMN IF NOT EXISTS reacted_at TIMESTAMP;
 
 CREATE TABLE user_badge_earned (
     user_id    BIGINT      NOT NULL,

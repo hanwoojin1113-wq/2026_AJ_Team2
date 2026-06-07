@@ -1192,6 +1192,25 @@
         .throw-card-meta { font-size: 0.77rem; color: #64748b; margin-top: 4px; }
         .throw-card-meta a { color: #60a5fa; text-decoration: none; }
         .throw-card-meta a:hover { text-decoration: underline; }
+        .throw-card-message {
+            margin-top: 7px; padding: 6px 10px;
+            background: rgba(2,74,216,0.08);
+            border-left: 2px solid rgba(2,74,216,0.5);
+            border-radius: 4px;
+            font-size: 0.8rem; color: #cbd5e1; font-style: italic;
+            word-break: break-word;
+        }
+        .throw-reactions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+        .throw-react-btn {
+            padding: 4px 10px; border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04);
+            color: #94a3b8; font-size: 0.74rem; font-weight: 700;
+            font-family: inherit; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .throw-react-btn:hover { background: rgba(255,255,255,0.08); color: #cbd5e1; }
+        .throw-react-btn.active { background: #024ad8; border-color: #024ad8; color: #fff; }
+        .throw-card-reaction { font-size: 0.77rem; color: #60a5fa; margin-top: 7px; font-weight: 600; }
         </style>
 
         <div class="section-head">
@@ -1216,6 +1235,17 @@
                         <div class="throw-card-meta">
                             <a th:href="@{|/users/${t.senderLoginId}|}" th:text="${t.senderNickname}">닉네임</a>님이 던짐
                         </div>
+                        <div class="throw-card-message"
+                             th:if="${t.message != null and !#strings.isEmpty(t.message)}"
+                             th:text="${t.message}">메시지</div>
+                        <div class="throw-reactions" th:attr="data-throw-id=${t.id}">
+                            <button type="button" class="throw-react-btn" data-reaction="THANKS"
+                                    th:classappend="${t.reaction == 'THANKS'} ? ' active' : ''">👍 고마워요</button>
+                            <button type="button" class="throw-react-btn" data-reaction="WILL_WATCH"
+                                    th:classappend="${t.reaction == 'WILL_WATCH'} ? ' active' : ''">👀 볼게요</button>
+                            <button type="button" class="throw-react-btn" data-reaction="NOT_INTERESTED"
+                                    th:classappend="${t.reaction == 'NOT_INTERESTED'} ? ' active' : ''">🙅 관심없음</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1236,6 +1266,14 @@
                         <div class="throw-card-meta">
                             → <a th:href="@{|/users/${t.receiverLoginId}|}" th:text="${t.receiverNickname}">닉네임</a>님에게 던짐
                         </div>
+                        <div class="throw-card-message"
+                             th:if="${t.message != null and !#strings.isEmpty(t.message)}"
+                             th:text="${t.message}">메시지</div>
+                        <div class="throw-card-reaction" th:if="${t.reaction != null}">
+                            <span th:if="${t.reaction == 'THANKS'}">상대 반응: 👍 고마워요</span>
+                            <span th:if="${t.reaction == 'WILL_WATCH'}">상대 반응: 👀 볼게요</span>
+                            <span th:if="${t.reaction == 'NOT_INTERESTED'}">상대 반응: 🙅 관심없음</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1255,6 +1293,26 @@
             tabs.forEach(btn => btn.addEventListener('click', () => activate(btn)));
             const defaultTab = document.querySelector('.throw-tab-btn[data-tab="received"]');
             if (defaultTab) activate(defaultTab);
+
+            // 받은 영화 반응 처리
+            document.querySelectorAll('.throw-reactions').forEach(group => {
+                const throwId = group.dataset.throwId;
+                group.querySelectorAll('.throw-react-btn').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        try {
+                            const res = await fetch('/api/throw/' + throwId + '/react', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ reaction: btn.dataset.reaction })
+                            });
+                            if (res.ok) {
+                                group.querySelectorAll('.throw-react-btn').forEach(b => b.classList.remove('active'));
+                                btn.classList.add('active');
+                            }
+                        } catch (e) {}
+                    });
+                });
+            });
         })();
         </script>
     </section>

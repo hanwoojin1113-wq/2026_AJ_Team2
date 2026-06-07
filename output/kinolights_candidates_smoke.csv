@@ -1,0 +1,6 @@
+movie_id,movie_cd,title,release_date,poster_image_url,kinolights_url,priority_reason
+2817,TMDB-1339713,Obsession,2026-04-16,https://image.tmdb.org/t/p/w500/40I66L7QKguTFDPvcLcdiTbAD7I.jpg,,TMDB_TRENDING
+2913,TMDB-1228710,만달로리안과 그로구,2026-05-20,https://image.tmdb.org/t/p/w500/tMP99wq45GQMoeZwITgjAS8Wihm.jpg,,TMDB_TRENDING
+2979,TMDB-1083381,백룸,2026-05-27,https://image.tmdb.org/t/p/w500/c3Cb7h4ecFsGfUM02KF638kbbtC.jpg,,TMDB_TRENDING
+770,TMDB-931285,모탈 컴뱃 2,2026-05-06,https://image.tmdb.org/t/p/w500/1NgBKiPrJzv1VHdEN8brdy59Rxo.jpg,,TMDB_TRENDING
+3010,TMDB-1084244,토이 스토리 5,2026-06-17,https://image.tmdb.org/t/p/w500/AqrJx3nVVMlKWXGaPIH32GzjEJA.jpg,,TMDB_TRENDING

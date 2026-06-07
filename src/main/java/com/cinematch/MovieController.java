@@ -57,6 +57,7 @@ public class MovieController {
     private static final int HOME_BLOCK_ITEM_LIMIT = 10;
     private static final int LIFE_MOVIE_LIMIT = 10;
     private static final int SOCIAL_PAGE_LIMIT = 24;
+    private static final int THROW_MIN_ACTIVITY = 1;   // 영화 던지기 활성화에 필요한 발신자 최소 영화 기록 수
     private static final Set<String> SEARCH_EXCLUDED_GENRES = Set.of("공연", "공연실황", "콘서트", "라이브");
     private static final Map<String, String> TAG_TYPE_LABELS = Map.of(
             "MOOD", "분위기",
@@ -622,21 +623,14 @@ public class MovieController {
             throw new ResponseStatusException(NOT_FOUND);
         }
 
-        // 영화 던지기 활성화 조건 확인
-        boolean targetFollowsMe = Boolean.TRUE.equals(jdbcTemplate.queryForObject(
-                "SELECT EXISTS(SELECT 1 FROM user_follow WHERE follower_user_id = ? AND following_user_id = ?)",
-                Boolean.class, targetUser.userId(), currentUserId));
-        boolean isMutualFollow = targetUser.followedByCurrentUser() && targetFollowsMe;
-        int myActivity    = countDistinctMovieActivity(currentUserId);
-        int theirActivity = countDistinctMovieActivity(targetUser.userId());
+        // 영화 던지기 활성화 조건 확인 (단방향 팔로우 + 발신자 최소 활동)
+        int myActivity = countDistinctMovieActivity(currentUserId);
 
         String throwDisabledReason = null;
-        if (!isMutualFollow) {
-            throwDisabledReason = "서로 팔로우한 친구에게만 영화를 던질 수 있어요";
-        } else if (myActivity < 5) {
-            throwDisabledReason = "내 영화 기록이 5편 미만이에요. 더 감상하면 활성화돼요";
-        } else if (theirActivity < 5) {
-            throwDisabledReason = targetUser.nickname() + "님의 영화 기록이 부족해 아직 활성화되지 않아요";
+        if (!targetUser.followedByCurrentUser()) {
+            throwDisabledReason = "팔로우한 친구에게만 영화를 던질 수 있어요";
+        } else if (myActivity < THROW_MIN_ACTIVITY) {
+            throwDisabledReason = "내 영화 기록이 부족해요. 영화를 더 감상하면 활성화돼요";
         }
 
         addCurrentUserAttributes(model, session);

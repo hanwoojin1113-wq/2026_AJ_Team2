@@ -1201,6 +1201,18 @@
             border: 1px solid rgba(16,185,129,0.35);
             color: #6ee7b7;
         }
+        .zone-life {
+            background: rgba(168,85,247,0.05);
+            border-color: rgba(168,85,247,0.18);
+            border-left-color: rgba(168,85,247,0.58);
+        }
+        .life-eyebrow {
+            background: rgba(168,85,247,0.13);
+            border: 1px solid rgba(168,85,247,0.35);
+            color: #c4b5fd;
+        }
+        .life-user-link { color: var(--hp-blue-bright); text-decoration: none; }
+        .life-user-link:hover { text-decoration: underline; }
         .zone-see-all {
             display: inline-flex;
             align-items: center;
@@ -1626,8 +1638,68 @@
         </div>
         </div><!-- /zone-social: 친구 활동 -->
 
+        <!-- ── 존 2.5: 인생영화 (취향이 비슷한 사용자) ── -->
+        <div class="page-zone zone-life" th:if="${collaborativeLifeBlock != null}" th:with="block=${collaborativeLifeBlock}">
+        <div class="zone-label">
+            <span class="zone-eyebrow life-eyebrow">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                인생영화
+            </span>
+        </div>
+        <div class="home-section">
+            <div class="section-head">
+                <div class="section-head-main">
+                    <h2 th:if="${collaborativeLifeRepresentative != null}">
+                        <a class="life-user-link"
+                           th:href="@{|/users/${collaborativeLifeRepresentative.loginId}|}"
+                           th:text="${collaborativeLifeRepresentative.nickname}">사용자A</a>님의 인생영화
+                    </h2>
+                    <h2 th:unless="${collaborativeLifeRepresentative != null}" th:text="${block.title}">취향이 비슷한 사용자의 인생영화</h2>
+                </div>
+            </div>
+            <div class="row-carousel" data-row-carousel>
+                <button class="row-arrow left" type="button" data-row-direction="prev" aria-label="이전 보기">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                </button>
+                <div class="row-clip"><div class="row-track">
+                <a class="movie-card" th:each="movie : ${block.items}" th:href="@{|/movies/${movie.movieCode}|}">
+                    <div class="poster-shell">
+                        <img class="poster"
+                             th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
+                             th:src="${movie.posterImageUrl}"
+                             th:alt="${movie.title}">
+                        <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
+                            <span th:text="${movie.title}">영화 제목</span>
+                        </div>
+                        <div class="card-hover"><div class="card-actions">
+                            <button class="cact-btn" data-action="like" title="좋아요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg></button>
+                            <button class="cact-btn" data-action="dislike" title="별로에요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg></button>
+                            <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
+                            <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
+                        </div></div>
+                        <div class="poster-overlay"><span>상세 보기</span></div>
+                    </div>
+                    <div class="movie-title" th:text="${movie.title}">영화 제목</div>
+                    <th:block th:with="kws=${homeKeywordsByMovieCd[movie.movieCode]}">
+                        <div class="movie-keywords" th:if="${not #lists.isEmpty(kws)}">
+                            <span class="kw-chip" th:each="k : ${kws}" th:text="${k}">키워드</span>
+                        </div>
+                    </th:block>
+                </a>
+                </div></div>
+                <button class="row-arrow right" type="button" data-row-direction="next" aria-label="다음 보기">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                        <path d="M9 6l6 6-6 6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        </div><!-- /zone-life: 인생영화 -->
+
         <!-- ── 존 3: 나를 위한 추천 ── -->
-        <th:block th:if="${primaryRecommendationBlock != null or collaborativeLifeBlock != null or !#lists.isEmpty(secondaryRecommendationBlocks)}">
+        <th:block th:if="${primaryRecommendationBlock != null or !#lists.isEmpty(secondaryRecommendationBlocks)}">
         <div class="page-zone zone-recommend">
         <div class="zone-label"><span class="zone-eyebrow recommend-eyebrow">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -1679,62 +1751,6 @@
                         </svg>
                     </button>
                 </div>
-            </div>
-        </div>
-
-        <!-- 홈 차트 섹션 -->
-        <div class="home-section" th:if="${collaborativeLifeBlock != null}" th:with="block=${collaborativeLifeBlock}">
-            <div class="section-head">
-                <div class="section-head-main">
-                    <div class="section-title-meta" th:if="${collaborativeLifeRepresentative != null}">
-                        <span>회원님과 취향이 비슷해요</span>
-                        <strong th:text="|유사도 ${collaborativeLifeRepresentative.similarityPercent()}%|">유사도 72%</strong>
-                    </div>
-                    <h2 th:if="${collaborativeLifeRepresentative != null}">
-                        <a class="section-title-link"
-                           th:href="@{|/users/${collaborativeLifeRepresentative.loginId}|}"
-                           th:text="${block.title}">512님의 인생영화</a>
-                    </h2>
-                    <h2 th:unless="${collaborativeLifeRepresentative != null}" th:text="${block.title}">나와 취향이 비슷한 사람들이 고른 인생영화</h2>
-                </div>
-            </div>
-            <div class="row-carousel" data-row-carousel>
-                <button class="row-arrow left" type="button" data-row-direction="prev" aria-label="?댁쟾 異붿쿇 蹂닿린">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-                        <path d="M15 18l-6-6 6-6"/>
-                    </svg>
-                </button>
-                <div class="row-clip"><div class="row-track">
-                <a class="movie-card" th:each="movie : ${block.items}" th:href="@{|/movies/${movie.movieCode}|}">
-                    <div class="poster-shell">
-                        <img class="poster"
-                             th:if="${!#strings.isEmpty(movie.posterImageUrl)}"
-                             th:src="${movie.posterImageUrl}"
-                             th:alt="${movie.title}">
-                        <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
-                            <span th:text="${movie.title}">?곹솕 ?쒕ぉ</span>
-                        </div>
-                        <div class="card-hover"><div class="card-actions">
-                            <button class="cact-btn" data-action="like" title="좋아요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg></button>
-                            <button class="cact-btn" data-action="dislike" title="별로에요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/><path d="m7 7 10 10"/></svg></button>
-                            <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
-                            <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
-                        </div></div>
-                        <div class="poster-overlay"><span>?곸꽭 蹂닿린</span></div>
-                    </div>
-                    <div class="movie-title" th:text="${movie.title}">?곹솕 ?쒕ぉ</div>
-                    <th:block th:with="kws=${homeKeywordsByMovieCd[movie.movieCode]}">
-                        <div class="movie-keywords" th:if="${not #lists.isEmpty(kws)}">
-                            <span class="kw-chip" th:each="k : ${kws}" th:text="${k}">키워드</span>
-                        </div>
-                    </th:block>
-                </a>
-                </div></div>
-                <button class="row-arrow right" type="button" data-row-direction="next" aria-label="?ㅼ쓬 異붿쿇 蹂닿린">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-                        <path d="M9 6l6 6-6 6"/>
-                    </svg>
-                </button>
             </div>
         </div>
 

@@ -473,13 +473,9 @@
                 <span class="badge" th:if="${movie.typeName != null}" th:text="${movie.typeName}">영화</span>
                 <span class="badge" th:if="${movie.nationName != null}" th:text="${movie.nationName}">국가</span>
                 <span class="badge" th:if="${movie.productionStatusName != null}" th:text="${movie.productionStatusName}">상태</span>
-                <button type="button" id="share-btn" class="share-icon-btn" th:if="${loginUserId != null}" title="친구에게 공유" aria-label="친구에게 공유">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                        <polyline points="16 6 12 2 8 6"/>
-                        <line x1="12" y1="2" x2="12" y2="15"/>
-                    </svg>
-                    <span class="share-icon-label">공유하기</span>
+                <button type="button" id="throw-detail-btn" class="share-icon-btn" th:if="${loginUserId != null}" title="친구에게 던지기" aria-label="친구에게 던지기">
+                    <span aria-hidden="true">🎬</span>
+                    <span class="share-icon-label">던지기</span>
                 </button>
             </div>
             <h1 class="title" th:text="${movie.movieName}">영화 제목</h1>
@@ -1181,22 +1177,36 @@
 })();
 </script>
 
-<!-- 영화 공유 모달 -->
-<div class="share-overlay" id="shareOverlay" hidden aria-modal="true" role="dialog">
+<!-- 영화 던지기 모달 (영화 고정 + 친구 1명 선택 + 한마디) -->
+<div class="share-overlay" id="throwDetailOverlay" hidden aria-modal="true" role="dialog">
     <div class="share-modal">
         <div class="share-modal-header">
-            <span class="share-modal-title">친구에게 공유</span>
-            <button class="share-modal-close" id="shareClose" type="button" aria-label="닫기">✕</button>
+            <span class="share-modal-title">친구에게 영화 던지기</span>
+            <button class="share-modal-close" id="throwDetailClose" type="button" aria-label="닫기">✕</button>
         </div>
-        <p class="share-modal-movie" id="shareMovieTitle"></p>
-        <div class="share-user-list" id="shareUserList"></div>
+        <p class="share-modal-movie" id="throwDetailMovieTitle"></p>
+        <div class="share-user-list" id="throwDetailUserList"></div>
+        <textarea id="throwDetailMessage" class="throw-detail-message" maxlength="200"
+                  placeholder="한마디 남기기 (선택)"></textarea>
         <div class="share-modal-footer">
-            <button class="share-send-btn" id="shareSend" type="button" disabled>보내기</button>
+            <button class="share-send-btn" id="throwDetailSend" type="button" disabled>던지기</button>
         </div>
     </div>
 </div>
 
 <style>
+.throw-detail-message {
+    margin: 0 16px 12px; padding: 10px 12px;
+    width: calc(100% - 32px); box-sizing: border-box;
+    min-height: 54px; resize: none;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: #fff; font: inherit; font-size: 0.85rem; outline: none;
+}
+.throw-detail-message:focus { border-color: rgba(2,74,216,0.5); }
+.throw-detail-message::placeholder { color: #64748b; }
+.share-user-item.selected { background: rgba(2,74,216,0.18); }
 .share-icon-btn {
     height: 34px;
     width: auto;
@@ -1361,27 +1371,27 @@
 
 <script th:inline="javascript">
 (function () {
-    const shareBtn = document.getElementById('share-btn');
-    if (!shareBtn) return;
+    const throwBtn = document.getElementById('throw-detail-btn');
+    if (!throwBtn) return;
 
-    const overlay = document.getElementById('shareOverlay');
-    const closeBtn = document.getElementById('shareClose');
-    const userList = document.getElementById('shareUserList');
-    const sendBtn = document.getElementById('shareSend');
-    const movieTitleEl = document.getElementById('shareMovieTitle');
+    const overlay = document.getElementById('throwDetailOverlay');
+    const closeBtn = document.getElementById('throwDetailClose');
+    const userList = document.getElementById('throwDetailUserList');
+    const sendBtn = document.getElementById('throwDetailSend');
+    const movieTitleEl = document.getElementById('throwDetailMovieTitle');
+    const messageEl = document.getElementById('throwDetailMessage');
     const movieCode = /*[[${movie.movieCode}]]*/ '';
     const movieTitle = /*[[${movie.movieName}]]*/ '영화';
 
-    let selectedLoginIds = new Set();
+    let selectedLoginId = null;
+    let selectedNickname = null;
 
-    function updateSendBtn() {
-        const n = selectedLoginIds.size;
-        sendBtn.disabled = n === 0;
-        sendBtn.textContent = n > 0 ? `보내기 (${n}명)` : '보내기';
-    }
+    function updateSendBtn() { sendBtn.disabled = !selectedLoginId; }
 
-    shareBtn.addEventListener('click', async () => {
-        selectedLoginIds.clear();
+    throwBtn.addEventListener('click', async () => {
+        selectedLoginId = null;
+        selectedNickname = null;
+        messageEl.value = '';
         updateSendBtn();
         movieTitleEl.textContent = movieTitle;
         userList.innerHTML = '<div class="share-loading">불러오는 중...</div>';
@@ -1390,7 +1400,6 @@
         const res = await fetch('/api/people/following');
         if (res.status === 401) { overlay.hidden = true; window.location.href = '/login'; return; }
         const list = await res.json();
-
         if (!Array.isArray(list) || !list.length) {
             userList.innerHTML = '<div class="share-empty">팔로우한 친구가 없습니다.</div>';
             return;
@@ -1410,29 +1419,32 @@
     userList.addEventListener('click', e => {
         const item = e.target.closest('.share-user-item');
         if (!item) return;
-        const id = item.dataset.loginId;
-        if (selectedLoginIds.has(id)) { selectedLoginIds.delete(id); item.classList.remove('selected'); }
-        else { selectedLoginIds.add(id); item.classList.add('selected'); }
+        userList.querySelectorAll('.share-user-item').forEach(i => i.classList.remove('selected'));
+        item.classList.add('selected');
+        selectedLoginId = item.dataset.loginId;
+        const nameEl = item.querySelector('.share-nickname');
+        selectedNickname = nameEl ? nameEl.textContent : '친구';
         updateSendBtn();
     });
 
     sendBtn.addEventListener('click', async () => {
-        if (selectedLoginIds.size === 0) return;
+        if (!selectedLoginId) return;
         sendBtn.disabled = true;
-        const res = await fetch(`/api/movies/${movieCode}/share`, {
+        const res = await fetch('/api/throw', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ loginIds: [...selectedLoginIds] })
+            body: JSON.stringify({ targetLoginId: selectedLoginId, movieCode, message: messageEl.value })
         });
         if (res.ok) {
             overlay.hidden = true;
             const toast = document.createElement('div');
-            toast.textContent = `${selectedLoginIds.size}명에게 공유했습니다.`;
+            toast.textContent = `🎬 ${selectedNickname || '친구'}님에게 던졌습니다!`;
             toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#024ad8;color:#fff;padding:10px 20px;border-radius:999px;font-size:0.88rem;font-weight:700;z-index:700;pointer-events:none;';
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 2800);
         } else {
             sendBtn.disabled = false;
+            alert(res.status === 403 ? '팔로우한 친구에게만 던질 수 있어요.' : '전송에 실패했습니다.');
         }
     });
 
