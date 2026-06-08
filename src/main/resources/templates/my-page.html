@@ -556,20 +556,6 @@
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(148, 163, 184, 0.14);
         }
-        .poster-wrap::after {
-            content: '상세 보기 →';
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            padding: 32px 12px 10px;
-            background: linear-gradient(to top, rgba(0,0,0,0.82), transparent);
-            color: rgba(255,255,255,0.92);
-            font-size: 0.73rem; font-weight: 700; letter-spacing: 0.3px;
-            opacity: 0;
-            transition: opacity 0.22s ease;
-            pointer-events: none;
-        }
-        .poster-wrap:hover::after { opacity: 1; }
-
         .poster {
             width: 100%;
             height: 100%;
@@ -1320,6 +1306,22 @@
         }
         .activity-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
         .activity-btn.delete-btn:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); color: #ef4444; }
+        .inline-edit-box { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+        .inline-edit-box textarea {
+            width: 100%; box-sizing: border-box; padding: 10px 12px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px; color: #fff; font: inherit; font-size: 0.85rem;
+            resize: vertical; min-height: 70px; outline: none; line-height: 1.5;
+        }
+        .inline-edit-box textarea:focus { border-color: #024ad8; }
+        .inline-edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
+        .inline-edit-actions button {
+            padding: 0 16px; height: 32px; border-radius: 999px; border: none;
+            font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+        }
+        .inline-edit-cancel { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); }
+        .inline-edit-save { background: #024ad8; color: #fff; }
+        .inline-edit-save:disabled { opacity: 0.5; cursor: not-allowed; }
         /* 사진 */
         .my-post-images { position: relative; margin-bottom: 10px; }
         .my-post-img { width: 100%; max-height: 320px; object-fit: cover; border-radius: 10px; display: block; }
@@ -1421,40 +1423,6 @@
         }
         .activity-rating { color: #fbbf24; font-size: 0.8rem; }
         .activity-actions { display: flex; gap: 6px; flex-shrink: 0; margin-top: 2px; }
-        /* 수정 모달 */
-        .edit-modal-overlay {
-            display: none; position: fixed; inset: 0; z-index: 9100;
-            background: rgba(0,0,0,0.72); align-items: center; justify-content: center;
-            backdrop-filter: blur(4px);
-        }
-        .edit-modal-overlay.open { display: flex; }
-        .edit-modal {
-            background: #161a26; border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 18px; padding: 26px 24px 22px;
-            width: min(520px, 94vw); box-shadow: 0 24px 60px rgba(0,0,0,0.6);
-        }
-        .edit-modal-title { font-size: 1rem; font-weight: 900; margin: 0 0 14px; }
-        .edit-modal-textarea {
-            width: 100%; box-sizing: border-box; padding: 12px 14px;
-            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 10px; color: #fff; font: inherit; font-size: 0.9rem;
-            resize: vertical; min-height: 120px; outline: none; line-height: 1.5;
-        }
-        .edit-modal-textarea:focus { border-color: #024ad8; }
-        .edit-char-count { font-size: 0.75rem; color: rgba(255,255,255,0.35); text-align: right; margin: 4px 0 14px; }
-        .edit-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
-        .edit-cancel-btn {
-            padding: 0 18px; height: 38px; border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.15); background: transparent;
-            color: rgba(255,255,255,0.55); font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer;
-        }
-        .edit-save-btn {
-            padding: 0 22px; height: 38px; border-radius: 999px;
-            border: none; background: #024ad8; color: #fff;
-            font: inherit; font-size: 0.85rem; font-weight: 900; cursor: pointer;
-            transition: opacity 0.15s;
-        }
-        .edit-save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         </style>
 
         <div class="head">
@@ -1501,7 +1469,6 @@
                             </span>
                             <span class="my-post-date" th:text="${post.createdAt}"></span>
                             <a class="my-post-view-link" th:href="@{|/posts/${post.postId}|}">전체 보기</a>
-                            <button class="activity-btn edit-post-btn" type="button">수정</button>
                             <button class="activity-btn delete-btn delete-post-btn" type="button">삭제</button>
                         </div>
                     </div>
@@ -1623,19 +1590,6 @@
         </div>
     </section>
 
-    <!-- 수정 모달 -->
-    <div class="edit-modal-overlay" id="editModalOverlay">
-        <div class="edit-modal">
-            <p class="edit-modal-title" id="editModalTitle">내용 수정</p>
-            <textarea class="edit-modal-textarea" id="editModalTextarea" maxlength="1000"></textarea>
-            <div class="edit-char-count"><span id="editCharCount">0</span> / 1000</div>
-            <div class="edit-modal-actions">
-                <button class="edit-cancel-btn" id="editCancelBtn">취소</button>
-                <button class="edit-save-btn" id="editSaveBtn">저장</button>
-            </div>
-        </div>
-    </div>
-
     <script>
     (function () {
         // ── 탭 전환 ──────────────────────────────────────────────
@@ -1648,69 +1602,7 @@
             });
         });
 
-        // ── 수정 모달 ─────────────────────────────────────────────
-        const editOverlay = document.getElementById('editModalOverlay');
-        const editTextarea = document.getElementById('editModalTextarea');
-        const editCharCount = document.getElementById('editCharCount');
-        const editSaveBtn = document.getElementById('editSaveBtn');
-        let currentEditType = null, currentEditId = null;
-
-        editTextarea.addEventListener('input', () => { editCharCount.textContent = editTextarea.value.length; });
-
-        function openEditModal(title, content, type, id) {
-            currentEditType = type; currentEditId = id;
-            document.getElementById('editModalTitle').textContent = title;
-            editTextarea.value = content || '';
-            editCharCount.textContent = editTextarea.value.length;
-            editOverlay.classList.add('open');
-            document.body.classList.add('modal-open');
-            editTextarea.focus();
-        }
-        function closeEditModal() {
-            editOverlay.classList.remove('open');
-            document.body.classList.remove('modal-open');
-        }
-        document.getElementById('editCancelBtn').addEventListener('click', closeEditModal);
-        editOverlay.addEventListener('click', e => { if (e.target === editOverlay) closeEditModal(); });
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditModal(); });
-
-        editSaveBtn.addEventListener('click', () => {
-            const content = editTextarea.value.trim();
-            if (!content) return;
-            const url = currentEditType === 'post'
-                ? '/api/posts/' + currentEditId + '/update'
-                : '/api/reviews/' + currentEditId + '/update';
-            editSaveBtn.disabled = true;
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'content=' + encodeURIComponent(content)
-            }).then(r => r.json()).then(data => {
-                if (data.ok) {
-                    const sel = currentEditType === 'post'
-                        ? '[data-post-id="' + currentEditId + '"]'
-                        : '[data-review-id="' + currentEditId + '"]';
-                    const item = document.querySelector(sel);
-                    if (item) {
-                        const el = item.querySelector('.my-post-content') || item.querySelector('.activity-content');
-                        if (el) el.textContent = content;
-                        item.dataset.content = content;
-                    }
-                    closeEditModal();
-                } else {
-                    alert('수정에 실패했습니다.');
-                    editSaveBtn.disabled = false;
-                }
-            }).catch(() => { alert('수정에 실패했습니다.'); editSaveBtn.disabled = false; });
-        });
-
-        // ── 게시물 수정/삭제 ──────────────────────────────────────
-        document.querySelectorAll('.edit-post-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const card = btn.closest('[data-post-id]');
-                openEditModal('게시물 설명 수정', card.dataset.content, 'post', card.dataset.postId);
-            });
-        });
+        // ── 게시물 삭제 ──────────────────────────────────────────
         document.querySelectorAll('.delete-post-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 if (!confirm('이 게시물을 삭제하시겠습니까?')) return;
@@ -1723,13 +1615,63 @@
             });
         });
 
-        // ── 리뷰 수정/삭제 ───────────────────────────────────────
+        // ── 인라인 수정 박스 ──────────────────────────────────────
+        function startInlineEdit(displayEl, currentText, updateUrl, onSave) {
+            if (displayEl.nextElementSibling && displayEl.nextElementSibling.classList.contains('inline-edit-box')) return;
+            displayEl.style.display = 'none';
+            const box = document.createElement('div');
+            box.className = 'inline-edit-box';
+            const textarea = document.createElement('textarea');
+            textarea.maxLength = 1000;
+            textarea.value = currentText;
+            const actions = document.createElement('div');
+            actions.className = 'inline-edit-actions';
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button'; cancelBtn.className = 'inline-edit-cancel'; cancelBtn.textContent = '취소';
+            const saveBtn = document.createElement('button');
+            saveBtn.type = 'button'; saveBtn.className = 'inline-edit-save'; saveBtn.textContent = '저장';
+            actions.append(cancelBtn, saveBtn);
+            box.append(textarea, actions);
+            displayEl.insertAdjacentElement('afterend', box);
+            textarea.focus();
+
+            const close = () => { box.remove(); displayEl.style.display = ''; };
+            cancelBtn.addEventListener('click', close);
+            saveBtn.addEventListener('click', async () => {
+                const value = textarea.value.trim();
+                if (!value) return;
+                saveBtn.disabled = true;
+                try {
+                    const response = await fetch(updateUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'content=' + encodeURIComponent(value)
+                    });
+                    if (!response.ok) throw new Error();
+                    const data = await response.json();
+                    if (!data.ok) throw new Error();
+                    onSave(value);
+                    close();
+                } catch (_) {
+                    alert('수정에 실패했습니다.');
+                    saveBtn.disabled = false;
+                }
+            });
+        }
+
+        // ── 리뷰 수정 ────────────────────────────────────────────
         document.querySelectorAll('.edit-review-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const item = btn.closest('[data-review-id]');
-                openEditModal('리뷰 내용 수정', item.dataset.content, 'review', item.dataset.reviewId);
+                const contentEl = item.querySelector('.activity-content');
+                startInlineEdit(contentEl, item.dataset.content || '', '/api/reviews/' + item.dataset.reviewId + '/update', (value) => {
+                    contentEl.textContent = value;
+                    item.dataset.content = value;
+                });
             });
         });
+
+        // ── 리뷰 삭제 ────────────────────────────────────────────
         document.querySelectorAll('.delete-review-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 if (!confirm('이 리뷰를 삭제하시겠습니까?')) return;
