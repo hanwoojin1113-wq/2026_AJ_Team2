@@ -1054,11 +1054,19 @@
                         <h1 style="margin:0;" th:text="${userProfile.nickname}">nickname</h1>
                         <span th:if="${selectedBadgeCode != null}"
                               th:with="def=${T(com.cinematch.BadgeService).getBadgeDef(selectedBadgeCode)}"
-                              th:classappend="'ubadge ubadge-t' + ${def?.tier}"
-                              class="ubadge"
-                              th:title="${def?.name}">
+                              th:classappend="'ubadge ubadge-t' + ${def?.tier} + ' badge-picker-trigger'"
+                              class="ubadge badge-picker-trigger"
+                              id="badgePickerTrigger"
+                              th:title="|${def?.name} · 클릭해서 대표 배지 변경|">
                             <span class="ubadge-icon" th:text="${def?.icon}"></span>
                             <span th:text="${def?.name}"></span>
+                        </span>
+                        <span th:if="${selectedBadgeCode == null}"
+                              class="ubadge badge-picker-trigger badge-picker-placeholder"
+                              id="badgePickerTrigger"
+                              title="클릭해서 대표 배지 선택">
+                            <span class="ubadge-icon">➕</span>
+                            <span>배지 선택</span>
                         </span>
                     </div>
                     <span th:text="|ID ${userProfile.loginId} · 활동 기록과 관계를 한 번에 관리해보세요.|">ID user · 활동 기록과 관계를 한 번에 관리해보세요.</span>
@@ -1100,113 +1108,6 @@
             <article class="summary-card watch"><div class="summary-label">보는중</div><div class="summary-value" th:text="${watchingMovieCount}">0</div></article>
             <article class="summary-card done"><div class="summary-label">봤어요</div><div class="summary-value" th:text="${watchedMovieCount}">0</div></article>
         </div>
-    </section>
-
-    <section th:if="${!#lists.isEmpty(sentThrows) or !#lists.isEmpty(receivedThrows)}" class="throw-history-section">
-        <style>
-        .throw-history-section { margin: 0 0 32px; }
-        .throw-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
-        .throw-tab-btn {
-            padding: 8px 18px; border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.12);
-            background: rgba(255,255,255,0.05);
-            color: #94a3b8; font-size: 0.83rem; font-weight: 700;
-            font-family: inherit; cursor: pointer; transition: all 0.15s;
-        }
-        .throw-tab-btn.active { background: #024ad8; border-color: #024ad8; color: #fff; }
-        .throw-tab-panel { display: none; }
-        .throw-tab-panel.active { display: block; }
-        .throw-list { display: flex; flex-direction: column; gap: 12px; }
-        .throw-card {
-            display: flex; align-items: center; gap: 14px;
-            padding: 14px 16px; border-radius: 16px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.07);
-        }
-        .throw-card-poster {
-            width: 48px; height: 68px; border-radius: 8px;
-            object-fit: cover; flex-shrink: 0;
-            background: rgba(255,255,255,0.06);
-        }
-        .throw-card-poster-fallback {
-            width: 48px; height: 68px; border-radius: 8px; flex-shrink: 0;
-            background: rgba(255,255,255,0.06);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.6rem; color: #64748b; text-align: center;
-        }
-        .throw-card-info { flex: 1; min-width: 0; }
-        .throw-card-title {
-            font-size: 0.9rem; font-weight: 700; color: #e2e8f0;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .throw-card-meta { font-size: 0.77rem; color: #64748b; margin-top: 4px; }
-        .throw-card-meta a { color: #60a5fa; text-decoration: none; }
-        .throw-card-meta a:hover { text-decoration: underline; }
-        </style>
-
-        <div class="section-head">
-            <h2 class="section-title">영화 던지기 히스토리</h2>
-        </div>
-        <div class="throw-tabs">
-            <button class="throw-tab-btn" data-tab="received">내가 받은 영화 (<span th:text="${#lists.size(receivedThrows)}">0</span>)</button>
-            <button class="throw-tab-btn" data-tab="sent">내가 던진 영화 (<span th:text="${#lists.size(sentThrows)}">0</span>)</button>
-        </div>
-
-        <div class="throw-tab-panel" id="throw-tab-received">
-            <div class="throw-list" th:if="${!#lists.isEmpty(receivedThrows)}">
-                <div class="throw-card" th:each="t : ${receivedThrows}">
-                    <a th:href="@{|/movies/${t.movieCode}|}">
-                        <img th:if="${t.posterImageUrl != null}" class="throw-card-poster" th:src="${t.posterImageUrl}" th:alt="${t.movieTitle}">
-                        <div th:if="${t.posterImageUrl == null}" class="throw-card-poster-fallback">🎬</div>
-                    </a>
-                    <div class="throw-card-info">
-                        <a th:href="@{|/movies/${t.movieCode}|}" style="text-decoration:none;">
-                            <div class="throw-card-title" th:text="${t.movieTitle}">영화 제목</div>
-                        </a>
-                        <div class="throw-card-meta">
-                            <a th:href="@{|/users/${t.senderLoginId}|}" th:text="${t.senderNickname}">닉네임</a>님이 던짐
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="empty" th:if="${#lists.isEmpty(receivedThrows)}">받은 영화가 없습니다.</div>
-        </div>
-
-        <div class="throw-tab-panel" id="throw-tab-sent">
-            <div class="throw-list" th:if="${!#lists.isEmpty(sentThrows)}">
-                <div class="throw-card" th:each="t : ${sentThrows}">
-                    <a th:href="@{|/movies/${t.movieCode}|}">
-                        <img th:if="${t.posterImageUrl != null}" class="throw-card-poster" th:src="${t.posterImageUrl}" th:alt="${t.movieTitle}">
-                        <div th:if="${t.posterImageUrl == null}" class="throw-card-poster-fallback">🎬</div>
-                    </a>
-                    <div class="throw-card-info">
-                        <a th:href="@{|/movies/${t.movieCode}|}" style="text-decoration:none;">
-                            <div class="throw-card-title" th:text="${t.movieTitle}">영화 제목</div>
-                        </a>
-                        <div class="throw-card-meta">
-                            → <a th:href="@{|/users/${t.receiverLoginId}|}" th:text="${t.receiverNickname}">닉네임</a>님에게 던짐
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="empty" th:if="${#lists.isEmpty(sentThrows)}">던진 영화가 없습니다.</div>
-        </div>
-
-        <script>
-        (function () {
-            const tabs = document.querySelectorAll('.throw-tab-btn');
-            const panels = document.querySelectorAll('.throw-tab-panel');
-            function activate(tab) {
-                tabs.forEach(b => b.classList.remove('active'));
-                panels.forEach(p => p.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById('throw-tab-' + tab.dataset.tab).classList.add('active');
-            }
-            tabs.forEach(btn => btn.addEventListener('click', () => activate(btn)));
-            const defaultTab = document.querySelector('.throw-tab-btn[data-tab="received"]');
-            if (defaultTab) activate(defaultTab);
-        })();
-        </script>
     </section>
 
     <section class="section">
@@ -1371,6 +1272,543 @@
         </div>
         <div class="empty" th:if="${#lists.isEmpty(watchedMovies)}">No watched movies yet.</div>
     </section>
+
+    <!-- ── 내 활동 섹션 (게시물 / 리뷰) ─────────────────────────── -->
+    <section class="section" id="myActivitySection">
+        <style>
+        .activity-tab-row { display: flex; gap: 8px; margin-bottom: 20px; }
+        .activity-tab-btn {
+            padding: 7px 18px; border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: transparent; color: rgba(255,255,255,0.55);
+            font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .activity-tab-btn.active { background: #024ad8; border-color: #024ad8; color: #fff; }
+        .activity-tab-panel { display: none; }
+        .activity-tab-panel.active { display: block; }
+        /* 게시물 카드 */
+        .my-post-list { display: flex; flex-direction: column; gap: 16px; }
+        .my-post-card {
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px; padding: 16px; overflow: hidden;
+        }
+        .my-post-header {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
+        }
+        .my-post-movie { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+        .my-post-movie-poster {
+            width: 28px; height: 40px; border-radius: 4px; object-fit: cover; flex-shrink: 0;
+        }
+        .my-post-movie-title {
+            font-size: 0.82rem; font-weight: 700; color: rgba(255,255,255,0.6);
+            text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .my-post-movie-title:hover { color: #fff; }
+        .my-post-meta-row {
+            display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap;
+        }
+        .my-post-type { font-size: 0.72rem; color: rgba(255,255,255,0.4); }
+        .my-post-date { font-size: 0.72rem; color: rgba(255,255,255,0.3); }
+        .my-post-view-link {
+            font-size: 0.72rem; color: #60a5fa; text-decoration: none; font-weight: 700;
+        }
+        .activity-btn {
+            padding: 4px 10px; border-radius: 6px; font: inherit; font-size: 0.72rem; font-weight: 700;
+            cursor: pointer; border: 1px solid rgba(255,255,255,0.15); background: transparent;
+            color: rgba(255,255,255,0.5); transition: background 0.15s, color 0.15s;
+        }
+        .activity-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        .activity-btn.delete-btn:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); color: #ef4444; }
+        /* 사진 */
+        .my-post-images { position: relative; margin-bottom: 10px; }
+        .my-post-img { width: 100%; max-height: 320px; object-fit: cover; border-radius: 10px; display: block; }
+        .my-post-img-count {
+            position: absolute; bottom: 8px; right: 10px;
+            background: rgba(0,0,0,0.6); color: #fff; font-size: 0.72rem; font-weight: 700;
+            padding: 2px 8px; border-radius: 999px;
+        }
+        /* 동영상 */
+        .post-video-wrap { margin-bottom: 10px; border-radius: 10px; overflow: hidden; }
+        .post-video { width: 100%; max-height: 320px; display: block; background: #000; }
+        /* 파일 */
+        .post-file-card {
+            display: flex; align-items: center; gap: 12px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px; padding: 12px 14px; text-decoration: none; color: inherit;
+            margin-bottom: 10px; transition: background 0.15s;
+        }
+        .post-file-card:hover { background: rgba(255,255,255,0.1); }
+        .post-file-icon { font-size: 1.6rem; flex-shrink: 0; }
+        .post-file-info { min-width: 0; }
+        .post-file-name { font-weight: 700; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .post-file-size { color: rgba(255,255,255,0.4); font-size: 0.76rem; margin-top: 2px; }
+        /* 투표 */
+        .post-poll-wrap { margin-bottom: 10px; }
+        .post-poll-question { font-weight: 800; font-size: 0.95rem; margin: 0 0 10px; }
+        .post-poll-options { display: grid; gap: 8px; margin-bottom: 8px; }
+        .poll-option-bar {
+            position: relative; border-radius: 8px; overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1); cursor: pointer;
+            background: rgba(255,255,255,0.04); transition: border-color 0.15s;
+            min-height: 38px;
+        }
+        .poll-option-bar:hover { border-color: rgba(96,165,250,0.4); }
+        .poll-option-bar.voted { border-color: rgba(96,165,250,0.6); }
+        .poll-option-fill {
+            position: absolute; inset: 0; background: rgba(37,99,235,0.22);
+            transition: width 0.4s ease; pointer-events: none;
+        }
+        .poll-option-bar.voted .poll-option-fill { background: rgba(37,99,235,0.36); }
+        .poll-option-inner {
+            position: relative; display: flex; justify-content: space-between;
+            align-items: center; padding: 8px 12px; font-size: 0.88rem;
+        }
+        .poll-option-pct { font-size: 0.78rem; color: rgba(255,255,255,0.55); margin-left: 6px; }
+        .poll-voted-mark { margin-left: 6px; color: #60a5fa; font-size: 0.75rem; }
+        .poll-meta { font-size: 0.76rem; color: rgba(255,255,255,0.4); }
+        /* 퀴즈 */
+        .post-quiz-wrap { margin-bottom: 10px; }
+        .post-quiz-question { font-weight: 800; font-size: 0.95rem; margin: 0 0 10px; }
+        .post-quiz-options { display: grid; gap: 8px; margin-bottom: 8px; }
+        .quiz-option-btn {
+            padding: 9px 14px; border-radius: 8px; text-align: left;
+            border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);
+            color: inherit; font: inherit; font-size: 0.88rem; cursor: pointer; transition: all 0.15s;
+        }
+        .quiz-option-btn:hover:not(:disabled) { border-color: rgba(96,165,250,0.4); background: rgba(37,99,235,0.1); }
+        .quiz-option-btn:disabled { cursor: default; }
+        .quiz-option-btn.correct { border-color: rgba(34,197,94,0.6); background: rgba(34,197,94,0.12); color: #86efac; }
+        .quiz-option-btn.wrong { border-color: rgba(239,68,68,0.5); background: rgba(239,68,68,0.1); color: #fca5a5; }
+        .quiz-result-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 999px;
+            font-size: 0.8rem; font-weight: 800; margin-top: 4px;
+        }
+        .quiz-result-badge.correct { background: rgba(34,197,94,0.15); color: #86efac; }
+        .quiz-result-badge.wrong { background: rgba(239,68,68,0.12); color: #fca5a5; }
+        /* 텍스트 내용 */
+        .my-post-content {
+            font-size: 0.88rem; color: rgba(255,255,255,0.82); line-height: 1.6;
+            margin: 0; word-break: break-word; white-space: pre-wrap;
+        }
+        /* 리뷰 카드 */
+        .activity-item {
+            display: flex; gap: 14px; align-items: flex-start;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px; padding: 14px 16px;
+        }
+        .activity-poster {
+            width: 44px; height: 62px; border-radius: 6px; object-fit: cover; flex-shrink: 0;
+        }
+        .activity-poster-fallback {
+            width: 44px; height: 62px; border-radius: 6px; flex-shrink: 0;
+            background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+            font-size: 0.6rem; color: rgba(255,255,255,0.3); text-align: center; padding: 4px;
+        }
+        .activity-body { flex: 1; min-width: 0; }
+        .activity-movie-link {
+            font-size: 0.78rem; color: rgba(255,255,255,0.45); text-decoration: none;
+            font-weight: 700; display: block; margin-bottom: 5px;
+        }
+        .activity-movie-link:hover { color: rgba(255,255,255,0.8); }
+        .activity-content {
+            font-size: 0.88rem; color: rgba(255,255,255,0.82); line-height: 1.5;
+            margin-bottom: 6px; word-break: break-word; white-space: pre-wrap;
+        }
+        .activity-meta {
+            font-size: 0.75rem; color: rgba(255,255,255,0.35);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .activity-rating { color: #fbbf24; font-size: 0.8rem; }
+        .activity-actions { display: flex; gap: 6px; flex-shrink: 0; margin-top: 2px; }
+        /* 수정 모달 */
+        .edit-modal-overlay {
+            display: none; position: fixed; inset: 0; z-index: 9100;
+            background: rgba(0,0,0,0.72); align-items: center; justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .edit-modal-overlay.open { display: flex; }
+        .edit-modal {
+            background: #161a26; border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 18px; padding: 26px 24px 22px;
+            width: min(520px, 94vw); box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+        }
+        .edit-modal-title { font-size: 1rem; font-weight: 900; margin: 0 0 14px; }
+        .edit-modal-textarea {
+            width: 100%; box-sizing: border-box; padding: 12px 14px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px; color: #fff; font: inherit; font-size: 0.9rem;
+            resize: vertical; min-height: 120px; outline: none; line-height: 1.5;
+        }
+        .edit-modal-textarea:focus { border-color: #024ad8; }
+        .edit-char-count { font-size: 0.75rem; color: rgba(255,255,255,0.35); text-align: right; margin: 4px 0 14px; }
+        .edit-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+        .edit-cancel-btn {
+            padding: 0 18px; height: 38px; border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.15); background: transparent;
+            color: rgba(255,255,255,0.55); font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+        }
+        .edit-save-btn {
+            padding: 0 22px; height: 38px; border-radius: 999px;
+            border: none; background: #024ad8; color: #fff;
+            font: inherit; font-size: 0.85rem; font-weight: 900; cursor: pointer;
+            transition: opacity 0.15s;
+        }
+        .edit-save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        </style>
+
+        <div class="head">
+            <div>
+                <h2>내 활동</h2>
+                <p>내가 작성한 게시물과 리뷰를 관리하세요.</p>
+            </div>
+        </div>
+
+        <div class="activity-tab-row">
+            <button class="activity-tab-btn active" data-activity-tab="posts">
+                게시물 (<span th:text="${myPostCount}">0</span>)
+            </button>
+            <button class="activity-tab-btn" data-activity-tab="reviews">
+                리뷰 (<span th:text="${myReviewCount}">0</span>)
+            </button>
+        </div>
+
+        <!-- 게시물 탭 -->
+        <div class="activity-tab-panel active" id="activity-panel-posts">
+            <div class="my-post-list" th:if="${!#lists.isEmpty(myPosts)}">
+                <article class="my-post-card"
+                         th:each="post : ${myPosts}"
+                         th:data-post-id="${post.postId}"
+                         th:data-content="${post.content}">
+
+                    <!-- 헤더: 영화 + 날짜 + 버튼 -->
+                    <div class="my-post-header">
+                        <div class="my-post-movie">
+                            <img th:if="${!#strings.isEmpty(post.moviePosterUrl)}"
+                                 class="my-post-movie-poster"
+                                 th:src="${post.moviePosterUrl}" th:alt="${post.movieTitle}">
+                            <a class="my-post-movie-title"
+                               th:href="@{|/movies/${post.movieCode}|}"
+                               th:text="${post.movieTitle}"></a>
+                        </div>
+                        <div class="my-post-meta-row">
+                            <span class="my-post-type" th:switch="${post.postType}">
+                                <span th:case="'video'">🎥 동영상</span>
+                                <span th:case="'file'">📎 파일</span>
+                                <span th:case="'poll'">☑ 투표</span>
+                                <span th:case="'quiz'">❓ 퀴즈</span>
+                                <span th:case="*">🖼 사진</span>
+                            </span>
+                            <span class="my-post-date" th:text="${post.createdAt}"></span>
+                            <a class="my-post-view-link" th:href="@{|/posts/${post.postId}|}">전체 보기</a>
+                            <button class="activity-btn edit-post-btn" type="button">수정</button>
+                            <button class="activity-btn delete-btn delete-post-btn" type="button">삭제</button>
+                        </div>
+                    </div>
+
+                    <!-- 사진 -->
+                    <div th:if="${post.postType == 'photo' and post.images != null and !#lists.isEmpty(post.images)}"
+                         class="my-post-images">
+                        <img class="my-post-img" th:src="${post.images[0]}" alt="게시물 이미지" loading="lazy">
+                        <span th:if="${post.images.size() > 1}"
+                              class="my-post-img-count"
+                              th:text="${'+ ' + (post.images.size() - 1) + '장 더'}"></span>
+                    </div>
+
+                    <!-- 동영상 -->
+                    <div th:if="${post.postType == 'video' and post.attachment != null}" class="post-video-wrap">
+                        <video class="post-video" controls preload="metadata"
+                               th:src="${post.attachment.fileUrl}"></video>
+                    </div>
+
+                    <!-- 파일 -->
+                    <a th:if="${post.postType == 'file' and post.attachment != null}"
+                       class="post-file-card"
+                       th:href="${post.attachment.fileUrl}" target="_blank" rel="noopener">
+                        <span class="post-file-icon">📎</span>
+                        <div class="post-file-info">
+                            <div class="post-file-name" th:text="${post.attachment.fileName}"></div>
+                            <div class="post-file-size"
+                                 th:text="${post.attachment.fileSize != null ? (post.attachment.fileSize / 1024) + ' KB' : ''}"></div>
+                        </div>
+                    </a>
+
+                    <!-- 투표 -->
+                    <div th:if="${post.postType == 'poll' and post.poll != null}"
+                         class="post-poll-wrap"
+                         th:attr="data-poll-id=${post.poll.pollId},data-has-voted=${post.poll.hasVoted},data-my-vote=${post.poll.myVotedOptionId},data-total=${post.poll.totalVotes}">
+                        <p class="post-poll-question" th:text="${post.poll.question}"></p>
+                        <div class="post-poll-options">
+                            <div th:each="opt : ${post.poll.options}"
+                                 class="poll-option-bar"
+                                 th:classappend="${opt.isMyVote} ? ' voted' : ''"
+                                 th:attr="data-option-id=${opt.optionId}">
+                                <div class="poll-option-fill"
+                                     th:style="${post.poll.hasVoted and post.poll.totalVotes > 0} ? 'width:' + ${(opt.voteCount * 100 / post.poll.totalVotes)} + '%' : 'width:0%'"></div>
+                                <div class="poll-option-inner">
+                                    <span th:text="${opt.optionText}"></span>
+                                    <span>
+                                        <span class="poll-option-pct" th:if="${post.poll.hasVoted}"
+                                              th:text="${post.poll.totalVotes > 0} ? ${#numbers.formatDecimal(opt.voteCount * 100.0 / post.poll.totalVotes, 1, 0)} + '%' : '0%'"></span>
+                                        <span class="poll-voted-mark" th:if="${opt.isMyVote}">✓</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="poll-meta">
+                            <span th:text="${post.poll.totalVotes} + '명 참여'"></span>
+                            <span th:if="${!post.poll.hasVoted}" style="margin-left:8px;color:#60a5fa;">· 투표하기</span>
+                        </div>
+                    </div>
+
+                    <!-- 퀴즈 -->
+                    <div th:if="${post.postType == 'quiz' and post.quiz != null}"
+                         class="post-quiz-wrap"
+                         th:attr="data-quiz-id=${post.quiz.quizId},data-has-answered=${post.quiz.hasAnswered},data-my-answer=${post.quiz.myAnswerOptionId},data-my-correct=${post.quiz.myAnswerCorrect}">
+                        <p class="post-quiz-question" th:text="${post.quiz.question}"></p>
+                        <div class="post-quiz-options">
+                            <button type="button" class="quiz-option-btn"
+                                    th:each="opt : ${post.quiz.options}"
+                                    th:classappend="${post.quiz.hasAnswered and opt.isCorrect} ? ' correct' : (${post.quiz.hasAnswered and opt.isMyAnswer and !opt.isCorrect} ? ' wrong my-answer' : (${post.quiz.hasAnswered and opt.isMyAnswer} ? ' my-answer' : ''))"
+                                    th:disabled="${post.quiz.hasAnswered}"
+                                    th:attr="data-option-id=${opt.optionId}"
+                                    th:text="${opt.optionText}"></button>
+                        </div>
+                        <div th:if="${post.quiz.hasAnswered}">
+                            <span class="quiz-result-badge correct" th:if="${post.quiz.myAnswerCorrect}">✓ 정답!</span>
+                            <span class="quiz-result-badge wrong" th:if="${post.quiz.hasAnswered and !post.quiz.myAnswerCorrect}">✗ 오답</span>
+                        </div>
+                    </div>
+
+                    <!-- 텍스트 내용 -->
+                    <p th:if="${post.content != null and !#strings.isEmpty(post.content)}"
+                       class="my-post-content" th:text="${post.content}"></p>
+                </article>
+            </div>
+            <div class="empty" th:if="${#lists.isEmpty(myPosts)}">작성한 게시물이 없습니다.</div>
+        </div>
+
+        <!-- 리뷰 탭 -->
+        <div class="activity-tab-panel" id="activity-panel-reviews">
+            <div th:if="${!#lists.isEmpty(myReviews)}" style="display:flex;flex-direction:column;gap:12px;">
+                <div class="activity-item"
+                     th:each="review : ${myReviews}"
+                     th:data-review-id="${review.reviewId}"
+                     th:data-content="${review.content}">
+                    <img th:if="${!#strings.isEmpty(review.moviePosterUrl)}"
+                         class="activity-poster"
+                         th:src="${review.moviePosterUrl}" th:alt="${review.movieTitle}">
+                    <div class="activity-poster-fallback" th:if="${#strings.isEmpty(review.moviePosterUrl)}">
+                        <span th:text="${review.movieTitle}"></span>
+                    </div>
+                    <div class="activity-body">
+                        <a class="activity-movie-link"
+                           th:href="@{|/movies/${review.movieCode}|}"
+                           th:text="${review.movieTitle}"></a>
+                        <div class="activity-content" th:text="${review.content}"></div>
+                        <div class="activity-meta">
+                            <span th:text="${review.createdAt}"></span>
+                            <span class="activity-rating"
+                                  th:if="${review.rating != null}"
+                                  th:text="${review.rating + '★'}"></span>
+                        </div>
+                    </div>
+                    <div class="activity-actions">
+                        <button class="activity-btn edit-review-btn" type="button">수정</button>
+                        <button class="activity-btn delete-btn delete-review-btn" type="button">삭제</button>
+                    </div>
+                </div>
+            </div>
+            <div class="empty" th:if="${#lists.isEmpty(myReviews)}">작성한 리뷰가 없습니다.</div>
+        </div>
+    </section>
+
+    <!-- 수정 모달 -->
+    <div class="edit-modal-overlay" id="editModalOverlay">
+        <div class="edit-modal">
+            <p class="edit-modal-title" id="editModalTitle">내용 수정</p>
+            <textarea class="edit-modal-textarea" id="editModalTextarea" maxlength="1000"></textarea>
+            <div class="edit-char-count"><span id="editCharCount">0</span> / 1000</div>
+            <div class="edit-modal-actions">
+                <button class="edit-cancel-btn" id="editCancelBtn">취소</button>
+                <button class="edit-save-btn" id="editSaveBtn">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        // ── 탭 전환 ──────────────────────────────────────────────
+        document.querySelectorAll('.activity-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.activity-tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.activity-tab-panel').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('activity-panel-' + btn.dataset.activityTab).classList.add('active');
+            });
+        });
+
+        // ── 수정 모달 ─────────────────────────────────────────────
+        const editOverlay = document.getElementById('editModalOverlay');
+        const editTextarea = document.getElementById('editModalTextarea');
+        const editCharCount = document.getElementById('editCharCount');
+        const editSaveBtn = document.getElementById('editSaveBtn');
+        let currentEditType = null, currentEditId = null;
+
+        editTextarea.addEventListener('input', () => { editCharCount.textContent = editTextarea.value.length; });
+
+        function openEditModal(title, content, type, id) {
+            currentEditType = type; currentEditId = id;
+            document.getElementById('editModalTitle').textContent = title;
+            editTextarea.value = content || '';
+            editCharCount.textContent = editTextarea.value.length;
+            editOverlay.classList.add('open');
+            document.body.classList.add('modal-open');
+            editTextarea.focus();
+        }
+        function closeEditModal() {
+            editOverlay.classList.remove('open');
+            document.body.classList.remove('modal-open');
+        }
+        document.getElementById('editCancelBtn').addEventListener('click', closeEditModal);
+        editOverlay.addEventListener('click', e => { if (e.target === editOverlay) closeEditModal(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditModal(); });
+
+        editSaveBtn.addEventListener('click', () => {
+            const content = editTextarea.value.trim();
+            if (!content) return;
+            const url = currentEditType === 'post'
+                ? '/api/posts/' + currentEditId + '/update'
+                : '/api/reviews/' + currentEditId + '/update';
+            editSaveBtn.disabled = true;
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'content=' + encodeURIComponent(content)
+            }).then(r => r.json()).then(data => {
+                if (data.ok) {
+                    const sel = currentEditType === 'post'
+                        ? '[data-post-id="' + currentEditId + '"]'
+                        : '[data-review-id="' + currentEditId + '"]';
+                    const item = document.querySelector(sel);
+                    if (item) {
+                        const el = item.querySelector('.my-post-content') || item.querySelector('.activity-content');
+                        if (el) el.textContent = content;
+                        item.dataset.content = content;
+                    }
+                    closeEditModal();
+                } else {
+                    alert('수정에 실패했습니다.');
+                    editSaveBtn.disabled = false;
+                }
+            }).catch(() => { alert('수정에 실패했습니다.'); editSaveBtn.disabled = false; });
+        });
+
+        // ── 게시물 수정/삭제 ──────────────────────────────────────
+        document.querySelectorAll('.edit-post-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const card = btn.closest('[data-post-id]');
+                openEditModal('게시물 설명 수정', card.dataset.content, 'post', card.dataset.postId);
+            });
+        });
+        document.querySelectorAll('.delete-post-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!confirm('이 게시물을 삭제하시겠습니까?')) return;
+                const card = btn.closest('[data-post-id]');
+                fetch('/api/posts/' + card.dataset.postId + '/delete', {
+                    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                }).then(r => r.json()).then(data => {
+                    if (data.ok) card.remove(); else alert('삭제에 실패했습니다.');
+                }).catch(() => alert('삭제에 실패했습니다.'));
+            });
+        });
+
+        // ── 리뷰 수정/삭제 ───────────────────────────────────────
+        document.querySelectorAll('.edit-review-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = btn.closest('[data-review-id]');
+                openEditModal('리뷰 내용 수정', item.dataset.content, 'review', item.dataset.reviewId);
+            });
+        });
+        document.querySelectorAll('.delete-review-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!confirm('이 리뷰를 삭제하시겠습니까?')) return;
+                const item = btn.closest('[data-review-id]');
+                fetch('/api/reviews/' + item.dataset.reviewId + '/delete', {
+                    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                }).then(r => r.json()).then(data => {
+                    if (data.ok) item.remove(); else alert('삭제에 실패했습니다.');
+                }).catch(() => alert('삭제에 실패했습니다.'));
+            });
+        });
+
+        // ── 투표 ─────────────────────────────────────────────────
+        document.querySelectorAll('.post-poll-wrap').forEach(pollWrap => {
+            if (pollWrap.dataset.hasVoted === 'true') return;
+            const pollId = pollWrap.dataset.pollId;
+            pollWrap.querySelectorAll('.poll-option-bar').forEach(bar => {
+                bar.addEventListener('click', () => {
+                    if (pollWrap.dataset.hasVoted === 'true') return;
+                    const optionId = bar.dataset.optionId;
+                    fetch('/api/polls/' + pollId + '/vote', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'optionId=' + optionId
+                    }).then(r => r.json()).then(data => {
+                        pollWrap.dataset.hasVoted = 'true';
+                        const total = data.totalVotes || 0;
+                        pollWrap.querySelector('.poll-meta').innerHTML =
+                            total + '명 참여';
+                        pollWrap.querySelectorAll('.poll-option-bar').forEach(b => {
+                            const opt = data.options.find(o => String(o.optionId) === b.dataset.optionId);
+                            const pct = total > 0 ? Math.round((opt ? opt.voteCount : 0) * 100 / total) : 0;
+                            b.querySelector('.poll-option-fill').style.width = pct + '%';
+                            const inner = b.querySelector('.poll-option-inner');
+                            let pctSpan = inner.querySelector('.poll-option-pct');
+                            if (!pctSpan) { pctSpan = document.createElement('span'); pctSpan.className = 'poll-option-pct'; inner.querySelector('span:last-child').prepend(pctSpan); }
+                            pctSpan.textContent = pct + '%';
+                            if (String(b.dataset.optionId) === String(data.votedOptionId)) {
+                                b.classList.add('voted');
+                                let mark = inner.querySelector('.poll-voted-mark');
+                                if (!mark) { mark = document.createElement('span'); mark.className = 'poll-voted-mark'; mark.textContent = '✓'; inner.querySelector('span:last-child').appendChild(mark); }
+                            }
+                        });
+                    }).catch(() => alert('투표에 실패했습니다.'));
+                });
+            });
+        });
+
+        // ── 퀴즈 ─────────────────────────────────────────────────
+        document.querySelectorAll('.post-quiz-wrap').forEach(quizWrap => {
+            if (quizWrap.dataset.hasAnswered === 'true') return;
+            const quizId = quizWrap.dataset.quizId;
+            quizWrap.querySelectorAll('.quiz-option-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (quizWrap.dataset.hasAnswered === 'true') return;
+                    const optionId = btn.dataset.optionId;
+                    fetch('/api/quizzes/' + quizId + '/answer', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'optionId=' + optionId
+                    }).then(r => r.json()).then(data => {
+                        quizWrap.dataset.hasAnswered = 'true';
+                        quizWrap.querySelectorAll('.quiz-option-btn').forEach(b => {
+                            b.disabled = true;
+                            const opt = data.options.find(o => String(o.optionId) === b.dataset.optionId);
+                            if (opt && opt.isCorrect) b.classList.add('correct');
+                            if (String(b.dataset.optionId) === String(data.answeredOptionId) && !opt?.isCorrect) b.classList.add('wrong', 'my-answer');
+                        });
+                        const badge = document.createElement('div');
+                        badge.innerHTML = data.isCorrect
+                            ? '<span class="quiz-result-badge correct">✓ 정답!</span>'
+                            : '<span class="quiz-result-badge wrong">✗ 오답</span>';
+                        quizWrap.appendChild(badge);
+                    }).catch(() => alert('퀴즈 제출에 실패했습니다.'));
+                });
+            });
+        });
+    })();
+    </script>
 
     <!-- ── 배지 컬렉션 섹션 ─────────────────────────────────────── -->
     <section class="section" id="badgeSection">
@@ -2022,6 +2460,49 @@
     transition: opacity 0.15s;
 }
 .avatar-save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.badge-picker-trigger { cursor: pointer; transition: transform 0.15s, filter 0.15s; }
+.badge-picker-trigger:hover { transform: scale(1.06); filter: brightness(1.15); }
+.badge-picker-placeholder {
+    background: rgba(255,255,255,0.06);
+    border: 1px dashed rgba(255,255,255,0.28);
+    color: var(--hp-text-hint);
+}
+.badge-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px; max-height: 380px; overflow-y: auto;
+    padding: 4px 2px;
+}
+.badge-picker-option {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 10px 6px; border-radius: 14px;
+    border: 2px solid transparent;
+    cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.badge-picker-option:hover { background: rgba(255,255,255,0.06); transform: translateY(-2px); }
+.badge-picker-option.selected { border-color: #60A5FA; background: rgba(96,165,250,0.12); }
+.badge-picker-hex { position: relative; width: 56px; height: 56px; }
+.badge-picker-hex svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.badge-picker-hex-emoji {
+    position: relative; z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%; font-size: 1.35rem;
+}
+.badge-picker-hex--t1 .badge-picker-hex-shape { fill: url(#pickerHexT1); }
+.badge-picker-hex--t2 .badge-picker-hex-shape { fill: url(#pickerHexT2); }
+.badge-picker-hex--t3 .badge-picker-hex-shape { fill: url(#pickerHexT3); }
+.badge-picker-hex--t4 .badge-picker-hex-shape { fill: url(#pickerHexT4); }
+.badge-picker-hex--none {
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 1px dashed rgba(255,255,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--hp-text-hint);
+}
+.badge-picker-name { font-size: 0.74rem; font-weight: 700; text-align: center; line-height: 1.2; }
+.badge-picker-option.selected .badge-picker-name::after { content: ' ✓'; color: #60A5FA; }
 </style>
 
 <div class="avatar-modal-overlay" id="avatarPickerOverlay">
@@ -2092,6 +2573,80 @@
     });
 
     cancelBtn?.addEventListener('click', closeModal);
+    overlay?.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    function closeModal() {
+        overlay.classList.remove('open');
+        document.body.classList.remove('modal-open');
+    }
+})();
+</script>
+
+<div class="avatar-modal-overlay" id="badgePickerOverlay">
+    <div class="avatar-modal">
+        <p class="avatar-modal-title">대표 배지 선택</p>
+        <p class="avatar-modal-sub">보유한 배지 중 프로필 이름 옆에 표시할 배지를 선택하세요.</p>
+        <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+            <defs>
+                <linearGradient id="pickerHexT1" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#CD7F32"/><stop offset="100%" stop-color="#7B4A1A"/>
+                </linearGradient>
+                <linearGradient id="pickerHexT2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#BCC8D4"/><stop offset="100%" stop-color="#5E7080"/>
+                </linearGradient>
+                <linearGradient id="pickerHexT3" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#FFD700"/><stop offset="100%" stop-color="#8B6914"/>
+                </linearGradient>
+                <linearGradient id="pickerHexT4" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#C8B4FF"/><stop offset="100%" stop-color="#4A36A0"/>
+                </linearGradient>
+            </defs>
+        </svg>
+        <div class="badge-picker-grid" id="badgePickerGrid">
+            <div class="badge-picker-option"
+                 th:classappend="${selectedBadgeCode == null} ? ' selected' : ''"
+                 data-badge-code="">
+                <div class="badge-picker-hex badge-picker-hex--none">
+                    <span class="badge-picker-hex-emoji">✕</span>
+                </div>
+                <span class="badge-picker-name">선택 안 함</span>
+            </div>
+            <div th:each="bs : ${badgeStatuses}" th:if="${bs.earned}"
+                 class="badge-picker-option"
+                 th:classappend="${selectedBadgeCode == bs.def.code} ? ' selected' : ''"
+                 th:attr="data-badge-code=${bs.def.code}">
+                <div th:classappend="'badge-picker-hex badge-picker-hex--t' + ${bs.def.tier}" class="badge-picker-hex">
+                    <svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path class="badge-picker-hex-shape" d="M36 4 L64 19 L64 53 L36 68 L8 53 L8 19 Z"/>
+                        <path d="M36 4 L64 19 L64 30 L36 15 Z" fill="rgba(255,255,255,0.2)"/>
+                    </svg>
+                    <span class="badge-picker-hex-emoji" th:text="${bs.def.icon}"></span>
+                </div>
+                <span class="badge-picker-name" th:text="${bs.def.name}"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const overlay = document.getElementById('badgePickerOverlay');
+    const trigger = document.getElementById('badgePickerTrigger');
+    const grid = document.getElementById('badgePickerGrid');
+
+    trigger?.addEventListener('click', () => {
+        overlay.classList.add('open');
+        document.body.classList.add('modal-open');
+    });
+
+    grid?.querySelectorAll('.badge-picker-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            if (opt.classList.contains('selected')) { closeModal(); return; }
+            window.selectBadge(opt.dataset.badgeCode ? opt : null);
+        });
+    });
+
     overlay?.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 

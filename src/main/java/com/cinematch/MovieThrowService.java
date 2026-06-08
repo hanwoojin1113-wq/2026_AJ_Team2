@@ -72,16 +72,16 @@ public class MovieThrowService {
             "       COALESCE(m.title, m.movie_name) AS title," +
             "       m.poster_image_url, m.production_year," +
             "       (" +
-            "           (SELECT COUNT(*) FROM movie_tag mt" +
+            "           (SELECT COUNT(*) FROM movie_tag mt JOIN tag t ON t.id = mt.tag_id" +
             "            JOIN user_preference_profile ua" +
             "              ON ua.user_id = ? AND ua.feature_type = 'TAG'" +
-            "             AND ua.feature_name = mt.tag_name AND ua.score > 0.2" +
+            "             AND ua.feature_name = t.tag_name AND ua.score > 0.2" +
             "            WHERE mt.movie_id = m.id)" +
             "         +" +
-            "           (SELECT COUNT(*) FROM movie_tag mt" +
+            "           (SELECT COUNT(*) FROM movie_tag mt JOIN tag t ON t.id = mt.tag_id" +
             "            JOIN user_preference_profile ub" +
             "              ON ub.user_id = ? AND ub.feature_type = 'TAG'" +
-            "             AND ub.feature_name = mt.tag_name AND ub.score > 0.2" +
+            "             AND ub.feature_name = t.tag_name AND ub.score > 0.2" +
             "            WHERE mt.movie_id = m.id)" +
             "       ) AS combined_score" +
             " FROM movie m" +

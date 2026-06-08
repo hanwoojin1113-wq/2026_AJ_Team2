@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="Laftel">
+  <defs>
+    <linearGradient id="lf-bg" x1="15" y1="11" x2="82" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a855f7"/>
+      <stop offset="0.5" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="22" fill="url(#lf-bg)"/>
+  <path d="M29 25h12v34h26v12H29V25Z" fill="#fff"/>
+  <circle cx="66" cy="31" r="7" fill="#fff" opacity=".9"/>
+  <path d="M51 25h27v12H51V25Z" fill="#fff" opacity=".9"/>
+</svg>

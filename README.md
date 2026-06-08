@@ -2,6 +2,27 @@
 
 ---
 
+## 06-07 구현 사항
+
+### 대표 배지 선택 기능 (배지 클릭 → 변경)
+
+마이페이지에서 닉네임 옆에 표시되는 대표 배지를 **클릭하면 바로 변경할 수 있는 선택 모달**을 추가했습니다. 프로필 사진 변경(`avatarPickerBtn`)과 동일한 인터랙션 패턴입니다.
+
+- 닉네임 옆 배지 칩(미선택 시 "➕ 배지 선택" placeholder)을 클릭하면 선택 모달이 열림
+- 모달에는 **보유한 배지만** 실제 배지 그래픽(육각형 + 티어별 그라디언트 + 아이콘, 배지 컬렉션 섹션과 동일한 비주얼)으로 노출되며 "선택 안 함" 옵션도 제공
+- 옵션 클릭 시 즉시 적용되고 새로고침됨 — 기존 `/api/badges/select` 엔드포인트와 `selectBadge()` JS 함수를 그대로 재사용 (백엔드 변경 없음)
+- 기존 "배지 컬렉션" 섹션의 "대표 배지로 설정" 버튼도 그대로 유지되어 두 가지 방법으로 선택 가능
+
+> 참고: 사용자 활동 기반 배지/칭호 시스템(13종, 4티어: 브론즈/실버/골드/플래티넘) 자체는 이전에 구현되어 피드·프로필에 인라인 표시되고 있었으며, 이번 변경은 그 대표 배지를 더 쉽게 바꿀 수 있도록 진입 동선을 개선한 것입니다. (`BadgeService.java`, `static/css/badges.css`)
+
+#### 06-07 변경 파일
+
+| 파일 | 유형 | 설명 |
+|------|------|------|
+| `templates/my-page.html` | 수정 | 닉네임 옆 대표 배지를 클릭 가능하게 변경, 배지 선택 모달(`#badgePickerOverlay`) 및 육각형 배지 그래픽(`badge-picker-hex`) 추가 |
+
+---
+
 ## 05-26 구현 사항
 
 ### 영화 배틀 기능
@@ -815,16 +836,129 @@ DB 경로: `./data/kobisdb.mv.db`
 
 ```
 src/main/java/com/cinematch
-├── admin            # 배치/자동화/검증용 관리자 기능
-├── chart            # 랭킹 차트 기능
+├── admin            # 관리자 배치 작업 / 더미 데이터 시딩
+├── battle           # 영화 배틀 (대전 + 투표)
+├── chart            # 랭킹 차트
 │   └── algorithms/  # 개별 차트 구현체 (15개)
-├── kobis            # KOBIS raw import / normalize
-├── recommendation   # 취향 프로필 / 랭킹 / 블록 / refresh
-├── tag              # 추천용 태그 생성
-├── tmdb             # TMDB raw import / normalize / trending
-├── MovieController  # 로그인 이후 주요 화면과 액션 처리
-└── LoginApplication # Spring Boot 시작점
+├── kobis            # KOBIS 원본 수집 / 정규화 / 박스오피스
+├── notification     # 알림
+├── ott              # OTT 시청 링크 매핑
+├── recommendation   # 취향 프로필 / 추천 랭킹·블록 생성
+├── tag              # 추천용 태그 자동 생성
+├── tastemap         # 취향 지도(2D 시각화)
+├── tmdb             # TMDB 원본 수집 / 정규화 / 트렌딩
+├── youtube          # YouTube 예고편 검색·보완 배치
+└── (루트)           # 화면 컨트롤러, 부트스트랩 러너, 설정 클래스 등
 ```
+
+아래는 각 패키지(또는 루트에 위치한 핵심 클래스)가 실제로 담당하는 역할을 정리한 내용입니다.
+
+---
+
+### `admin` — 관리자 배치 작업 / 더미 데이터 시딩
+
+| 클래스 | 역할 |
+|--------|------|
+| `AdminBatchController` (`/admin/pipeline/**`) | 영화 데이터 파이프라인 배치 실행 API. `GET /runs`로 작업 히스토리를 조회하고, `POST /kobis/import-yearly`, `POST /tmdb/import-popular` 등으로 KOBIS·TMDB 수집/정규화 작업을 수동 트리거합니다. |
+| `MovieDataBatchService` | 파이프라인 전체를 조율하는 핵심 오케스트레이터. KOBIS/TMDB 수집 → 정규화 → 태그 생성 → 추천 갱신 → 검증까지 순차 실행하며, `JobRunHistory`로 각 단계의 성공/실패와 처리 건수를 기록합니다. |
+| `CommunitySeedController` / `CommunitySeedService` (`/admin/seed/**`) | 커뮤니티(소셜) 테스트 데이터 생성기. 더미 사용자 100명(아바타·닉네임·성별·나이), 게시물, 팔로우 관계, 취향 프로필을 한 번에 시드합니다 (`/community`, `/phase1`, `/phase2` 단계별 실행). |
+| `DummyUserSeedService` | `testuser01~16` 계정을 생성하고, 각 계정에 스릴러/로맨스/SF 등 서로 다른 취향 페르소나를 부여합니다. |
+| `DummyUserActivitySeedService` | 더미 사용자별 페르소나 규칙(선호 장르·태그)에 따라 시청 기록·좋아요·리뷰 등 활동 데이터를 현실적인 패턴으로 자동 생성해 추천 알고리즘 검증에 활용합니다. |
+| `OttLinkAdminController` (`/admin/ott-links/**`) | Netflix·TVING·Wavve 등 OTT 시청 링크를 관리하는 API. `GET /candidates.csv`로 크롤링 대상 후보를 CSV로 내보내고, 수집한 링크를 일괄 등록/갱신합니다. |
+
+---
+
+### `battle` — 영화 배틀
+
+| 클래스 | 역할 |
+|--------|------|
+| `MovieBattleController` (`GET /battles`) | 배틀 목록·투표 화면 라우팅과 API. `POST /api/battles/generate`로 신규 배틀을 생성하고 `POST /api/battles/{id}/vote`로 투표를 받습니다. |
+| `MovieBattleService` | `movie_battle`/`battle_vote` 테이블을 자동 생성하고, GENRE/DIRECTOR/ACTOR/TAG/ERA 5가지 타입의 배틀을 생성·집계·조회하는 핵심 로직을 담당합니다. (자세한 생성 조건은 "05-26 구현 사항" 참고) |
+
+---
+
+### `chart` — 랭킹 차트
+
+- `ChartAlgorithm` 인터페이스를 `AbstractJdbcChartAlgorithm`이 공통 구현하고, `algorithms/` 하위에 **15개**의 개별 차트(BoxOffice/Quality/Trending/People/Community/Curated 카테고리)가 구현체로 존재합니다.
+- `ChartRegistry`가 모든 차트를 등록·관리하고, `ChartController`가 `/ranking`, `/ranking/{code}` 라우팅과 카테고리 탭(`ChartCategory.values()`)을 동적으로 구성합니다.
+- `ChartEntry`/`ChartSection`/`ChartMovieRow`는 차트 결과를 화면에 전달하기 위한 데이터 모델(Record)입니다.
+
+---
+
+### `kobis` / `tmdb` / `youtube` — 외부 영화 데이터 연동
+
+| 패키지 | 핵심 클래스 | 역할 |
+|--------|------------|------|
+| `kobis` | `KobisBoxOfficeService`, `KobisMovieImportService`, `KobisMovieNormalizeService`, `KobisController` | KOBIS Open API로 박스오피스/영화 원본 데이터를 수집하고, `movie`/`movie_genre`/`movie_director`/`movie_actor` 등 서비스 스키마로 정규화합니다. |
+| `tmdb` | `TmdbMovieImportService`, `TmdbMovieNormalizeService`, `TmdbTrendingService`, `TmdbConfig`, `TmdbTestController` | TMDB API로 포스터·줄거리·평점·키워드·OTT 제공처·예고편 등 상세 메타데이터를 가져와 KOBIS 골격에 보강하고, `trending/movie/day` 스냅샷을 주기적으로 갱신합니다. |
+| `youtube` | `YoutubeTrailerService`, `YoutubeTrailerController` | TMDB에 예고편이 없는 영화를 대상으로 YouTube Data API v3에서 트레일러를 검색해 `movie_video`에 저장합니다. `POST /youtube/fill-trailers`로 비동기 배치를 실행하고 `GET /youtube/status`로 진행 상황(검색/처리/발견 건수)을 추적하며, `DELETE /youtube/reset-trailer`로 특정 영화의 예고편을 재검색할 수 있습니다. |
+
+---
+
+### `notification` — 알림
+
+| 클래스 | 역할 |
+|--------|------|
+| `NotificationController` (`/api/notifications`) | 로그인 사용자의 알림 목록 조회 및 읽음 처리 API. 세션(`loginUserId`)으로 인증을 확인합니다. |
+| `NotificationService` | `user_notification` 테이블을 관리하며, 팔로우·게시물 좋아요·댓글·리뷰 좋아요·무비던지기(`MOVIE_THROW`, `MOVIE_THROW_WATCHING`, `MOVIE_THROW_WATCHED`) 등 알림 유형별 생성 메서드를 제공합니다. |
+
+---
+
+### `ott` — OTT 시청 링크 매핑
+
+- `OttWatchLinkService`: 쿠팡플레이·티빙·웨이브·왓챠·넷플릭스 등 국내 OTT의 영화별 시청 링크를 저장·조회합니다.
+- 크롤링이 필요한 후보를 식별하고, 링크 확보 상태(`SUCCESS`/`NO_LINK`/`NO_TITLE` 등)를 추적해 `admin.OttLinkAdminController`의 관리 작업과 영화 상세 페이지의 "시청 가능한 OTT" 노출에 사용됩니다.
+
+---
+
+### `recommendation` — 추천 엔진
+
+| 클래스 | 역할 |
+|--------|------|
+| `UserPreferenceProfileService` | 사용자의 좋아요/시청/인생영화/보관함 행동에 가중치를 매겨 `user_preference_profile`(취향 벡터)을 생성합니다. |
+| `RecommendationRankingService` | 취향 벡터와 영화 피처(태그/장르/인물/키워드/인기도/신선도/OTT)를 결합해 사용자별 전체 개인화 랭킹을 산출합니다. |
+| `RecommendationBlockService` | 전체 랭킹을 슬라이스해 태그/장르/감독/배우/제공처 기준으로 재구성한 추천 블록을 만듭니다 (최소 크기 미달 시 노출하지 않음). |
+| `RecommendationFeaturePolicy` | 추천 가중치 정책값(태그 0.34, 장르 0.18 등)을 정의합니다. |
+| `RecommendationMovieFilterService` | 공연·콘서트·스포츠 등 추천에서 제외할 콘텐츠를 필터링합니다. |
+| `RecommendationRefreshStateService` / `RecommendationMaintenanceService` | 추천 데이터 갱신 시점·상태를 관리하고 유지보수 작업을 수행합니다. |
+| `RecommendationValidationService` | 추천 결과의 품질을 검증합니다 (더미 사용자 데이터 활용). |
+| `CollaborativeLifeMovieRecommendationService` | 코사인 유사도로 비슷한 취향의 사용자를 찾아 그들의 인생영화를 추천합니다. |
+| `MovieCoOccurrenceService` | 영화 간 동시 선호(co-occurrence) 데이터를 계산해 추천 다양성·정밀도를 보완합니다. |
+
+---
+
+### `tag` — 추천용 태그 자동 생성
+
+- `MovieTagService`/`MovieTagGenerator`/`DefaultRecommendationTagRules`/`TagRule`/`TagScoreCalculator`가 협력해 장르만으로는 부족한 추천 신호를 보완하는 **태그 레이어**를 만듭니다.
+- `tense`, `mystery`, `dark`, `healing`, `romantic`, `with_family`, `survival`, `revenge` 등 약 12종의 태그를 점수 threshold 기반으로 확정하며, `MovieTagKeywordService`가 키워드 매칭을 보조합니다.
+- `MovieTagController`는 태그 생성·재생성을 위한 관리용 엔드포인트를 제공합니다.
+- 결과는 `tag`(마스터)/`movie_tag`(연결) 테이블에 저장됩니다.
+
+---
+
+### `tastemap` — 취향 지도 시각화
+
+- `TasteMapService`: 액션(X=-1.0), SF(X=-0.3, Y=1.0), 코미디(X=1.0) 등 장르별 가중치를 정의하고, 사용자의 시청 기록을 분석해 "강렬함↔가벼움(X축)", "환상↔현실(Y축)" 2차원 좌표로 변환합니다.
+- `TasteMapController` (`GET /api/taste-map/nodes`): 변환된 좌표를 그래프 노드 데이터로 반환해 사용자 취향을 시각적 지도 형태로 보여줍니다.
+
+---
+
+### 루트 — 화면 컨트롤러 / 부트스트랩 / 설정
+
+| 클래스 | 역할 |
+|--------|------|
+| `LoginApplication` | Spring Boot 진입점 (`@SpringBootApplication`). |
+| `MovieController` | 로그인·회원가입·온보딩, 홈, 영화 상세, 마이페이지, 공개 프로필, 검색, 좋아요/별로요/보관함/컬렉션/시청상태/별점 액션, 배지 선택 API(`/api/badges/select`) 등 서비스의 가장 큰 비중을 차지하는 화면·액션 컨트롤러입니다. |
+| `PostController` | 소셜 피드(`/feed`)와 게시물 CRUD(`/posts`, `/posts/{id}`), 댓글, 게시물 좋아요, 무한 스크롤, 스토리링(팔로잉 유저) 데이터를 처리합니다. |
+| `ReviewController` | 영화 리뷰 게시판(`/reviews`) 및 개별 리뷰 작성·조회·삭제·좋아요를 담당합니다 (봤어요 상태인 사용자만 작성 가능). |
+| `BadgeService` | 사용자 활동 기반 배지/칭호 시스템. 13종 배지(브론즈~플래티넘 4티어)의 정의·획득 조건·획득 처리·대표 배지 선택/조회 로직을 가지고 있으며, `user_badge_earned`/`user_badge_selected` 테이블을 자체적으로 부트스트랩합니다. |
+| `MovieThrowController` / `MovieThrowService` (`/api/throw`) | "무비던지기" 기능 — 상호 팔로우 + 활동량 조건을 만족하는 친구에게 취향 교집합 영화를 추천해서 던지는 소셜 기능입니다. 1차로 `user_recommendation_result`를, 결과가 부족하면 `user_preference_profile` 태그 교집합으로 보완합니다. |
+| `KobisCsvDataLoader` (`ApplicationRunner`, `@Order(1)`) | 서버 기동 시 KOBIS 박스오피스 CSV(`data/kobis_boxoffice_top50_movie_details.csv`)를 읽어 초기 영화 데이터를 적재합니다. |
+| `KobisPosterImageUpdater` (`ApplicationRunner`, `@Order(2)`) | KOBIS 공식 사이트를 크롤링해 포스터 URL이 비어 있는 영화의 이미지를 보강합니다. |
+| `SchemaBootstrapRunner` (`ApplicationRunner`, `@Order(0)`) | 가장 먼저 실행되어 `movie` 테이블 존재 여부를 확인하고, 없을 때만 `schema.sql`/`data.sql`을 적용합니다. |
+| `StartupDataSyncRunner` (`ApplicationRunner`, `@Order(3)`) | 기동 직후 설정값(`kobisStartYear`, `targetPerYear` 등)에 따라 KOBIS/TMDB 수집·정규화·태그 생성을 순차 실행합니다 (`MovieDataBatchService` 활용). |
+| `WebMvcConfig` | 정적 리소스 핸들러 설정 — `/uploads/**` 요청을 `app.upload.dir`로 지정된 로컬 파일시스템 경로에 매핑해 사용자 업로드 이미지를 제공합니다. |
+| `H2ConsoleConfig` | `spring.h2.console.enabled=true`일 때 H2 웹 콘솔(`/h2-console`)을 활성화하고 외부 접근(`webAllowOthers`)을 설정합니다. |
 
 ---
 

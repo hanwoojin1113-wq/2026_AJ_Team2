@@ -3,6 +3,7 @@ package com.cinematch;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +45,7 @@ import com.cinematch.tag.RecommendationTag;
 import com.cinematch.tag.RecommendationTagType;
 import com.cinematch.kobis.KobisBoxOfficeService;
 import com.cinematch.notification.NotificationService;
+import com.cinematch.ott.OttWatchLinkService;
 
 @Controller
 public class MovieController {
@@ -89,7 +91,7 @@ public class MovieController {
             Map.entry("revenge", "복수")
     );
 
-    private static final List<String> HOME_CHART_CODES = List.of("top-sales", "million-club", "flash-hit");
+    private static final int HOME_CHART_COUNT = 3;
     private static final List<String> ONBOARDING_TAGS = List.of("funny", "tense", "dark", "emotional", "romantic");
 
     public record HeroSlide(String backdropUrl, String title, List<String> genres, String detailUrl) {}
@@ -102,6 +104,7 @@ public class MovieController {
     private final ChartRegistry chartRegistry;
     private final KobisBoxOfficeService kobisBoxOfficeService;
     private final NotificationService notificationService;
+    private final OttWatchLinkService ottWatchLinkService;
     private final MovieThrowService movieThrowService;
     private final BadgeService badgeService;
     private final RestTemplate tmdbRestTemplate;
@@ -115,6 +118,7 @@ public class MovieController {
                            ChartRegistry chartRegistry,
                            KobisBoxOfficeService kobisBoxOfficeService,
                            NotificationService notificationService,
+                           OttWatchLinkService ottWatchLinkService,
                            MovieThrowService movieThrowService,
                            BadgeService badgeService,
                            @Qualifier("tmdbRestTemplate") RestTemplate tmdbRestTemplate,
@@ -127,6 +131,7 @@ public class MovieController {
         this.chartRegistry = chartRegistry;
         this.kobisBoxOfficeService = kobisBoxOfficeService;
         this.notificationService = notificationService;
+        this.ottWatchLinkService = ottWatchLinkService;
         this.movieThrowService = movieThrowService;
         this.badgeService = badgeService;
         this.tmdbRestTemplate = tmdbRestTemplate;
@@ -258,6 +263,16 @@ public class MovieController {
         return "redirect:/login";
     }
 
+    @GetMapping("/debug-query")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public String debugQuery(@RequestParam(required = false) String query) {
+        if (query == null) return "null";
+        StringBuilder sb = new StringBuilder("len=" + query.length() + "\n");
+        for (int i = 0; i < query.length(); i++)
+            sb.append(i).append(":U+").append(String.format("%04X", (int) query.charAt(i))).append("(").append(query.charAt(i)).append(")\n");
+        return sb.toString();
+    }
+
     @GetMapping("/charts")
     public String home(@RequestParam(defaultValue = "1") int page,
                        @RequestParam(required = false) String query,
@@ -303,11 +318,11 @@ public class MovieController {
                     FROM movie m
                     LEFT JOIN movie_genre mg ON mg.movie_id = m.id
                     LEFT JOIN genre g ON g.id = mg.genre_id
-                    WHERE (? = '' OR UPPER(COALESCE(m.title, m.movie_name, '')) LIKE UPPER(?)
-                           OR UPPER(COALESCE(m.movie_name, '')) LIKE UPPER(?)
-                           OR UPPER(COALESCE(m.movie_name_en, m.original_title, m.movie_name_original, '')) LIKE UPPER(?)
-                           OR UPPER(COALESCE(m.movie_name_original, m.original_title, '')) LIKE UPPER(?)
-                           OR UPPER(m.movie_cd) LIKE UPPER(?))
+                    WHERE (LOWER(COALESCE(m.title, m.movie_name, '')) LIKE ?
+                           OR LOWER(COALESCE(m.movie_name, '')) LIKE ?
+                           OR LOWER(COALESCE(m.movie_name_en, m.original_title, m.movie_name_original, '')) LIKE ?
+                           OR LOWER(COALESCE(m.movie_name_original, m.original_title, '')) LIKE ?
+                           OR LOWER(m.movie_cd) LIKE ?)
                       AND (? = '' OR g.name = ?)
                       AND (? = '' OR EXISTS (
                             SELECT 1
@@ -318,14 +333,16 @@ public class MovieController {
                               AND t.tag_name = ?
                       ))
                     """ + searchExcludedGenreClause();
-            String queryPattern = "%" + normalizedQuery + "%";
+            String queryPattern = normalizedQuery.isEmpty() ? "%" : "%" + normalizedQuery.toLowerCase(java.util.Locale.ROOT) + "%";
             java.util.ArrayList<Object> countParams = new java.util.ArrayList<>(List.of(
-                    normalizedQuery, queryPattern, queryPattern, queryPattern, queryPattern, queryPattern,
+                    queryPattern, queryPattern, queryPattern, queryPattern, queryPattern,
                     normalizedGenre, normalizedGenre,
                     normalizedTagName, normalizedTagType, normalizedTagName
             ));
             countParams.addAll(SEARCH_EXCLUDED_GENRES);
+            System.err.println("[SEARCH-DBG] query='" + normalizedQuery + "' pattern='" + queryPattern + "' len=" + normalizedQuery.length());
             int totalMovies = jdbcTemplate.queryForObject(countSql, Integer.class, countParams.toArray());
+            System.err.println("[SEARCH-DBG] count=" + totalMovies);
             int totalPages = Math.max(1, (int) Math.ceil((double) totalMovies / PAGE_SIZE));
             int currentPage = Math.min(Math.max(page, 1), totalPages);
             int offset = (currentPage - 1) * PAGE_SIZE;
@@ -340,11 +357,11 @@ public class MovieController {
                     FROM movie m
                     LEFT JOIN movie_genre mg ON mg.movie_id = m.id
                     LEFT JOIN genre g ON g.id = mg.genre_id
-                    WHERE (? = '' OR UPPER(COALESCE(m.title, m.movie_name, '')) LIKE UPPER(?)
-                           OR UPPER(COALESCE(m.movie_name, '')) LIKE UPPER(?)
-                           OR UPPER(COALESCE(m.movie_name_en, m.original_title, m.movie_name_original, '')) LIKE UPPER(?)
-                           OR UPPER(COALESCE(m.movie_name_original, m.original_title, '')) LIKE UPPER(?)
-                           OR UPPER(m.movie_cd) LIKE UPPER(?))
+                    WHERE (LOWER(COALESCE(m.title, m.movie_name, '')) LIKE ?
+                           OR LOWER(COALESCE(m.movie_name, '')) LIKE ?
+                           OR LOWER(COALESCE(m.movie_name_en, m.original_title, m.movie_name_original, '')) LIKE ?
+                           OR LOWER(COALESCE(m.movie_name_original, m.original_title, '')) LIKE ?
+                           OR LOWER(m.movie_cd) LIKE ?)
                       AND (? = '' OR g.name = ?)
                       AND (? = '' OR EXISTS (
                             SELECT 1
@@ -363,7 +380,7 @@ public class MovieController {
                     """;
 
             java.util.ArrayList<Object> movieSearchParams = new java.util.ArrayList<>(List.of(
-                    normalizedQuery, queryPattern, queryPattern, queryPattern, queryPattern, queryPattern,
+                    queryPattern, queryPattern, queryPattern, queryPattern, queryPattern,
                     normalizedGenre, normalizedGenre,
                     normalizedTagName, normalizedTagType, normalizedTagName
             ));
@@ -520,8 +537,10 @@ public class MovieController {
             model.addAttribute("homeKeywordsByMovieCd", homeKeywordsByMovieCd);
             model.addAttribute("trendingKeywordsByDetailUrl", trendingKeywordsByDetailUrl);
 
-            List<HomeChartSectionView> homeChartSections = HOME_CHART_CODES.stream()
-                    .flatMap(code -> chartRegistry.find(code).stream())
+            List<com.cinematch.chart.ChartAlgorithm> shuffledCharts = new ArrayList<>(chartRegistry.allAlgorithms());
+            Collections.shuffle(shuffledCharts);
+            List<HomeChartSectionView> homeChartSections = shuffledCharts.stream()
+                    .limit(HOME_CHART_COUNT)
                     .map(a -> new HomeChartSectionView(ChartEntry.of(a), a.fetch(10)))
                     .toList();
             model.addAttribute("homeChartSections", homeChartSections);
@@ -558,7 +577,7 @@ public class MovieController {
                   AND sp.user_id IN (
                       SELECT following_user_id FROM user_follow WHERE follower_user_id = ?
                   )
-                ORDER BY sp.created_at DESC
+                ORDER BY RAND()
                 LIMIT 4
                 """, userId);
     }
@@ -631,6 +650,8 @@ public class MovieController {
         model.addAttribute("likedMovies", fetchLikedMovies(targetUser.userId(), LIFE_MOVIE_LIMIT));
         model.addAttribute("likedMovieCount", countLikedMovies(targetUser.userId()));
         model.addAttribute("profileRedirectPath", "/users/" + targetUser.loginId());
+        recommendationMaintenanceService.ensurePreferenceProfile(currentUserId);
+        recommendationMaintenanceService.ensurePreferenceProfile(targetUser.userId());
         model.addAttribute("similarityPct", computeCosineSimilarity(currentUserId, targetUser.userId()));
         model.addAttribute("targetUserSelectedBadgeCode", badgeService.getSelectedBadgeCode(targetUser.userId()));
         model.addAttribute("targetUserEarnedBadges", badgeService.getBadgeStatuses(targetUser.userId())
@@ -697,7 +718,208 @@ public class MovieController {
         model.addAttribute("receivedThrows", movieThrowService.getReceivedThrows(userId));
         model.addAttribute("badgeStatuses", badgeService.getBadgeStatuses(userId));
         model.addAttribute("selectedBadgeCode", badgeService.getSelectedBadgeCode(userId));
+        model.addAttribute("myPosts", fetchMyPosts(userId, 20));
+        model.addAttribute("myPostCount", countMyPosts(userId));
+        model.addAttribute("myReviews", fetchMyReviews(userId, 20));
+        model.addAttribute("myReviewCount", countMyReviews(userId));
         return "my-page";
+    }
+
+    private List<Map<String, Object>> fetchMyPosts(Long userId, int limit) {
+        List<Map<String, Object>> posts = jdbcTemplate.query("""
+                SELECT
+                    sp.id AS postId,
+                    sp.content,
+                    sp.post_type AS postType,
+                    sp.created_at AS createdAt,
+                    m.movie_cd AS movieCode,
+                    COALESCE(m.title, m.movie_name) AS movieTitle,
+                    m.poster_image_url AS moviePosterUrl
+                FROM social_post sp
+                JOIN movie m ON m.id = sp.movie_id
+                WHERE sp.user_id = ?
+                  AND sp.is_deleted = FALSE
+                ORDER BY sp.created_at DESC
+                LIMIT ?
+                """, (rs, rowNum) -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("postId", rs.getLong("postId"));
+            row.put("content", rs.getString("content"));
+            row.put("postType", rs.getString("postType"));
+            row.put("movieCode", rs.getString("movieCode"));
+            row.put("movieTitle", rs.getString("movieTitle"));
+            row.put("moviePosterUrl", rs.getString("moviePosterUrl"));
+            java.sql.Timestamp ts = rs.getTimestamp("createdAt");
+            row.put("createdAt", ts == null ? "" : ts.toLocalDateTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")));
+            return row;
+        }, userId, limit);
+        for (Map<String, Object> post : posts) {
+            enrichMyPost(post, userId);
+        }
+        return posts;
+    }
+
+    private void enrichMyPost(Map<String, Object> post, Long userId) {
+        Long postId = ((Number) post.get("postId")).longValue();
+        String postType = (String) post.getOrDefault("postType", "photo");
+        if (postType == null) postType = "photo";
+        switch (postType) {
+            case "photo" -> {
+                List<String> images = jdbcTemplate.queryForList(
+                        "SELECT image_url FROM social_post_image WHERE post_id = ? ORDER BY display_order ASC",
+                        String.class, postId);
+                post.put("images", images);
+            }
+            case "video", "file" -> {
+                Map<String, Object> att = jdbcTemplate.query("""
+                        SELECT file_url, file_name, file_size
+                        FROM post_attachment WHERE post_id = ? ORDER BY display_order LIMIT 1
+                        """, rs -> {
+                    if (!rs.next()) return null;
+                    Map<String, Object> a = new LinkedHashMap<>();
+                    a.put("fileUrl", rs.getString("file_url"));
+                    a.put("fileName", rs.getString("file_name"));
+                    a.put("fileSize", rs.getLong("file_size"));
+                    return a;
+                }, postId);
+                post.put("attachment", att);
+            }
+            case "poll" -> post.put("poll", fetchMyPollData(postId, userId));
+            case "quiz" -> post.put("quiz", fetchMyQuizData(postId, userId));
+            default -> {}
+        }
+    }
+
+    private Map<String, Object> fetchMyPollData(Long postId, Long userId) {
+        Map<String, Object> poll = jdbcTemplate.query(
+                "SELECT id, question, is_multi_select FROM post_poll WHERE post_id = ?",
+                rs -> {
+                    if (!rs.next()) return null;
+                    Map<String, Object> p = new LinkedHashMap<>();
+                    p.put("pollId", rs.getLong("id"));
+                    p.put("question", rs.getString("question"));
+                    p.put("isMultiSelect", rs.getBoolean("is_multi_select"));
+                    return p;
+                }, postId);
+        if (poll == null) return null;
+        Long pollId = ((Number) poll.get("pollId")).longValue();
+        Integer totalVotes = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM post_poll_vote WHERE poll_id = ?", Integer.class, pollId);
+        poll.put("totalVotes", totalVotes != null ? totalVotes : 0);
+        Long myVotedOptionId = jdbcTemplate.query(
+                "SELECT option_id FROM post_poll_vote WHERE poll_id = ? AND user_id = ?",
+                rs -> rs.next() ? rs.getLong("option_id") : null, pollId, userId);
+        poll.put("myVotedOptionId", myVotedOptionId);
+        poll.put("hasVoted", myVotedOptionId != null);
+        final Long finalMyVote = myVotedOptionId;
+        List<Map<String, Object>> options = jdbcTemplate.query("""
+                SELECT ppo.id, ppo.option_text, COUNT(ppv.id) AS voteCount
+                FROM post_poll_option ppo
+                LEFT JOIN post_poll_vote ppv ON ppv.option_id = ppo.id
+                WHERE ppo.poll_id = ?
+                GROUP BY ppo.id, ppo.option_text, ppo.display_order
+                ORDER BY ppo.display_order
+                """, (rs, rowNum) -> {
+            Map<String, Object> opt = new LinkedHashMap<>();
+            opt.put("optionId", rs.getLong("id"));
+            opt.put("optionText", rs.getString("option_text"));
+            opt.put("voteCount", rs.getInt("voteCount"));
+            opt.put("isMyVote", finalMyVote != null && rs.getLong("id") == finalMyVote);
+            return opt;
+        }, pollId);
+        poll.put("options", options);
+        return poll;
+    }
+
+    private Map<String, Object> fetchMyQuizData(Long postId, Long userId) {
+        Map<String, Object> quiz = jdbcTemplate.query(
+                "SELECT id, question FROM post_quiz WHERE post_id = ?",
+                rs -> {
+                    if (!rs.next()) return null;
+                    Map<String, Object> q = new LinkedHashMap<>();
+                    q.put("quizId", rs.getLong("id"));
+                    q.put("question", rs.getString("question"));
+                    return q;
+                }, postId);
+        if (quiz == null) return null;
+        Long quizId = ((Number) quiz.get("quizId")).longValue();
+        Long myAnswerOptionId = null;
+        Boolean myAnswerCorrect = null;
+        Map<String, Object> answer = jdbcTemplate.query(
+                "SELECT option_id, is_correct FROM post_quiz_answer WHERE quiz_id = ? AND user_id = ?",
+                rs -> {
+                    if (!rs.next()) return null;
+                    Map<String, Object> a = new LinkedHashMap<>();
+                    a.put("optionId", rs.getLong("option_id"));
+                    a.put("isCorrect", rs.getBoolean("is_correct"));
+                    return a;
+                }, quizId, userId);
+        if (answer != null) {
+            myAnswerOptionId = ((Number) answer.get("optionId")).longValue();
+            myAnswerCorrect = (Boolean) answer.get("isCorrect");
+        }
+        quiz.put("myAnswerOptionId", myAnswerOptionId);
+        quiz.put("myAnswerCorrect", myAnswerCorrect);
+        quiz.put("hasAnswered", myAnswerOptionId != null);
+        final Long finalMyAnswer = myAnswerOptionId;
+        final boolean answered = myAnswerOptionId != null;
+        List<Map<String, Object>> options = jdbcTemplate.query("""
+                SELECT id, option_text, is_correct, display_order
+                FROM post_quiz_option WHERE quiz_id = ? ORDER BY display_order
+                """, (rs, rowNum) -> {
+            Map<String, Object> opt = new LinkedHashMap<>();
+            opt.put("optionId", rs.getLong("id"));
+            opt.put("optionText", rs.getString("option_text"));
+            opt.put("isMyAnswer", finalMyAnswer != null && rs.getLong("id") == finalMyAnswer);
+            if (answered) opt.put("isCorrect", rs.getBoolean("is_correct"));
+            return opt;
+        }, quizId);
+        quiz.put("options", options);
+        return quiz;
+    }
+
+    private int countMyPosts(Long userId) {
+        Integer cnt = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM social_post WHERE user_id = ? AND is_deleted = FALSE",
+                Integer.class, userId);
+        return cnt == null ? 0 : cnt;
+    }
+
+    private List<Map<String, Object>> fetchMyReviews(Long userId, int limit) {
+        return jdbcTemplate.query("""
+                SELECT
+                    r.id AS reviewId,
+                    r.content,
+                    r.created_at AS createdAt,
+                    m.movie_cd AS movieCode,
+                    COALESCE(m.title, m.movie_name) AS movieTitle,
+                    m.poster_image_url AS moviePosterUrl,
+                    umw.rating
+                FROM movie_review r
+                JOIN movie m ON m.id = r.movie_id
+                LEFT JOIN user_movie_watched umw ON umw.user_id = r.user_id AND umw.movie_id = r.movie_id
+                WHERE r.user_id = ?
+                ORDER BY r.created_at DESC
+                LIMIT ?
+                """, (rs, rowNum) -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("reviewId", rs.getLong("reviewId"));
+            row.put("content", rs.getString("content"));
+            row.put("movieCode", rs.getString("movieCode"));
+            row.put("movieTitle", rs.getString("movieTitle"));
+            row.put("moviePosterUrl", rs.getString("moviePosterUrl"));
+            row.put("rating", rs.getObject("rating", Integer.class));
+            java.sql.Timestamp ts = rs.getTimestamp("createdAt");
+            row.put("createdAt", ts == null ? "" : ts.toLocalDateTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")));
+            return row;
+        }, userId, limit);
+    }
+
+    private int countMyReviews(Long userId) {
+        Integer cnt = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM movie_review WHERE user_id = ?",
+                Integer.class, userId);
+        return cnt == null ? 0 : cnt;
     }
 
     @PostMapping("/api/badges/select")
@@ -892,7 +1114,7 @@ public class MovieController {
                 rs.getString("name"),
                 rs.getString("company_role")
         ), movieCode));
-        model.addAttribute("providers", jdbcTemplate.query("""
+        List<ProviderView> providers = jdbcTemplate.query("""
                 SELECT
                     p.provider_name,
                     p.logo_path,
@@ -918,7 +1140,20 @@ public class MovieController {
                 rs.getString("provider_name"),
                 rs.getString("provider_type"),
                 rs.getString("logo_path")
-        ), movieCode));
+        ), movieCode);
+        model.addAttribute("providers", providers);
+        List<OttWatchLinkService.WatchLinkView> watchLinks = List.of();
+        boolean showWatchLinksSection = false;
+        if (movieId != null) {
+            try {
+                watchLinks = ottWatchLinkService.fetchWatchLinks(movieId, providerLogoUrls(providers));
+                showWatchLinksSection = ottWatchLinkService.hasCrawlStatus(movieId) || !watchLinks.isEmpty();
+            } catch (Exception e) {
+                watchLinks = List.of();
+            }
+        }
+        model.addAttribute("watchLinks", watchLinks);
+        model.addAttribute("showWatchLinksSection", showWatchLinksSection);
         List<Map<String, Object>> videos = List.of();
         if (movieId != null) {
             try {
@@ -1480,6 +1715,17 @@ public class MovieController {
         initializeWatchedTable();
         initializeCollectionTable();
         initializeSocialTables();
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS movie_review (
+                    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    movie_id BIGINT NOT NULL,
+                    content TEXT NOT NULL,
+                    view_count INT NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uk_movie_review_user_movie UNIQUE (user_id, movie_id)
+                )
+                """);
     }
 
     private void initializeWatchedTable() {
@@ -2328,6 +2574,16 @@ public class MovieController {
 
     private List<String> fetchOrderedNames(String sql, String movieCode) {
         return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getString(1), movieCode);
+    }
+
+    private Map<String, String> providerLogoUrls(List<ProviderView> providers) {
+        Map<String, String> result = new LinkedHashMap<>();
+        for (ProviderView provider : providers) {
+            if (provider.logoUrl() != null) {
+                result.put(provider.name(), provider.logoUrl());
+            }
+        }
+        return result;
     }
 
     private List<String> fetchChartGenres() {

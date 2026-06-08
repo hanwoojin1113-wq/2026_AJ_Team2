@@ -123,6 +123,11 @@ public class AdminBatchController {
         return movieDataBatchService.runTestUserActivitySeed(reset, refreshRecommendations);
     }
 
+    @PostMapping("/recommendation/rebuild-community-profiles")
+    public MovieDataBatchService.JobRunResponse rebuildAllCommunityProfiles() {
+        return movieDataBatchService.runRebuildAllCommunityProfiles();
+    }
+
     @PostMapping("/recommendation/refresh-dirty")
     public MovieDataBatchService.JobRunResponse refreshDirtyRecommendations(
             @RequestParam(defaultValue = "20") int batchSize,

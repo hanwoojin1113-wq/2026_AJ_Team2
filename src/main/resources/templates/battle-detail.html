@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${battle.battleLabel} + ' | CineMatch'">배틀 상세 | CineMatch</title>
+    <link rel="stylesheet" href="/css/hp-theme.css">
+    <style>
+        body { min-height: 100vh; background: linear-gradient(180deg, #0f0f0f 0%, #151515 100%); color: var(--hp-text); }
+        .battle-page { width: min(100%, 980px); margin: 0 auto; padding: 40px 24px 80px; }
+        .battle-back { margin-bottom: 20px; }
+        .battle-header { margin-bottom: 24px; }
+        .battle-kicker { color: var(--hp-blue-bright); font-size: 0.76rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+        .battle-title { margin: 8px 0 6px; font-size: clamp(2rem, 4vw, 3rem); font-weight: 900; }
+        .battle-meta { color: var(--hp-text-hint); font-size: 0.86rem; }
+        .battle-card { background: var(--hp-surface); border: 1px solid var(--hp-border); border-radius: 8px; padding: 20px; }
+        .battle-vs-row { display: grid; grid-template-columns: 1fr 52px 1fr; gap: 16px; align-items: center; }
+        .battle-option-btn { all: unset; display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 12px; border: 2px solid transparent; border-radius: 8px; background: var(--hp-surface-2); cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+        .battle-option-btn:hover { background: var(--hp-card); }
+        .battle-option-btn.voted-a, .battle-option-btn.voted-b { border-color: var(--hp-blue-bright); background: rgba(41,110,249,0.11); }
+        .battle-option-btn:disabled { cursor: default; }
+        .battle-poster-wrap { position: relative; width: 100%; aspect-ratio: 2 / 3; border-radius: 6px; overflow: hidden; background: rgba(255,255,255,0.06); }
+        .battle-poster { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .battle-voted-mark { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); font-size: 2.7rem; font-weight: 900; }
+        .voted-a .battle-voted-mark, .voted-b .battle-voted-mark { display: flex; }
+        .battle-option-name { font-size: 1rem; font-weight: 900; line-height: 1.3; }
+        .battle-option-movie { font-size: 0.78rem; color: var(--hp-text-sub); }
+        .battle-vote-info { display: flex; flex-direction: column; gap: 6px; }
+        .battle-vote-bar-track { height: 7px; border-radius: 4px; background: rgba(255,255,255,0.1); overflow: hidden; }
+        .battle-vote-bar-fill-a, .battle-vote-bar-fill-b { height: 100%; border-radius: 4px; background: var(--hp-blue-bright); transition: width 0.5s ease; }
+        .battle-vote-pct { color: var(--hp-text-sub); font-size: 0.84rem; font-weight: 800; }
+        .battle-vs-badge { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid var(--hp-border); color: var(--hp-text-sub); font-size: 0.8rem; font-weight: 900; }
+        .battle-total-votes { margin-top: 16px; color: var(--hp-text-hint); text-align: center; font-size: 0.84rem; }
+        .battle-login-note { margin-top: 16px; text-align: center; color: var(--hp-text-sub); font-size: 0.9rem; }
+        .battle-login-note a { color: var(--hp-blue-bright); text-decoration: none; }
+        .comments-section { margin-top: 28px; background: var(--hp-surface); border: 1px solid var(--hp-border); border-radius: 8px; padding: 20px; }
+        .comments-header { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 14px; }
+        .comments-title { font-size: 1.1rem; font-weight: 900; }
+        .comments-count { color: var(--hp-text-hint); font-size: 0.86rem; }
+        .comment-form { display: grid; gap: 10px; margin-bottom: 18px; }
+        .comment-textarea { width: 100%; min-height: 96px; resize: vertical; padding: 12px; border-radius: 6px; border: 1px solid var(--hp-border-strong); background: var(--hp-surface-2); color: var(--hp-text); font: inherit; }
+        .comment-form-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .comment-char-count { color: var(--hp-text-hint); font-size: 0.8rem; }
+        .comments-list { display: grid; gap: 12px; }
+        .comments-empty, .comment-login-note { color: var(--hp-text-hint); font-size: 0.9rem; text-align: center; padding: 18px 0; }
+        .comment-item { display: grid; grid-template-columns: 40px 1fr; gap: 10px; padding: 12px; border-radius: 8px; background: var(--hp-surface-2); }
+        .comment-avatar, .comment-avatar-fallback { width: 40px; height: 40px; border-radius: 6px; overflow: hidden; background: var(--hp-card); color: var(--hp-text-sub); display: flex; align-items: center; justify-content: center; text-decoration: none; font-weight: 800; }
+        .comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .comment-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+        .comment-author { color: var(--hp-text); text-decoration: none; font-size: 0.88rem; font-weight: 800; }
+        .comment-date { color: var(--hp-text-hint); font-size: 0.76rem; }
+        .comment-content { color: var(--hp-text-sub); font-size: 0.92rem; line-height: 1.5; white-space: pre-wrap; }
+        .comment-actions { margin-top: 8px; }
+        .comment-like-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 4px 10px; border: 1px solid var(--hp-border); border-radius: 4px; background: transparent; color: var(--hp-text-sub); font: inherit; font-size: 0.8rem; font-weight: 800; cursor: pointer; }
+        .comment-like-btn:hover { border-color: var(--hp-blue-bright); color: var(--hp-text); }
+        .comment-like-btn.liked { background: var(--hp-blue-soft); border-color: rgba(41,110,249,0.36); color: var(--hp-blue-bright); }
+        .battle-toast { position: fixed; right: 24px; bottom: 24px; z-index: 2000; min-width: 220px; padding: 12px 16px; border-radius: 8px; border: 1px solid rgba(41,110,249,0.34); background: var(--hp-surface-2); color: var(--hp-text); box-shadow: var(--hp-shadow-md); font-size: 0.9rem; font-weight: 800; opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity 0.18s, transform 0.18s; }
+        .battle-toast.show { opacity: 1; transform: translateY(0); }
+        @media (max-width: 700px) {
+            .battle-vs-row { grid-template-columns: 1fr; }
+            .battle-vs-badge { justify-self: center; }
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/app-shell :: shell}"></div>
+<div class="battle-toast" id="battleToast" role="status" aria-live="polite"></div>
+
+<main class="app-main">
+    <div class="battle-page">
+        <div class="battle-back">
+            <a class="hp-btn hp-btn-surface hp-btn-sm" th:href="@{/battles}">목록으로</a>
+        </div>
+
+        <header class="battle-header">
+            <p class="battle-kicker">MOVIE BATTLE</p>
+            <h1 class="battle-title" th:text="${battle.battleLabel}">배틀 타이틀</h1>
+            <div class="battle-meta">
+                <span th:text="${battle.creatorNickname != null ? battle.creatorNickname : '익명'}">작성자</span>
+                <span> · </span>
+                <span th:text="${battle.createdAt}">작성일</span>
+            </div>
+        </header>
+
+        <section class="battle-card" th:data-battle-id="${battle.id}">
+            <div class="battle-vs-row">
+                <button class="battle-option-btn"
+                        th:classappend="${battle.myVote != null and battle.myVote == 'A'} ? 'voted-a' : ''"
+                        data-option="A"
+                        th:disabled="${loginUserId == null}"
+                        onclick="handleVote(this)">
+                    <div class="battle-poster-wrap">
+                        <img class="battle-poster" th:src="${battle.optionAImageUrl}" th:alt="${battle.optionALabel}">
+                        <div class="battle-voted-mark">✓</div>
+                    </div>
+                    <div>
+                        <div class="battle-option-name" th:text="${battle.optionALabel}">선택지 A</div>
+                        <div class="battle-option-movie" th:text="${battle.movieATitle}">영화</div>
+                    </div>
+                    <div class="battle-vote-info">
+                        <div class="battle-vote-bar-track"><div class="battle-vote-bar-fill-a" th:style="'width:' + ${battle.pctA} + '%'"></div></div>
+                        <span class="battle-vote-pct" th:text="${battle.pctA} + '%'">50%</span>
+                    </div>
+                </button>
+
+                <div class="battle-vs-badge">VS</div>
+
+                <button class="battle-option-btn"
+                        th:classappend="${battle.myVote != null and battle.myVote == 'B'} ? 'voted-b' : ''"
+                        data-option="B"
+                        th:disabled="${loginUserId == null}"
+                        onclick="handleVote(this)">
+                    <div class="battle-poster-wrap">
+                        <img class="battle-poster" th:src="${battle.optionBImageUrl}" th:alt="${battle.optionBLabel}">
+                        <div class="battle-voted-mark">✓</div>
+                    </div>
+                    <div>
+                        <div class="battle-option-name" th:text="${battle.optionBLabel}">선택지 B</div>
+                        <div class="battle-option-movie" th:text="${battle.hasMovieB ? battle.movieBTitle : battle.movieATitle}">영화</div>
+                    </div>
+                    <div class="battle-vote-info">
+                        <div class="battle-vote-bar-track"><div class="battle-vote-bar-fill-b" th:style="'width:' + ${battle.pctB} + '%'"></div></div>
+                        <span class="battle-vote-pct" th:text="${battle.pctB} + '%'">50%</span>
+                    </div>
+                </button>
+            </div>
+            <p class="battle-total-votes">총 <span class="total-votes-num" th:text="${battle.voteA + battle.voteB}">0</span>표</p>
+            <p th:if="${loginUserId == null}" class="battle-login-note">
+                <a th:href="@{/login}">로그인</a>하면 투표할 수 있습니다.
+            </p>
+        </section>
+
+        <section class="comments-section" id="comments" th:data-battle-id="${battle.id}">
+            <div class="comments-header">
+                <h2 class="comments-title">댓글</h2>
+                <span class="comments-count"><span id="commentsHeaderCount" th:text="${battle.commentCount}">0</span>개</span>
+            </div>
+
+            <form class="comment-form" id="commentForm" th:if="${loginUserId != null}">
+                <textarea class="comment-textarea" id="commentTextarea" maxlength="1000" placeholder="댓글을 입력하세요."></textarea>
+                <div class="comment-form-row">
+                    <span class="comment-char-count"><span id="commentCharCount">0</span>/1000</span>
+                    <button class="hp-btn hp-btn-primary hp-btn-sm" id="commentSubmitBtn" type="submit">댓글 등록</button>
+                </div>
+            </form>
+            <div class="comment-login-note" th:if="${loginUserId == null}">
+                로그인하면 댓글을 작성할 수 있습니다.
+            </div>
+            <div class="comments-list" id="commentsList">
+                <div class="comments-empty">댓글을 불러오는 중입니다.</div>
+            </div>
+        </section>
+    </div>
+</main>
+
+<script>
+    const battleId = document.querySelector('[data-battle-id]')?.dataset.battleId;
+
+    async function handleVote(btn) {
+        const option = btn.dataset.option;
+        const card = btn.closest('.battle-card');
+        const btns = card.querySelectorAll('.battle-option-btn');
+        btns.forEach(b => b.disabled = true);
+        try {
+            const res = await fetch(`/api/battles/${battleId}/vote`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({option})
+            });
+            if (!res.ok) throw new Error(res.status);
+            applyVoteResult(card, await res.json());
+        } catch (error) {
+            console.error(error);
+        } finally {
+            btns.forEach(b => b.disabled = false);
+        }
+    }
+
+    function applyVoteResult(card, data) {
+        const btns = card.querySelectorAll('.battle-option-btn');
+        btns.forEach(btn => btn.classList.remove('voted-a', 'voted-b'));
+        if (data.myVote != null) {
+            btns.forEach((btn, index) => {
+                if (btn.dataset.option === data.myVote) btn.classList.add(index === 0 ? 'voted-a' : 'voted-b');
+            });
+        }
+        card.querySelector('.battle-vote-bar-fill-a').style.width = data.pctA + '%';
+        card.querySelector('.battle-vote-bar-fill-b').style.width = data.pctB + '%';
+        card.querySelectorAll('.battle-vote-pct')[0].textContent = data.pctA + '%';
+        card.querySelectorAll('.battle-vote-pct')[1].textContent = data.pctB + '%';
+        card.querySelector('.total-votes-num').textContent = data.voteA + data.voteB;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+        }[ch]));
+    }
+
+    function renderComments(comments) {
+        const list = document.getElementById('commentsList');
+        if (!comments.length) {
+            list.innerHTML = '<div class="comments-empty">아직 댓글이 없습니다.</div>';
+            updateCommentCount(0);
+            return;
+        }
+        list.innerHTML = comments.map(commentMarkup).join('');
+        updateCommentCount(comments.length);
+    }
+
+    function commentMarkup(comment) {
+        const href = `/users/${encodeURIComponent(comment.loginId || '')}`;
+        const avatar = comment.profileImageUrl
+            ? `<a class="comment-avatar" href="${href}"><img src="${escapeHtml(comment.profileImageUrl)}" alt="${escapeHtml(comment.nickname)}"></a>`
+            : `<a class="comment-avatar-fallback" href="${href}">${escapeHtml((comment.nickname || '?').slice(0, 1))}</a>`;
+        return `<article class="comment-item">
+            ${avatar}
+            <div>
+                <div class="comment-meta">
+                    <a class="comment-author" href="${href}">${escapeHtml(comment.nickname)}</a>
+                    <span class="comment-date">${escapeHtml(comment.createdAt || '')}</span>
+                </div>
+                <p class="comment-content">${escapeHtml(comment.content)}</p>
+                <div class="comment-actions">
+                    <button class="comment-like-btn ${comment.likedByMe ? 'liked' : ''}"
+                            type="button"
+                            data-comment-id="${comment.commentId}"
+                            onclick="toggleCommentLike(this)">
+                        추천 <span>${comment.likeCount || 0}</span>
+                    </button>
+                </div>
+            </div>
+        </article>`;
+    }
+
+    async function toggleCommentLike(button) {
+        const commentId = button.dataset.commentId;
+        button.disabled = true;
+        try {
+            const res = await fetch(`/api/battle-comments/${commentId}/like`, { method: 'POST' });
+            if (!res.ok) throw new Error(res.status);
+            const data = await res.json();
+            button.classList.toggle('liked', !!data.liked);
+            button.querySelector('span').textContent = data.likeCount;
+        } catch (error) {
+            console.error(error);
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    function updateCommentCount(count) {
+        const el = document.getElementById('commentsHeaderCount');
+        if (el) el.textContent = count;
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById('battleToast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    async function loadComments() {
+        try {
+            const res = await fetch(`/api/battles/${battleId}/comments`);
+            if (!res.ok) throw new Error(res.status);
+            renderComments(await res.json());
+        } catch (error) {
+            document.getElementById('commentsList').innerHTML = '<div class="comments-empty">댓글을 불러오지 못했습니다.</div>';
+        }
+    }
+
+    const form = document.getElementById('commentForm');
+    const textarea = document.getElementById('commentTextarea');
+    const charCount = document.getElementById('commentCharCount');
+    textarea?.addEventListener('input', () => charCount.textContent = textarea.value.length);
+    form?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const content = textarea.value.trim();
+        if (!content) return;
+        const btn = document.getElementById('commentSubmitBtn');
+        btn.disabled = true;
+        try {
+            const res = await fetch(`/api/battles/${battleId}/comments`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({content})
+            });
+            if (!res.ok) throw new Error(res.status);
+            const data = await res.json();
+            textarea.value = '';
+            charCount.textContent = '0';
+            alert('댓글이 작성됐습니다');
+            location.reload();
+        } catch (error) {
+            console.error(error);
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    loadComments();
+    document.querySelectorAll('[data-app-nav]').forEach(el => el.classList.remove('active'));
+    document.querySelector('[data-app-nav="battle"]')?.classList.add('active');
+</script>
+</body>
+</html>

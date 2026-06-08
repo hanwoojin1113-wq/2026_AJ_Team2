@@ -623,6 +623,54 @@ public class PostController {
         return result;
     }
 
+    // ── Post edit / delete ─────────────────────────────────────────────────────
+
+    @PostMapping("/api/posts/{postId}/update")
+    @ResponseBody
+    public Map<String, Object> updatePost(@PathVariable Long postId,
+                                          @RequestParam String content,
+                                          HttpSession session) {
+        initializeSocialTables();
+        if (!isLoggedIn(session)) {
+            throw new ResponseStatusException(UNAUTHORIZED);
+        }
+        Long userId = requireCurrentUserId(session);
+        String normalizedContent = normalizeContent(content);
+        if (normalizedContent == null || normalizedContent.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "내용을 입력해주세요.");
+        }
+        Integer ownerCheck = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM social_post WHERE id = ? AND user_id = ? AND is_deleted = FALSE",
+                Integer.class, postId, userId);
+        if (ownerCheck == null || ownerCheck < 1) {
+            throw new ResponseStatusException(UNAUTHORIZED, "수정 권한이 없습니다.");
+        }
+        jdbcTemplate.update(
+                "UPDATE social_post SET content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                normalizedContent, postId);
+        return Map.of("ok", true);
+    }
+
+    @PostMapping("/api/posts/{postId}/delete")
+    @ResponseBody
+    public Map<String, Object> deletePost(@PathVariable Long postId, HttpSession session) {
+        initializeSocialTables();
+        if (!isLoggedIn(session)) {
+            throw new ResponseStatusException(UNAUTHORIZED);
+        }
+        Long userId = requireCurrentUserId(session);
+        Integer ownerCheck = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM social_post WHERE id = ? AND user_id = ? AND is_deleted = FALSE",
+                Integer.class, postId, userId);
+        if (ownerCheck == null || ownerCheck < 1) {
+            throw new ResponseStatusException(UNAUTHORIZED, "삭제 권한이 없습니다.");
+        }
+        jdbcTemplate.update(
+                "UPDATE social_post SET is_deleted = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                postId);
+        return Map.of("ok", true);
+    }
+
     // ── Private helpers: auth ──────────────────────────────────────────────────
 
     private boolean isLoggedIn(HttpSession session) {
@@ -1069,6 +1117,7 @@ public class PostController {
         FeedCursor feedCursor = parseFeedCursor(cursor);
         List<Object> params = new ArrayList<>();
         String cursorClause = "";
+        String orderClause = "ORDER BY RAND()";
         if (feedCursor != null) {
             cursorClause = """
                       AND (
@@ -1076,6 +1125,7 @@ public class PostController {
                          OR (sp.created_at = ? AND sp.id < ?)
                       )
                     """;
+            orderClause = "ORDER BY sp.created_at DESC, sp.id DESC";
             Timestamp cursorTimestamp = new Timestamp(feedCursor.createdAtMillis());
             if (feedCursor.createdAtNanos() >= 0) {
                 cursorTimestamp.setNanos(feedCursor.createdAtNanos());
@@ -1103,8 +1153,8 @@ public class PostController {
                 JOIN "USER" u ON u.id = sp.user_id
                 JOIN movie m ON m.id = sp.movie_id
                 WHERE sp.is_deleted = FALSE
-                """ + cursorClause + """
-                ORDER BY sp.created_at DESC, sp.id DESC
+                """ + cursorClause + orderClause + """
+
                 LIMIT ?
                 """, (rs, rowNum) -> {
             Map<String, Object> row = new LinkedHashMap<>();

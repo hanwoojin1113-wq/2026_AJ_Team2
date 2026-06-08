@@ -160,6 +160,17 @@ public class MovieDataBatchService {
         );
     }
 
+    public JobRunResponse runRebuildAllCommunityProfiles() {
+        return executeJob("COMMUNITY_PROFILE_REBUILD_ALL", null, () -> {
+            List<Long> userIds = jdbcTemplate.queryForList(
+                    "SELECT id FROM \"USER\" WHERE login_id LIKE 'cine_%' ORDER BY id", Long.class);
+            for (Long userId : userIds) {
+                userPreferenceProfileService.rebuildProfile(userId);
+            }
+            return java.util.Map.of("rebuiltCount", userIds.size());
+        });
+    }
+
     public JobRunResponse runRefreshDirtyRecommendations(int batchSize, Integer limit) {
         return executeJob(
                 "USER_RECOMMENDATION_REFRESH_DIRTY",

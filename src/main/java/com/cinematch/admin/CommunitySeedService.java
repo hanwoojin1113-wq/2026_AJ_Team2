@@ -1,5 +1,6 @@
 package com.cinematch.admin;
 
+import com.cinematch.recommendation.UserPreferenceProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -16,6 +17,7 @@ import java.util.*;
 public class CommunitySeedService {
 
     private final JdbcTemplate jdbc;
+    private final UserPreferenceProfileService userPreferenceProfileService;
 
     // ── Avatar presets ────────────────────────────────────────────────
     private static final String[] AVATARS = {
@@ -416,6 +418,11 @@ CG 퀄리티는 한국 영화 역대 최고 수준이었다. 화염 지옥, 한�
 
         assignBadges(userIds);
         log.append("배지 배정 완료\n");
+
+        for (Long userId : userIds) {
+            userPreferenceProfileService.rebuildProfile(userId);
+        }
+        log.append("취향 프로필 빌드 완료: ").append(userIds.size()).append("명\n");
 
         return log.toString();
     }

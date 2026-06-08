@@ -84,6 +84,15 @@ public class RecommendationMaintenanceService {
         );
     }
 
+    public void ensurePreferenceProfile(Long userId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM user_preference_profile WHERE user_id = ?",
+                Integer.class, userId);
+        if (count == null || count == 0) {
+            userPreferenceProfileService.rebuildProfile(userId);
+        }
+    }
+
     private int countSavedRecommendations(Long userId) {
         Integer count = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*)
