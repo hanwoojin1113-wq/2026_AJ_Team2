@@ -580,7 +580,7 @@ public class MovieController {
                   AND sp.user_id IN (
                       SELECT following_user_id FROM user_follow WHERE follower_user_id = ?
                   )
-                ORDER BY sp.created_at DESC
+                ORDER BY RAND()
                 LIMIT 4
                 """, userId);
     }

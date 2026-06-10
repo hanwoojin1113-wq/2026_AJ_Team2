@@ -1075,6 +1075,77 @@ window.addEventListener('pageshow', function(e) {
         </a>`;
     }
 
+    function videoMarkup(post) {
+        if (post.postType !== 'video' || !post.attachment) return '';
+        return `<div class="post-video-wrap"><video class="post-video" controls preload="metadata" src="${escapeHtml(post.attachment.fileUrl)}"></video></div>`;
+    }
+
+    function fileMarkup(post) {
+        if (post.postType !== 'file' || !post.attachment) return '';
+        const sizeKb = post.attachment.fileSize ? Math.round(post.attachment.fileSize / 1024) + ' KB' : '';
+        return `<a class="post-file-card" href="${escapeHtml(post.attachment.fileUrl)}" target="_blank" rel="noopener">
+            <span class="post-file-icon">📎</span>
+            <div class="post-file-info">
+                <div class="post-file-name">${escapeHtml(post.attachment.fileName || '')}</div>
+                <div class="post-file-size">${escapeHtml(sizeKb)}</div>
+            </div>
+        </a>`;
+    }
+
+    function pollMarkup(post) {
+        if (post.postType !== 'poll' || !post.poll) return '';
+        const poll = post.poll;
+        const total = poll.totalVotes || 0;
+        const options = (poll.options || []).map(opt => {
+            const pct = total > 0 ? Math.round(opt.voteCount * 100 / total) : 0;
+            const voted = opt.isMyVote ? ' voted' : '';
+            const fill = poll.hasVoted ? `width:${pct}%` : 'width:0%';
+            const pctSpan = poll.hasVoted ? `<span class="poll-option-pct">${pct}%</span>` : '';
+            const checkSpan = opt.isMyVote ? `<span class="poll-voted-mark">✓</span>` : '';
+            return `<div class="poll-option-bar${voted}" data-option-id="${opt.optionId}">
+                <div class="poll-option-fill" style="${fill}"></div>
+                <div class="poll-option-inner"><span>${escapeHtml(opt.optionText)}</span><span>${pctSpan}${checkSpan}</span></div>
+            </div>`;
+        }).join('');
+        const voteHint = poll.hasVoted ? '' : '<span style="margin-left:8px;color:#60a5fa;">· 투표하기</span>';
+        return `<div class="post-poll-wrap" data-poll-id="${poll.pollId}" data-has-voted="${poll.hasVoted}" data-my-vote="${poll.myVotedOptionId || ''}" data-total="${total}">
+            <p class="post-poll-question">${escapeHtml(poll.question)}</p>
+            <div class="post-poll-options">${options}</div>
+            <div class="poll-meta"><span>${total}명 참여</span>${voteHint}</div>
+        </div>`;
+    }
+
+    function quizMarkup(post) {
+        if (post.postType !== 'quiz' || !post.quiz) return '';
+        const quiz = post.quiz;
+        const answered = quiz.hasAnswered === true;
+        const options = (quiz.options || []).map(opt => {
+            let cls = 'quiz-option-btn';
+            if (answered) {
+                if (opt.isCorrect) cls += ' correct';
+                else if (opt.isMyAnswer && !opt.isCorrect) cls += ' wrong my-answer';
+                else if (opt.isMyAnswer) cls += ' my-answer';
+            }
+            return `<button type="button" class="${cls}"${answered ? ' disabled' : ''} data-option-id="${opt.optionId}">${escapeHtml(opt.optionText)}</button>`;
+        }).join('');
+        let resultBadge = '';
+        if (answered) {
+            resultBadge = quiz.myAnswerCorrect
+                ? '<div><span class="quiz-result-badge correct">✓ 정답!</span></div>'
+                : '<div><span class="quiz-result-badge wrong">✗ 오답</span></div>';
+        }
+        return `<div class="post-quiz-wrap" data-quiz-id="${quiz.quizId}" data-has-answered="${answered}" data-my-answer="${quiz.myAnswerOptionId || ''}" data-my-correct="${quiz.myAnswerCorrect || ''}">
+            <p class="post-quiz-question">${escapeHtml(quiz.question)}</p>
+            <div class="post-quiz-options">${options}</div>
+            ${resultBadge}
+        </div>`;
+    }
+
+    function typeBadgeMarkup(post) {
+        const labels = { video: '🎥 동영상', file: '📎 파일', poll: '☑ 투표', quiz: '❓ 퀴즈' };
+        return labels[post.postType] ? `<span class="post-type-badge">${labels[post.postType]}</span>` : '';
+    }
+
     function carouselMarkup(post) {
         const images = Array.isArray(post.images) ? post.images : [];
         if (!images.length) return '';
@@ -1109,7 +1180,12 @@ window.addEventListener('pageshow', function(e) {
         return `<article class="post-card" id="post-${post.postId}" data-content="${escapeHtml(post.content || '')}">
             <header class="post-header">${avatarMarkup(post)}${followButton}</header>
             ${carouselMarkup(post)}
+            ${videoMarkup(post)}
+            ${fileMarkup(post)}
+            ${pollMarkup(post)}
+            ${quizMarkup(post)}
             <div class="post-body">
+                ${typeBadgeMarkup(post)}
                 ${content}
                 ${editButton}
                 <div class="post-actions">

@@ -256,7 +256,8 @@ public class PostController {
             }
             return "redirect:/movies/" + movieCode;
         } catch (ResponseStatusException e) {
-            throw e;
+            log.warn("게시물 저장 실패 (validation): {}", e.getReason());
+            return "redirect:/posts/create?error=true";
         } catch (Exception e) {
             log.error("게시물 저장 실패: {}", e.getMessage(), e);
             return "redirect:/posts/create?error=true";
@@ -778,6 +779,7 @@ public class PostController {
         }
         return images.stream()
                 .filter(image -> image != null && !image.isEmpty())
+                .filter(image -> ALLOWED_IMAGE_EXTENSIONS.contains(extractExtension(image.getOriginalFilename())))
                 .toList();
     }
 
@@ -1148,6 +1150,9 @@ public class PostController {
         }
         params.add(normalizedLimit + 1);
 
+        String orderByClause = (feedCursor == null)
+                ? "ORDER BY RAND()"
+                : "ORDER BY sp.created_at DESC, sp.id DESC";
         List<Map<String, Object>> rows = jdbcTemplate.query("""
                 SELECT
                     sp.id AS postId,
@@ -1165,8 +1170,8 @@ public class PostController {
                 JOIN "USER" u ON u.id = sp.user_id
                 JOIN movie m ON m.id = sp.movie_id
                 WHERE sp.is_deleted = FALSE
-                """ + cursorClause + """
-                ORDER BY sp.created_at DESC, sp.id DESC
+                """ + cursorClause + orderByClause + """
+
                 LIMIT ?
                 """, (rs, rowNum) -> {
             Map<String, Object> row = new LinkedHashMap<>();
