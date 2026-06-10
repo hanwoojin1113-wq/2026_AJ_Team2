@@ -474,6 +474,52 @@
         </form>
     </section>
 
+    <!-- 추천 사용자 / 검색 결과 -->
+    <section class="section">
+        <div class="section-head">
+            <h2 th:text="${searchSectionTitle}">추천할 만한 사용자</h2>
+        </div>
+        <div class="cards" th:if="${!#lists.isEmpty(searchResults)}">
+            <article class="user-card" th:each="userCard : ${searchResults}">
+                <div class="user-main">
+                    <a class="user-link" th:href="@{|/users/${userCard.loginId}|}">
+                        <div class="user-avatar">
+                            <img th:if="${!#strings.isEmpty(userCard.profileImageUrl)}"
+                                 th:src="${userCard.profileImageUrl}" th:alt="${userCard.nickname}">
+                            <div class="user-avatar-fallback"
+                                 th:if="${#strings.isEmpty(userCard.profileImageUrl)}"
+                                 th:text="${#strings.substring(userCard.nickname, 0, 1)}">C</div>
+                        </div>
+                    </a>
+                    <div class="user-copy">
+                        <a class="user-link" th:href="@{|/users/${userCard.loginId}|}">
+                            <div class="user-name" th:text="${userCard.nickname}">nickname</div>
+                            <div class="user-id" th:text="|@${userCard.loginId}|">@loginId</div>
+                        </a>
+                        <div class="user-badges" th:if="${userCard.followsCurrentUser}">
+                            <span class="badge badge-follows-me">팔로우 중</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="user-actions">
+                    <button type="button" class="throw-pill"
+                            th:if="${userCard.followingByCurrentUser}"
+                            data-throw-open
+                            th:data-throw-login-id="${userCard.loginId}"
+                            th:data-throw-nickname="${userCard.nickname}"
+                            title="영화 던지기">🎬</button>
+                    <button class="follow-btn suggest-follow-btn"
+                            th:classappend="${!userCard.followingByCurrentUser} ? ' active' : ''"
+                            th:data-login-id="${userCard.loginId}"
+                            th:data-state="${userCard.followingByCurrentUser} ? 'following' : 'follow'">
+                        <span th:text="${userCard.followingByCurrentUser} ? '팔로잉' : '팔로우'">팔로우</span>
+                    </button>
+                </div>
+            </article>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(searchResults)}">표시할 사용자가 없습니다.</div>
+    </section>
+
     <!-- 팔로워 / 팔로잉 동시 표시 -->
     <section class="section">
         <div class="rel-grid">
@@ -640,52 +686,6 @@
                 </div>
             </aside>
         </div>
-    </section>
-
-    <!-- 추천 사용자 / 검색 결과 -->
-    <section class="section">
-        <div class="section-head">
-            <h2 th:text="${searchSectionTitle}">추천할 만한 사용자</h2>
-        </div>
-        <div class="cards" th:if="${!#lists.isEmpty(searchResults)}">
-            <article class="user-card" th:each="userCard : ${searchResults}">
-                <div class="user-main">
-                    <a class="user-link" th:href="@{|/users/${userCard.loginId}|}">
-                        <div class="user-avatar">
-                            <img th:if="${!#strings.isEmpty(userCard.profileImageUrl)}"
-                                 th:src="${userCard.profileImageUrl}" th:alt="${userCard.nickname}">
-                            <div class="user-avatar-fallback"
-                                 th:if="${#strings.isEmpty(userCard.profileImageUrl)}"
-                                 th:text="${#strings.substring(userCard.nickname, 0, 1)}">C</div>
-                        </div>
-                    </a>
-                    <div class="user-copy">
-                        <a class="user-link" th:href="@{|/users/${userCard.loginId}|}">
-                            <div class="user-name" th:text="${userCard.nickname}">nickname</div>
-                            <div class="user-id" th:text="|@${userCard.loginId}|">@loginId</div>
-                        </a>
-                        <div class="user-badges" th:if="${userCard.followsCurrentUser}">
-                            <span class="badge badge-follows-me">팔로우 중</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="user-actions">
-                    <button type="button" class="throw-pill"
-                            th:if="${userCard.followingByCurrentUser}"
-                            data-throw-open
-                            th:data-throw-login-id="${userCard.loginId}"
-                            th:data-throw-nickname="${userCard.nickname}"
-                            title="영화 던지기">🎬</button>
-                    <button class="follow-btn suggest-follow-btn"
-                            th:classappend="${!userCard.followingByCurrentUser} ? ' active' : ''"
-                            th:data-login-id="${userCard.loginId}"
-                            th:data-state="${userCard.followingByCurrentUser} ? 'following' : 'follow'">
-                        <span th:text="${userCard.followingByCurrentUser} ? '팔로잉' : '팔로우'">팔로우</span>
-                    </button>
-                </div>
-            </article>
-        </div>
-        <div class="empty" th:if="${#lists.isEmpty(searchResults)}">표시할 사용자가 없습니다.</div>
     </section>
 
 </main>

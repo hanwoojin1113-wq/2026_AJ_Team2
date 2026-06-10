@@ -1054,11 +1054,19 @@
                         <h1 style="margin:0;" th:text="${userProfile.nickname}">nickname</h1>
                         <span th:if="${selectedBadgeCode != null}"
                               th:with="def=${T(com.cinematch.BadgeService).getBadgeDef(selectedBadgeCode)}"
-                              th:classappend="'ubadge ubadge-t' + ${def?.tier}"
-                              class="ubadge"
-                              th:title="${def?.name}">
+                              th:classappend="'ubadge ubadge-t' + ${def?.tier} + ' badge-picker-trigger'"
+                              class="ubadge badge-picker-trigger"
+                              id="badgePickerTrigger"
+                              th:title="|${def?.name} · 클릭해서 대표 배지 변경|">
                             <span class="ubadge-icon" th:text="${def?.icon}"></span>
                             <span th:text="${def?.name}"></span>
+                        </span>
+                        <span th:if="${selectedBadgeCode == null}"
+                              class="ubadge badge-picker-trigger badge-picker-placeholder"
+                              id="badgePickerTrigger"
+                              title="클릭해서 대표 배지 선택">
+                            <span class="ubadge-icon">➕</span>
+                            <span>배지 선택</span>
                         </span>
                     </div>
                     <span th:text="|ID ${userProfile.loginId} · 활동 기록과 관계를 한 번에 관리해보세요.|">ID user · 활동 기록과 관계를 한 번에 관리해보세요.</span>
@@ -2337,6 +2345,48 @@
     transition: opacity 0.15s;
 }
 .avatar-save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.badge-picker-trigger { cursor: pointer; transition: transform 0.15s, filter 0.15s; }
+.badge-picker-trigger:hover { transform: scale(1.06); filter: brightness(1.15); }
+.badge-picker-placeholder {
+    background: rgba(255,255,255,0.06);
+    border: 1px dashed rgba(255,255,255,0.28);
+    color: var(--hp-text-hint);
+}
+.badge-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px; max-height: 380px; overflow-y: auto;
+    padding: 4px 2px;
+}
+.badge-picker-option {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 10px 6px; border-radius: 14px;
+    border: 2px solid transparent;
+    cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.badge-picker-option:hover { background: rgba(255,255,255,0.06); transform: translateY(-2px); }
+.badge-picker-option.selected { border-color: #60A5FA; background: rgba(96,165,250,0.12); }
+.badge-picker-hex { position: relative; width: 56px; height: 56px; }
+.badge-picker-hex svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.badge-picker-hex-emoji {
+    position: relative; z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%; font-size: 1.35rem;
+}
+.badge-picker-hex--t1 .badge-picker-hex-shape { fill: url(#pickerHexT1); }
+.badge-picker-hex--t2 .badge-picker-hex-shape { fill: url(#pickerHexT2); }
+.badge-picker-hex--t3 .badge-picker-hex-shape { fill: url(#pickerHexT3); }
+.badge-picker-hex--t4 .badge-picker-hex-shape { fill: url(#pickerHexT4); }
+.badge-picker-hex--none {
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 1px dashed rgba(255,255,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--hp-text-hint);
+}
+.badge-picker-name { font-size: 0.74rem; font-weight: 700; text-align: center; line-height: 1.2; }
+.badge-picker-option.selected .badge-picker-name::after { content: ' ✓'; color: #60A5FA; }
 </style>
 
 <div class="avatar-modal-overlay" id="avatarPickerOverlay">
@@ -2407,6 +2457,80 @@
     });
 
     cancelBtn?.addEventListener('click', closeModal);
+    overlay?.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    function closeModal() {
+        overlay.classList.remove('open');
+        document.body.classList.remove('modal-open');
+    }
+})();
+</script>
+
+<div class="avatar-modal-overlay" id="badgePickerOverlay">
+    <div class="avatar-modal">
+        <p class="avatar-modal-title">대표 배지 선택</p>
+        <p class="avatar-modal-sub">보유한 배지 중 프로필 이름 옆에 표시할 배지를 선택하세요.</p>
+        <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+            <defs>
+                <linearGradient id="pickerHexT1" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#CD7F32"/><stop offset="100%" stop-color="#7B4A1A"/>
+                </linearGradient>
+                <linearGradient id="pickerHexT2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#BCC8D4"/><stop offset="100%" stop-color="#5E7080"/>
+                </linearGradient>
+                <linearGradient id="pickerHexT3" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#FFD700"/><stop offset="100%" stop-color="#8B6914"/>
+                </linearGradient>
+                <linearGradient id="pickerHexT4" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#C8B4FF"/><stop offset="100%" stop-color="#4A36A0"/>
+                </linearGradient>
+            </defs>
+        </svg>
+        <div class="badge-picker-grid" id="badgePickerGrid">
+            <div class="badge-picker-option"
+                 th:classappend="${selectedBadgeCode == null} ? ' selected' : ''"
+                 data-badge-code="">
+                <div class="badge-picker-hex badge-picker-hex--none">
+                    <span class="badge-picker-hex-emoji">✕</span>
+                </div>
+                <span class="badge-picker-name">선택 안 함</span>
+            </div>
+            <div th:each="bs : ${badgeStatuses}" th:if="${bs.earned}"
+                 class="badge-picker-option"
+                 th:classappend="${selectedBadgeCode == bs.def.code} ? ' selected' : ''"
+                 th:attr="data-badge-code=${bs.def.code}">
+                <div th:classappend="'badge-picker-hex badge-picker-hex--t' + ${bs.def.tier}" class="badge-picker-hex">
+                    <svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path class="badge-picker-hex-shape" d="M36 4 L64 19 L64 53 L36 68 L8 53 L8 19 Z"/>
+                        <path d="M36 4 L64 19 L64 30 L36 15 Z" fill="rgba(255,255,255,0.2)"/>
+                    </svg>
+                    <span class="badge-picker-hex-emoji" th:text="${bs.def.icon}"></span>
+                </div>
+                <span class="badge-picker-name" th:text="${bs.def.name}"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const overlay = document.getElementById('badgePickerOverlay');
+    const trigger = document.getElementById('badgePickerTrigger');
+    const grid = document.getElementById('badgePickerGrid');
+
+    trigger?.addEventListener('click', () => {
+        overlay.classList.add('open');
+        document.body.classList.add('modal-open');
+    });
+
+    grid?.querySelectorAll('.badge-picker-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            if (opt.classList.contains('selected')) { closeModal(); return; }
+            window.selectBadge(opt.dataset.badgeCode ? opt : null);
+        });
+    });
+
     overlay?.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 

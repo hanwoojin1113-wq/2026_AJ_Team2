@@ -763,10 +763,6 @@
         .cact-btn.active[data-action="dislike"]    { background: rgba(100,116,139,0.7); border-color: #64748B; }
         .cact-btn.active[data-action="later"]      { background: rgba(245,158,11,0.7); border-color: #F59E0B; }
         .cact-btn.active[data-action="collection"] { background: rgba(139,92,246,0.7); border-color: #8B5CF6; }
-        .cact-btn[data-action="dislike"] { order: 1; }
-        .cact-btn[data-action="like"] { order: 2; }
-        .cact-btn[data-action="later"] { order: 3; }
-        .cact-btn[data-action="collection"] { order: 4; }
         .poster {
             width: 100%;
             height: 100%;
@@ -1740,11 +1736,11 @@
             <div th:each="block : ${secondaryRecommendationBlocks}" class="home-section">
                 <div class="section-head">
                     <div class="section-head-main">
-                        <h2 th:text="${block.title}">異붿쿇 釉붾줉</h2>
+                        <h2 th:text="${block.title}">추천 블록</h2>
                     </div>
                 </div>
                 <div class="row-carousel" data-row-carousel>
-                    <button class="row-arrow left" type="button" data-row-direction="prev" aria-label="?댁쟾 異붿쿇 蹂닿린">
+                    <button class="row-arrow left" type="button" data-row-direction="prev" aria-label="이전 추천 보기">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
                             <path d="M15 18l-6-6 6-6"/>
                         </svg>
@@ -1757,7 +1753,7 @@
                                  th:src="${movie.posterImageUrl}"
                                  th:alt="${movie.title}">
                             <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
-                                <span th:text="${movie.title}">?곹솕 ?쒕ぉ</span>
+                                <span th:text="${movie.title}">영화 제목</span>
                             </div>
                             <div class="card-hover"><div class="card-actions">
                                 <button class="cact-btn" data-action="like" title="좋아요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg></button>
@@ -1766,7 +1762,7 @@
                                 <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
                             </div></div>
                         </div>
-                        <div class="movie-title" th:text="${movie.title}">?곹솕 ?쒕ぉ</div>
+                        <div class="movie-title" th:text="${movie.title}">영화 제목</div>
                         <th:block th:with="kws=${homeKeywordsByMovieCd[movie.movieCode]}">
                             <div class="movie-keywords" th:if="${not #lists.isEmpty(kws)}">
                                 <span class="kw-chip" th:each="k : ${kws}" th:text="${k}">키워드</span>
@@ -1774,7 +1770,7 @@
                         </th:block>
                     </a>
                     </div></div>
-                    <button class="row-arrow right" type="button" data-row-direction="next" aria-label="?ㅼ쓬 異붿쿇 蹂닿린">
+                    <button class="row-arrow right" type="button" data-row-direction="next" aria-label="다음 추천 보기">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
                             <path d="M9 6l6 6-6 6"/>
                         </svg>
