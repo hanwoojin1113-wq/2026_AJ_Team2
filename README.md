@@ -1,1067 +1,315 @@
-# CineMatch
+# 🎬 CineMatch
+
+> **"볼 게 너무 많아서 못 고르는 시대"의 영화 큐레이션 서비스**
+> OTT는 넘쳐나고 영화는 수만 편. CineMatch는 *무엇을 볼지*를 대신 골라주고, 바로 그 영화를 볼 수 있는 **OTT로 연결**합니다.
+
+![Java](https://img.shields.io/badge/Java-25-orange)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.4-brightgreen)
+![Database](https://img.shields.io/badge/DB-H2%20(file)-blue)
+![View](https://img.shields.io/badge/View-Thymeleaf-005F0F)
+![Recommender](https://img.shields.io/badge/Recommender-content--ranking--v4.0-purple)
 
 ---
 
-## 06-07 구현사항 - OTT 구독 기반 추천 · 회원가입 · 소셜 기능 고도화
+## 📑 목차
 
-이번 업데이트에서는 사용자가 구독 중인 OTT를 기준으로 추천을 개인화하고, 회원가입/프로필 설정 흐름과 소셜 기능(영화 던지기·인생영화)을 보강했습니다.
-
-### OTT 정보 제공 및 구독 기반 추천
-
-- 영화별로 크롤링해 확보한 OTT 제공처 정보를 영화에서 함께 다루도록 했습니다.
-- 회원가입을 통해 새 사용자를 생성할 수 있습니다.
-- 프로필에서 본인이 구독 중인 OTT 여부를 직접 설정할 수 있습니다.
-- 추천 시 사용자가 설정한 구독 OTT에서 볼 수 있는 영화가 반영되도록 개선했습니다.
-
-### 영화 던지기 기능 고도화
-
-- 영화 상세 페이지에서도 영화 던지기를 사용할 수 있도록 확장했습니다.
-- 기존 `영화 공유` 버튼/모달은 던지기와 기능이 사실상 동일해(코멘트 입력 여부만 차이) 제거하고, 그 자리를 던지기 버튼이 대체합니다.
-- 던지기는 코멘트(한마디)를 함께 전달할 수 있으며, 팔로우한 친구에게 보낼 수 있습니다.
-
-### 인생영화 추천 섹션 개선
-
-- 홈/`/charts` 화면에서 `친구 활동`과 `나를 위한 추천` 사이에 독립된 `인생영화` 섹션을 노출합니다.
-- 내가 팔로우한 친구 또는 취향이 비슷한 사용자 중, 인생영화를 3개 이상 지정한 사용자 한 명을 랜덤으로 선정합니다.
-- 선정된 사용자의 인생영화를 포스터로 보여주며, 포스터 클릭 시 영화 상세로, 사용자 닉네임(파란 글씨) 클릭 시 해당 사용자 프로필로 이동합니다.
-- 이전에는 코사인 유사도 임계값을 넘는 사용자만 후보였으나, 친구를 유사도와 무관하게 후보에 포함시켜 섹션이 더 잘 노출되도록 개선했습니다.
+1. [기획 배경](#-기획-배경)
+2. [한 줄 소개](#-한-줄-소개)
+3. [핵심 차별점](#-핵심-차별점)
+4. [전체 기능](#-전체-기능)
+5. [추천 알고리즘 동작 방식](#-추천-알고리즘-동작-방식)
+6. [취향 유사도 맵](#-취향-유사도-맵-taste-map)
+7. [데이터 파이프라인](#-데이터-파이프라인)
+8. [기술 스택](#-기술-스택)
+9. [아키텍처 / 패키지 구조](#-아키텍처--패키지-구조)
+10. [실행 방법](#-실행-방법)
+11. [팀](#-팀)
 
 ---
 
-## 05-28 구현사항 - 영화 상세 페이지 정보 구조 정리
+## 🎯 기획 배경
 
-영화 상세 페이지에서 중복 안내 문구와 과도한 부가 정보를 정리해 핵심 정보가 더 잘 보이도록 개선했습니다.
+넷플릭스, 티빙, 웨이브, 디즈니+, 왓챠… **OTT는 늘어났는데 정작 "뭘 볼지" 고르는 건 더 어려워졌습니다.**
 
-- 활동 버튼 영역의 설명 문구를 제거하고 여백을 줄였습니다.
-- `좋아요`와 `별로에요` 버튼 위치를 영화 상세 페이지 기준으로 교체했습니다.
-- 별점 비활성 안내 문구를 제거해 액션 박스 하단이 비어 보이지 않도록 정리했습니다.
-- 상세 정보 카드는 `제작연도`, `러닝타임`만 남기고 나머지 박스는 제거했습니다.
-- 하단 관련 정보에서 장르는 최대 5개만 표시합니다.
-- 기존 `감독 / 배우` 통합 섹션을 `감독`, `배우` 섹션으로 분리했습니다.
-- 배우는 최대 10명까지 표시하고, 초과 인원은 `외 n명`으로 요약합니다.
-- 기존 `제공 서비스` 정보 박스는 실제 이동 URL을 제공하는 `보러가기` 섹션과 역할이 겹쳐 제거했습니다.
+- 콘텐츠는 수만 편인데, 추천은 **내가 이미 가입한 플랫폼 안**에서만 돈다.
+- "이 영화 어디서 보지?"를 매번 따로 검색해야 한다.
+- 친구가 추천해줘도, 그걸 한곳에서 기록하고 같이 이야기할 공간이 없다.
+
+**CineMatch는 이 '선택 장애'를 정면으로 겨냥합니다.**
+사용자의 취향을 학습해 영화를 추천하고 → 그 영화를 **실제로 볼 수 있는 OTT/극장 링크로 연결**하며 → 영화를 중심으로 한 **소셜 경험**(리뷰·피드·배틀·영화 던지기)까지 한곳에서 제공합니다.
 
 ---
 
-## 05-28 구현사항 - OTT 보러가기 링크 200개 크롤링 캐시 전환
+## 💡 한 줄 소개
 
-영화 상세 페이지의 `보러가기` 링크 관리를 하드코딩 seed 중심에서 DB 캐시 중심으로 전환했습니다.
-
-- `movie_ott_link`: 영화별 제공처 direct URL 저장. 같은 제공처가 여러 URL이면 첫 번째 URL만 서비스에 노출합니다.
-- `movie_ott_crawl_status`: 영화별 크롤링 결과를 `SUCCESS`, `NO_LINK`, `NO_TITLE`, `FAILED`로 관리합니다.
-- `kinolights_title_mapping`: 우리 DB 영화와 키노라이츠 작품 URL 매핑을 저장합니다.
-- 중복 방지는 링크 존재 여부가 아니라 크롤링 상태 기준으로 처리합니다. 그래서 URL 1개가 이미 있다는 이유로 같은 영화의 다른 제공처를 놓치지 않습니다.
-- 키노라이츠에 작품이 없거나 보러가기 링크가 없는 영화는 상태 테이블에 따로 남기므로, H2 콘솔에서 수동 확인/보정 대상을 조회할 수 있습니다.
-
-200개 후보 영화에 대해 키노라이츠 공개 페이지를 저빈도로 크롤링했고, 결과는 아래 파일에 정리되어 있습니다.
-
-- 후보 목록: `output/kinolights_candidates_200.csv`
-- URL 원본 결과: `output/kinolights_ott_links_200_clean.csv`
-- 영화별 요약: `output/kinolights_ott_links_200_summary.csv`
-
-실행 흐름:
-
-```powershell
-$base = "http://localhost:8080"
-Invoke-WebRequest "$base/admin/ott-links/candidates.csv?limit=200" -OutFile "output/kinolights_candidates_200.csv"
-
-python scripts/kinolights_ott_crawler.py `
-  --input output/kinolights_candidates_200.csv `
-  --output output/kinolights_ott_links_200_clean.csv `
-  --max-items 200 `
-  --delay-min 2 `
-  --delay-max 4 `
-  --search-timeout-ms 6000 `
-  --max-clicks 0 `
-  --resume
-
-Invoke-RestMethod -Method Post "$base/admin/ott-links/import-csv?path=output/kinolights_ott_links_200_clean.csv"
-```
-
-이번 200개 크롤링 결과:
-
-- 총 200개 영화 처리
-- direct URL 확보: 181개
-- 보러가기 링크 없음: 19개
-- DB import 결과: 영화 181개, provider별 대표 링크 306개 저장
+> **개인화 추천 + OTT 바로가기 + 영화 소셜**을 하나로 묶은 영화 큐레이션 플랫폼.
+> 활동할수록 추천이 똑똑해지고, 추천받은 영화는 바로 볼 수 있으며, 그 영화로 사람들과 연결됩니다.
 
 ---
 
-## 05-26 구현사항 - OTT 보러가기 링크 PoC 및 영화 상세 페이지 반영
+## ✨ 핵심 차별점
 
-### 영화 상세 페이지 `보러가기` 섹션
+다른 영화 사이트와 구별되는 CineMatch만의 기능입니다.
 
-영화 상세 페이지의 이미지 영역 아래에 `보러가기` 섹션을 추가했습니다. 기존 TMDB 제공 서비스 영역은 provider 이름/로고만 보여주는 정보성 영역이고, 이번 섹션은 실제 외부 서비스의 작품 상세 페이지로 이동하는 direct URL을 제공합니다.
+| 기능 | 무엇이 다른가 |
+|------|----------------|
+| 🧠 **개인화 추천 엔진 v4.0** | 단순 평점순이 아니라, 활동을 시간 감쇠·단기/장기 취향으로 나눠 학습하고 협업 필터링·다양성 보정·탐험 추천까지 결합 |
+| 📺 **구독 OTT 기반 추천 + 바로가기** | "내가 가입한 OTT에서 볼 수 있는 영화"를 우선 추천하고, 크롤링한 실제 direct URL로 바로 연결 |
+| 🗺️ **취향 유사도 맵 (Taste Map)** | 사용자의 영화 취향을 2D 평면에 시각화해, 나와 취향이 가까운 사람을 한눈에 보여줌 |
+| ⚔️ **영화 배틀** | 두 영화를 맞붙이는 투표 콘텐츠. 장르·감독·배우·태그·시대 기준으로 자동 생성하거나 직접 만들 수 있음 |
+| 🎯 **영화 던지기** | 상호 팔로우한 친구에게 한마디와 함께 영화를 "던져" 추천. 상대가 보면 상태를 추적해 알림 |
+| 👥 **협업 추천 (인생영화)** | 나와 취향이 비슷하거나 내가 팔로우한 사용자의 *인생영화*를 홈에 별도 섹션으로 노출 |
 
-- 키노라이츠 공개 작품 페이지에서 OTT/극장 링크를 저빈도 크롤링해 URL 후보를 확보
-- 서비스 요청 시 실시간 크롤링하지 않음
-- 크롤링 결과를 10개 영화 seed로 반영하고, 상세 페이지 접근 시 `movie_ott_link` 런타임 테이블에 `MERGE` 적재
-- 화면은 크롤링이 아니라 DB에 저장된 `movie_ott_link`만 조회
-- 같은 provider가 여러 개 잡힌 경우 첫 번째 링크만 사용
-- 키노라이츠에 링크가 없거나 seed 대상이 아닌 영화는 현재 단계에서 `보러가기` 섹션을 숨김
-- 쿠팡플레이, 라프텔, CGV, 롯데시네마, 메가박스는 로컬 provider 아이콘 fallback을 사용
+---
 
-### 10개 테스트 영화
+## 🧩 전체 기능
 
-현재 PoC로 반영한 영화는 아래 10개입니다.
+<details open>
+<summary><b>1. 계정 &amp; 온보딩</b></summary>
 
-| 영화 | 반영된 링크 유형 |
-|------|------------------|
-| 기생충 | Netflix, TVING, Wavve, Watcha |
-| 공조2: 인터내셔날 | Netflix, TVING, Wavve, Watcha |
-| 스파이더맨: 노 웨이 홈 | Wavve, Watcha, Apple TV |
-| 명량 | Netflix, TVING, Wavve, Watcha |
-| 탑건: 매버릭 | Wavve, Coupang Play |
-| 극장판 귀멸의 칼날: 무한열차편 | Netflix, TVING, Wavve, Watcha, Laftel |
-| 포레스트 검프 | Wavve |
-| 쇼생크 탈출 | Coupang Play |
-| 엑시트 | Netflix, TVING, Wavve, Watcha |
-| 프로젝트 헤일메리 | CGV, 롯데시네마, 메가박스, Apple TV |
+- 회원가입 / 로그인 / 로그아웃
+- **취향 온보딩** — 분위기 태그별 영화 후보를 보여주고 고르게 해 초기 취향을 확보 (cold-start 완화)
+- **구독 OTT 선택** — 가입 시 사용 중인 OTT 9종을 등록 → 추천에 즉시 반영
+- 닉네임·loginId·프로필 이미지·**기본 동물 아바타**
+</details>
 
-### 크롤링 실행 방법
+<details>
+<summary><b>2. 영화 탐색 &amp; 상세</b></summary>
 
-크롤러는 Spring Boot 앱과 분리된 독립 Python 스크립트입니다. 서비스 서버에서 실시간으로 돌리는 용도가 아니라, 링크 후보를 수집하고 검증하기 위한 관리용 PoC입니다.
+- 홈: 메인 배너 · 실시간 인기작 · 추천 · 인기 영화 섹션
+- 영화 검색 / 장르·태그·키워드 기반 고급 검색
+- 영화 상세: 기본 정보 · 추천 태그 · 감독/배우 · 이미지 갤러리 · 예고편
+- **OTT/극장 보러가기** — provider 로고 + 실제 direct URL
+- 해당 영화 관련 게시물 그리드 · 리뷰
+</details>
 
-처음 한 번 설치:
+<details>
+<summary><b>3. 영화 평가 &amp; 활동 기록</b></summary>
 
-```powershell
-python -m pip install playwright
-python -m playwright install chromium
+- **7종 평가**: 좋아요 · 별로예요 · 나중에 볼래요 · 보는중 · 봤어요 · 별점 · 컬렉션
+- 새로고침 없이 상태 즉시 반영, 홈/랭킹 카드에서 hover 빠른 평가
+- 인생영화 추가/삭제
+- ➡️ *모든 활동이 추천 알고리즘의 취향 신호로 사용됨*
+</details>
+
+<details>
+<summary><b>4. 소셜 — 게시물 &amp; 피드</b></summary>
+
+- 특정 영화를 태그한 게시물 작성
+- 게시물 유형 6종: **이미지 · 동영상 · 파일 · 투표 · 퀴즈 · 텍스트**
+- 다중 이미지 업로드(최대 5장), drag &amp; drop·미리보기
+- 전역 피드(`/feed`) · 영화별 피드(`/movies/{code}/posts`) · 무한 스크롤
+- 게시물 좋아요 · 댓글 · 투표/퀴즈 참여
+</details>
+
+<details>
+<summary><b>5. 소셜 — 친구 &amp; 영화 나눔</b></summary>
+
+- 팔로우 / 언팔로우 · 팔로워·팔로잉 목록
+- 친구 페이지(`/people`) · 사용자 검색 · **취향 기반 추천 친구**
+- 공개 프로필(남의 인생영화·감상·뱃지·팔로우)
+- **영화 공유 / 영화 던지기**(상호 팔로우) + 던질 영화 추천 + 상태 추적
+</details>
+
+<details>
+<summary><b>6. 리뷰</b></summary>
+
+- "봤어요" 영화에 최대 1000자 리뷰
+- 1인 1영화 정책(재작성 시 갱신)
+- 리뷰 게시판(`/review-board`) · 리뷰 상세 · 좋아요 · 조회수
+</details>
+
+<details>
+<summary><b>7. 영화 배틀</b></summary>
+
+- 두 영화 맞대결 투표(선택 변경 가능), 득표 수·비율 막대
+- **자동 생성 5종**: 장르 · 감독 · 배우 · 태그 · 시대
+- 직접 생성(영화/라벨/이미지 지정) · 배틀 댓글·좋아요 · 친구에게 배틀 공유
+</details>
+
+<details>
+<summary><b>8. 랭킹 &amp; 차트</b></summary>
+
+- **15종 테마 차트**: 역대 매출 · 천만 클럽 · 세계 흥행 · 평점 명작 · 가성비 · 반짝 흥행 · 장르별 1위 · 배우/감독 대표작 · 실시간 인기 등
+</details>
+
+<details>
+<summary><b>9. 마이페이지 · 뱃지 · 알림</b></summary>
+
+- 활동 요약(좋아요·봤어요·컬렉션·인생영화 등) · 프로필/구독 OTT 관리
+- **취향 시각화(Taste Map)**
+- **뱃지/업적** — 13종, 4티어(브론즈·실버·골드·플래티넘), 진행도 표시, 대표 뱃지 선택
+- 알림 센터 — 팔로우·게시물 좋아요/댓글·리뷰 좋아요·영화 공유/던지기·상태 변화
+</details>
+
+<details>
+<summary><b>공통 UI</b></summary>
+
+- 상단바(알림·로그인) + 좌측 사이드바(홈·랭킹·피드·리뷰·친구·배틀·프로필)
+- 현재 메뉴 active 강조, 공통 app-shell 레이아웃
+</details>
+
+---
+
+## 🧠 추천 알고리즘 동작 방식
+
+> 알고리즘 버전: **`content-ranking-v4.0`** — 콘텐츠 기반 랭킹을 중심으로 협업 필터링과 다양성 제어를 결합한 하이브리드 방식.
+
+```
+사용자 활동(좋아요·별점·봤어요·인생영화 …)
+        │
+        ▼
+① 취향 프로필 생성  ──  feature 7종(tag·genre·director·actor·provider …)을 벡터로 변환
+        │              · 시간 감쇠(λ=0.005): 최근 활동일수록 가중치 ↑
+        │              · 단기 취향(최근 15건) 65% + 장기 취향 35% 블렌딩
+        ▼
+② 긍정/부정 신호    ──  좋아요·고별점 = 양(+), 별로예요·저별점 = 음(−)
+        │              (별점 1★ 부정 ~ 5★ 강한 긍정)
+        ▼
+③ 후보 랭킹 점수    ──  콘텐츠 유사도 + 아이템 기반 CF(movie_co_occurrence)
+        │              + 구독 OTT 부스트 + 신선도 + 인기도 필터(popularity ≥ 2.0)
+        ▼
+④ 다양성/탐험 보정  ──  같은 장르·감독·태그 과점 방지 재정렬
+        │              + Serendipity 블록(취향 경계의 새 장르/태그 1개 노출)
+        ▼
+⑤ 추천 블록 구성    ──  tag / genre / director / actor / provider / OTT 블록으로 분류
+        │
+        ▼
+⑥ 지연 재계산       ──  활동 변경 시 dirty 표시 → 다음 요청 때만 다시 계산
 ```
 
-10개 영화 URL 입력 파일:
+**핵심 아이디어**
+- 단순 "평점 높은 순"이 아니라, **사용자가 남긴 활동 자체를 취향 벡터로 학습**합니다.
+- **최근에 한 행동**을 더 크게 반영(시간 감쇠 + 단기 취향 레이어)해 취향 변화를 빠르게 따라갑니다.
+- 비슷한 사람들이 함께 본 영화를 섞는 **협업 필터링**과, 취향 밖 영화를 일부러 끼워 넣는 **탐험 추천**으로 추천이 한쪽으로 쏠리지 않게 합니다.
+- 내가 **구독한 OTT에서 볼 수 있는 영화**에 가산점을 줘, "추천은 했는데 볼 수가 없는" 문제를 줄입니다.
 
-```text
-scripts/kinolights_titles.csv
+---
+
+## 🗺️ 취향 유사도 맵 (Taste Map)
+
+사용자의 영화 취향을 **2차원 평면**에 배치해, 나와 취향이 가까운 사람을 직관적으로 보여줍니다.
+
+- **X축**: 강렬함(액션·스릴러·공포) ↔ 가벼움(코미디·로맨스·가족)
+- **Y축**: 상상/환상(SF·판타지·모험) ↔ 현실/일상(다큐·역사·드라마)
+
+```
+계산 과정
+1) 활동 가중치로 장르 점수 집계  (인생영화 ×5 / 좋아요 ×3 / 시청 ×1)
+2) 장르별 (X,Y) 가중치를 곱해 사용자 좌표 산출
+3) 표준편차(±2σ) 기반 정규화 → 중앙 과밀 방지
+4) 평면에 사용자들을 배치 + '나'와 '팔로우' 강조
 ```
 
-크롤링 실행:
+→ 가까이 있을수록 취향이 비슷하다는 뜻이라, **취향 기반 친구 추천**과 자연스럽게 연결됩니다.
 
-```powershell
-python scripts/kinolights_ott_crawler.py --input scripts/kinolights_titles.csv --output output/kinolights_ott_links_10_with_theaters.csv --max-items 10 --delay-min 1 --delay-max 2
+---
+
+## 🔗 데이터 파이프라인
+
+```
+KOBIS API ──┐
+            ├─→ 정규화 ─→ movie (DB) ─→ 태그 생성(29종) ─→ 추천 엔진
+TMDB API ───┘                                 │
+                                              ├─ Kinolights 크롤링 → OTT/극장 direct URL
+                                              └─ YouTube Data API → 예고편 보강
 ```
 
-결과 CSV:
+- **KOBIS**: 국내 영화 골격(제목·장르·감독·배우·박스오피스)
+- **TMDB**: 포스터·줄거리·평점·인기도·키워드·이미지·트렌딩 보강
+- **Kinolights 크롤링(jsoup)**: 영화별 OTT/극장 "보러가기" direct URL 수집 → `movie_ott_link` 캐시, 크롤 상태(`SUCCESS`/`NO_LINK`/`NO_TITLE`/`FAILED`) 관리로 중복 크롤링 방지
+- **YouTube Data API v3**: 예고편 없는 영화에 트레일러 자동 보강
+- **자동 태깅**: 장르·키워드·러닝타임 규칙으로 분위기 태그 29종(MOOD/CONTEXT/THEME/CAUTION)을 0~100 점수로 부여
 
-```text
-output/kinolights_ott_links_10_with_theaters.csv
+---
+
+## 🛠️ 기술 스택
+
+| 구분 | 사용 기술 |
+|------|-----------|
+| **Language** | Java 25 |
+| **Framework** | Spring Boot 4.0.4 (Web, JDBC, Thymeleaf) |
+| **DB** | H2 (file, `MODE=MySQL`) — `spring-boot-starter-jdbc`의 `JdbcTemplate` 직접 사용 (ORM 미사용) |
+| **View** | Thymeleaf + 공통 app-shell (HTML/CSS/JS) |
+| **Crawling / Parsing** | jsoup, commons-csv |
+| **External API** | KOBIS Open API · TMDB API · YouTube Data API v3 |
+| **Build** | Maven (`mvnw`) |
+
+---
+
+## 🏗️ 아키텍처 / 패키지 구조
+
+```
+com.cinematch
+├── recommendation/   # 개인화 추천 엔진 v4.0 (취향 프로필 · 랭킹 · 블록 · 협업 추천 · refresh)
+├── chart/            # 테마 랭킹 차트 15종 (ChartAlgorithm → AbstractJdbcChartAlgorithm)
+├── tag/              # 영화 분위기 태그 29종 자동 생성
+├── ott/              # OTT 시청 링크 매핑 · 구독 관리 · provider 카탈로그(9종)
+├── battle/           # 영화 배틀 (생성·투표·댓글·공유)
+├── tastemap/         # 취향 유사도 맵 (2D 시각화)
+├── notification/     # 소셜 알림
+├── kobis/            # KOBIS 수집·정규화·박스오피스
+├── tmdb/             # TMDB 수집·정규화·트렌딩
+├── youtube/          # YouTube 예고편 검색·보강
+├── admin/            # 데이터 파이프라인 배치 · 더미 시드
+└── (root)            # MovieController · PostController · ReviewController · BadgeService
+                      # MovieThrow* · LoginApplication(부트스트랩)
 ```
 
-CSV에는 `provider`, `watch_url`, `raw_url`, `raw_text`, `source_method`가 기록됩니다. 최종 서비스에 사용할 값은 `watch_url`입니다.
+- **DB 스키마**: `src/main/resources/schema.sql` — 앱 시작 시 `SchemaBootstrapRunner`가 자동 적용
+- **추천 가중치 집중지**: `recommendation/RecommendationFeaturePolicy`
 
-### DB 적재 흐름
+---
 
-현재 10개 영화 링크는 `MovieController`의 `WATCH_LINK_SEEDS`에 seed로 반영되어 있습니다. 앱 실행 후 해당 영화 상세 페이지에 접근하면 아래 흐름으로 DB에 적재됩니다.
+## 🚀 실행 방법
 
-```text
-영화 상세 페이지 접근
-→ movie_ott_link 테이블 CREATE TABLE IF NOT EXISTS
-→ 현재 영화 제목과 WATCH_LINK_SEEDS 매칭
-→ provider별 첫 번째 watch_url을 MERGE INTO movie_ott_link
-→ 화면은 movie_ott_link 조회 결과로 보러가기 섹션 렌더링
-```
+### 사전 준비 (환경변수)
 
-즉 사용자 화면에서 키노라이츠를 매번 호출하지 않고, DB에 적재된 링크만 사용합니다. 추후 100개 이상으로 확장할 때는 `WATCH_LINK_SEEDS` 하드코딩 대신 CSV import 또는 관리자 배치 endpoint로 `movie_ott_link`에 일괄 적재하는 구조로 전환하면 됩니다.
-
-### 변경 파일
-
-| 파일 | 내용 |
+| 변수 | 설명 |
 |------|------|
-| `scripts/kinolights_ott_crawler.py` | 키노라이츠 공개 페이지에서 OTT/극장 direct URL 후보 추출 |
-| `scripts/kinolights_titles.csv` | 10개 테스트 영화의 키노라이츠 URL 목록 |
-| `scripts/README_KINOLIGHTS_OTT.md` | 크롤러 실행/해석 문서 |
-| `MovieController.java` | `movie_ott_link` 런타임 테이블 생성, 10개 seed 적재, 보러가기 model attribute 추가 |
-| `templates/movie-detail.html` | 영화 상세 페이지 `보러가기` UI 추가 |
-| `static/images/providers/*` | 쿠팡플레이, 라프텔, CGV, 롯데시네마, 메가박스 로컬 아이콘 |
+| `KOBIS_API_KEY` | 영화진흥위원회 Open API 키 |
+| `TMDB_TOKEN` | TMDB Bearer Token |
 
----
+> API 키 없이도 H2 파일 DB에 적재된 데이터로 화면 동작은 확인할 수 있습니다.
 
-## 05-26 구현 사항
+### 빌드 & 실행
 
-### 영화 배틀 기능
+```bash
+# 빌드
+./mvnw.cmd clean package -DskipTests
 
-두 영화를 맞붙여 사용자가 투표하는 배틀 시스템을 추가했습니다.
+# 로컬 실행 (H2 파일 DB)
+./mvnw.cmd spring-boot:run
 
-#### 배틀 자동 생성 (5가지 타입)
-
-| 타입 | 기준 | 조건 |
-|------|------|------|
-| GENRE | 같은 장르의 영화 2편 | 평점 7.0+, 유사 평점대 (±1.5), popularity 5.0+ |
-| DIRECTOR | 같은 감독의 작품 2편 | 평점 7.0+ |
-| ACTOR | 같은 배우(주연 3위 이내) 출연작 2편 | 평점 7.0+ |
-| TAG | 같은 MOOD 태그를 가진 영화 2편 | 평점 7.0+ |
-| ERA | 같은 10년대 영화 2편 | 평점 7.5+, 평점 차 ±1.0 이내 |
-
-- 이미 존재하는 페어는 UNIQUE 제약으로 자동 무시
-- `/battles` 진입 시 배틀이 없으면 자동 생성
-
-#### 투표 방식
-
-- 첫 투표 → 저장
-- 같은 영화 재클릭 → 취소
-- 다른 영화 클릭 → 변경
-- 득표 수와 비율(%)을 실시간으로 응답
-
-#### 05-26 영화 배틀 변경 파일
-
-| 파일 | 유형 | 설명 |
-|------|------|------|
-| `battle/MovieBattleService.java` | 신규 | 배틀 생성·투표·조회 핵심 로직, `movie_battle`/`battle_vote` 테이블 자동 생성 |
-| `battle/MovieBattleController.java` | 신규 | `GET /battles`, `POST /api/battles/generate`, `POST /api/battles/{id}/vote` |
-| `templates/battle.html` | 신규 | 배틀 목록 및 투표 UI 페이지 |
-| `templates/fragments/app-shell.html` | 수정 | 좌측 사이드 네비게이션에 "영화 배틀" 메뉴 추가 |
-
----
-
-### 영화 상세 페이지 — 이미지 갤러리 + 예고편
-
-#### 이미지 갤러리
-
-- `GET /api/movies/{movieCode}/images` 엔드포인트 신규 추가
-- TMDB API 실시간 호출로 backdrop 최대 8장 + poster 최대 4장 수집
-- TMDB 이미지가 없으면 DB에 저장된 `backdrop_path` / `poster_path`로 폴백
-- 3열 그리드로 표시, 로딩 중 shimmer 스켈레톤 3개 노출
-- 기본 6장만 표시 후 "더 보기" 버튼으로 전체 노출
-- 이미지 클릭 시 라이트박스 전체화면 뷰: ‹ › 버튼 및 키보드 방향키로 탐색, Esc로 닫기
-
-#### 예고편 / 영상
-
-- TMDB 정규화 단계에서 YouTube 영상을 `movie_video` 테이블에 저장 (Trailer → Teaser → Clip 우선순위 정렬)
-- 영상이 있는 경우 영화 상세 페이지에 YouTube iframe 탭 UI 표시
-- 여러 영상이 있을 경우 탭 전환 가능, 탭 클릭 시 autoplay
-
-#### YouTube 트레일러 보완 배치
-
-- TMDB에 영상이 없는 영화를 대상으로 YouTube Data API v3로 트레일러 검색
-- 한국어 제목 → 원제(영어) 순으로 재시도
-- `POST /youtube/fill-trailers?limit=50` 배치 엔드포인트로 수동 실행
-- `GET /tmdb/video-stats`로 영상 보유 현황 통계 확인 가능
-
-#### 05-26 영화 상세 변경 파일
-
-| 파일 | 유형 | 설명 |
-|------|------|------|
-| `MovieController.java` | 수정 | `GET /api/movies/{movieCode}/images` 추가, `videos` model attribute 주입 |
-| `templates/movie-detail.html` | 수정 | 이미지 갤러리(3열 그리드 + 라이트박스), 예고편 탭 UI 추가 |
-| `tmdb/TmdbMovieNormalizeService.java` | 수정 | `normalizeVideos()` 추가 — TMDB YouTube 영상 정규화 및 `movie_video` 저장 |
-| `tmdb/TmdbTestController.java` | 수정 | `GET /tmdb/video-stats` 추가 |
-| `youtube/YoutubeTrailerService.java` | 신규 | YouTube API로 트레일러 검색 후 `movie_video`에 저장 |
-| `youtube/YoutubeTrailerController.java` | 신규 | `POST /youtube/fill-trailers` 배치 엔드포인트 |
-| `application.properties` | 수정 | `youtube.api-key` 환경변수 설정 추가 |
-
----
-
-## 05-18 UI/UX 인터랙션 개선
-
-토스증권·인스타그램 스타일의 애니메이션 및 인터랙션 효과를 전반적으로 추가했습니다.
-
----
-
-### 좋아요 팝 애니메이션 + 파티클
-
-영화 상세·피드·게시글 상세의 좋아요 버튼 클릭 시 발동합니다.
-
-- 버튼이 축소(×0.90) → 확대(×1.12) → 원상복구되는 바운스
-- 핑크/오렌지/노란 파티클 6개가 방사형으로 퍼졌다 사라짐
-- **좋아요 누를 때만** 발동 (취소 시에는 애니메이션 없음)
-- `movie-detail.html`: 영화 좋아요 + 리뷰 좋아요 각각 적용. 바운스 강도를 feed/post-detail 대비 약하게 조정 (×1.12)
-
----
-
-### 스켈레톤 로딩 (Shimmer)
-
-이미지 로딩 전 회색 블록이 shimmer되는 효과입니다.
-
-- `hp-theme.css`에 `@keyframes hp-shimmer`, `.img-loading`, `.skel` 유틸리티 클래스 추가
-- `app-shell.js`의 `initSkeletons()`가 모든 페이지의 `.poster-shell`, `.rank-poster-wrap`, `.hp-poster-wrap`에 자동 적용
-- 이미 캐시된 이미지(`img.complete && naturalWidth > 0`)는 건너뜀
-- 피드 무한 스크롤 시 skeleton 카드 2개를 미리 삽입 후 데이터 도착 시 제거
-
----
-
-### 랭킹 카운트업 애니메이션
-
-`/ranking/{code}` 진입 시 순위 번호와 지표 숫자가 0에서 실제 값으로 올라옵니다.
-
-- 그리드뷰 `.card-rank`, 리스트뷰 `.rank-no`: 카드마다 35ms 스태거, 500ms easeOutCubic
-- 리스트뷰 `.rank-metric-value`: 숫자 부분만 파싱해 카운트업, 단위(만원/명 등)는 유지. 완료 후 원래 콤마 포맷으로 복원
-
----
-
-### 순위 변동 배지 (▲ / ▼ / NEW)
-
-`localStorage`에 이전 방문 시 순위를 저장해 재방문 시 변동을 표시합니다.
-
-- 첫 방문: 모든 영화에 `NEW` 파란 배지
-- 재방문: 상승 ▲초록 / 하락 ▼빨강 / 변동 없으면 배지 없음
-- 저장 키: `cm-rank-{chartCode}` — 차트별 독립 저장
-- 그리드뷰 `.card-rank`, 리스트뷰 `.rank-no` 둘 다 지원
-
----
-
-### 숫자 롤업 애니메이션 (좋아요 수 변경 시)
-
-좋아요를 누르거나 취소할 때 숫자가 슬롯머신처럼 롤링됩니다.
-
-- 좋아요 증가: 숫자가 아래에서 위로 올라오며 교체
-- 좋아요 취소: 숫자가 위에서 아래로 내려가며 교체
-- 피드 카드 `.like-count`, 게시글 상세 `#postLikeCount` 적용
-
----
-
-### 더블탭 하트 (피드 이미지)
-
-피드 이미지 영역을 더블클릭하면 클릭 위치에 ❤️가 터집니다.
-
-- 이미 좋아요 상태: 하트 애니메이션만 표시 (API 재호출 없음)
-- 좋아요 미누른 상태: 자동으로 좋아요 처리 + 팝 애니메이션 + 롤업 카운트 동시 발동
-- 0.75초 easeOut으로 scale-up 후 fade-out
-
----
-
-### 스크롤 방향에 따른 헤더 숨김/표시
-
-아래로 스크롤하면 상단바가 사라지고, 위로 스크롤하면 복귀합니다.
-
-- `app-shell.js`의 `initScrollHeader()` 한 곳에서 처리 → 전 페이지 자동 적용
-- 80px 이상 스크롤 내려간 상태에서 아래 방향일 때만 숨김
-- `requestAnimationFrame` + ticking 플래그로 성능 최적화
-
----
-
-### 포스터 호버 오버레이
-
-마이페이지·보관함 포스터에 마우스를 올리면 "상세 보기 →" 텍스트와 그라디언트가 페이드인됩니다.
-
-- CSS `::after` pseudo-element만 사용 — HTML 변경 없음
-- `my-page.html`: 인생영화·시청목록·컬렉션 그리드에 적용
-- `stored-page.html`: `.poster-wrap`에 `position: relative` 추가 후 적용
-
----
-
-### 스토리링 (팔로잉 유저)
-
-피드 상단에 팔로잉 유저들의 프로필이 가로 스크롤로 나열됩니다.
-
-- 최근 3일 내 게시물 올린 유저: 파란~보라~빨간 그라디언트 링 (활성)
-- 그 외 팔로잉 유저: 회색 링 (비활성)
-- 활성 유저가 상단 정렬
-- 닉네임 첫 글자 이니셜 fallback (프로필 사진 없을 때)
-- 팔로잉 유저 없으면 섹션 자체가 렌더링되지 않음
-
----
-
-### 인생영화 지정 시 Confetti 파티클
-
-마이페이지에서 인생영화를 추가할 때 폭죽 이펙트가 터집니다.
-
-- "Add to Life Movies" 버튼 클릭 → confetti 발동 → 380ms 후 폼 실제 제출
-- 파란/보라/빨강/황금/흰색/민트 혼합 120개 파티클
-- `canvas-confetti` CDN 1줄로 구현
-
----
-
-### 무비던지기 포스터 날아가기
-
-"던지기 확인" 클릭 시 확인 모달의 포스터가 화면 오른쪽 위로 날아가며 사라집니다.
-
-- API 호출과 동시에 진행되므로 딜레이 없음
-- 포스터 clone을 `position:fixed`로 분리 → `translateX(100vw) translateY(-50vh) rotate(30deg) scale(0.2)` + 페이드아웃 (0.72초)
-- 애니메이션 완료 후 DOM에서 자동 제거
-
----
-
-### 취향 도넛 차트 그려지는 애니메이션
-
-마이페이지 진입 시 도넛 차트 슬라이스가 순서대로 그려집니다.
-
-- 각 슬라이스: `stroke-dasharray 0 → 실제값`을 110ms 간격 stagger로 애니메이션 (700ms easeOutCubic)
-- 중앙 숫자: 모든 슬라이스가 그려진 후 0에서 실제 편수로 카운트업
-- CSS transition 대신 `requestAnimationFrame` 기반으로 크로스브라우저 안정성 확보
-
----
-
-### 토스트 알림 (영화 상세 페이지)
-
-영화 상세 페이지에서 액션 성공 시 하단에서 토스트 메시지가 올라옵니다.
-
-| 액션 | 토스트 |
-|------|--------|
-| 좋아요 | ❤️ 좋아요 표시했어요 / 좋아요를 취소했어요 |
-| 별로에요 | 😑 별로에요 표시했어요 / 취소 |
-| 보관함 | 🕓 보관함에 추가했어요 / 제거 |
-| 컬렉션 | 🔖 컬렉션에 추가했어요 / 제거 |
-| 시청 상태 | ▶ 보는중 / ✓ 봤어요 / 해제 |
-| 별점 | ⭐ N점으로 저장했어요 |
-
-- 2.2초 표시 후 fade-out 사라짐
-- 연속 클릭 시 이전 토스트를 즉시 제거하고 새 토스트로 교체
-
----
-
-### 05-18 변경 파일 목록
-
-| 파일 | 유형 | 설명 |
-|------|------|------|
-| `PostController.java` | 수정 | `fetchStoryUsers()` 메서드 추가, `storyUsers` model attribute 주입 |
-| `static/css/hp-theme.css` | 수정 | `hp-shimmer` keyframe, `.img-loading`, `.skel` 유틸리티 추가 |
-| `static/js/app-shell.js` | 수정 | `initSkeletons()` (포스터 shimmer 자동 적용), `initScrollHeader()` (스크롤 헤더 숨김) 추가 |
-| `templates/movie-detail.html` | 수정 | 좋아요 팝 애니메이션(완화), 토스트 알림 6종 |
-| `templates/feed.html` | 수정 | 좋아요 팝, 숫자 롤업, 더블탭 하트, 스켈레톤 카드, 스토리링 섹션 |
-| `templates/post-detail.html` | 수정 | 좋아요 팝 애니메이션, 숫자 롤업 |
-| `templates/ranking-detail.html` | 수정 | 카운트업 애니메이션, 순위 변동 배지, `rank-card`에 `data-code` 추가 |
-| `templates/my-page.html` | 수정 | 포스터 호버 오버레이(`::after`), 인생영화 confetti, 도넛 차트 그려지는 애니메이션 |
-| `templates/stored-page.html` | 수정 | 포스터 호버 오버레이(`::after`), `.poster-wrap`에 `position: relative` 추가 |
-| `templates/user-profile.html` | 수정 | 무비던지기 확인 시 포스터 날아가기 애니메이션 |
-
----
-
-## 05-17 구현 사항
-
-### 피드 페이지 리디자인 (`/feed`)
-
-- 기존 3열 정사각형 그리드 레이아웃을 **인스타그램 스타일 세로 타임라인**으로 전면 변경했습니다.
-- 각 게시물 카드에 작성자 정보(아바타·닉네임·작성시간), 이미지 캐러셀, 본문, 좋아요/댓글 버튼, 태그 영화가 모두 표시됩니다.
-- 이미지 비율을 1:1(정사각형)에서 **4:5(세로형)** 으로 변경해 포스터 이미지가 더 자연스럽게 보입니다.
-- 카드 디자인 개선: 파란색 아바타 링, 세련된 그림자·테두리, 절제된 아이콘 크기.
-
-### 피드 우측 사이드바 추가
-
-- **실시간 인기 영화**: KOBIS 박스오피스 상위 5개를 순위·포스터·제목과 함께 표시하며, 클릭하면 영화 상세 페이지로 이동합니다.
-- **팔로우 추천**: 팔로워 수 기준 상위 3명의 사용자를 추천하며, 사이드바에서 바로 팔로우/언팔로우할 수 있습니다.
-- 860px 이하 화면에서는 사이드바가 자동으로 숨겨지고 피드만 표시됩니다.
-
----
-
-### 영화 던지기 기능
-
-친구 프로필에서 영화를 추천해 던질 수 있는 소셜 기능을 추가했습니다.
-
-#### 활성화 조건
-
-버튼은 아래 조건을 모두 만족할 때만 활성화됩니다. 조건 미충족 시 버튼이 비활성화되며, 마우스를 올리면 이유를 안내하는 툴팁이 표시됩니다.
-
-| 조건 | 기준 | 툴팁 메시지 |
-|------|------|-------------|
-| 상호 팔로우 | 두 사람 모두 서로를 팔로우 | "서로 팔로우한 친구에게만 영화를 던질 수 있어요" |
-| 내 영화 기록 | 좋아요·봤어요·인생영화 합산 5편 이상 | "내 영화 기록이 5편 미만이에요. 더 감상하면 활성화돼요" |
-| 상대 영화 기록 | 상대도 5편 이상 | "{nickname}님의 영화 기록이 부족해 아직 활성화되지 않아요" |
-
-#### 동작 방식
-
-- 버튼 클릭 시 모달이 열리며, 두 사람의 취향 교집합 영화 최대 3개와 취향 유사도(%)를 표시합니다.
-- 추천 영화 선택 → 확인 버튼 클릭으로 던지기가 완료됩니다.
-- 던진 영화는 이미 두 사람 모두 감상한 영화나 이전에 던진 영화를 제외하고 추천합니다.
-- 백엔드(`MovieThrowService`)에서도 상호 팔로우를 재검증해 API 직접 호출을 방어합니다.
-
-#### 알림
-
-| 상황 | 수신자 | 알림 텍스트 |
-|------|--------|-------------|
-| 영화를 던졌을 때 | 받은 사람 | "A님이 {영화}를 던졌습니다." |
-| 받은 사람이 보는중으로 변경 | 던진 사람 | "B님이 {영화}를 보는중입니다." |
-| 받은 사람이 봤어요로 변경 | 던진 사람 | "B님이 {영화}를 봤습니다!" |
-
-알림 클릭 시 해당 영화 상세 페이지로 이동합니다.
-
-#### 마이페이지 히스토리
-
-- 마이페이지 최상단(인생영화 위)에 **영화 던지기 히스토리** 섹션을 고정합니다.
-- 기본 탭은 **내가 받은 영화**이며, **내가 던진 영화** 탭으로 전환할 수 있습니다.
-- 던진 사람과 받은 사람 모두 **봤어요** 상태가 되면 해당 항목이 히스토리에서 자동으로 사라집니다.
-
-#### 변경 파일
-
-| 파일 | 유형 | 설명 |
-|------|------|------|
-| `MovieThrowService.java` | 신규 | 영화 던지기 핵심 서비스 (추천·유사도·기록·팔로우 검증) |
-| `MovieThrowController.java` | 신규 | `/api/throw` REST API |
-| `MovieController.java` | 수정 | 프로필 활성화 조건 계산, 마이페이지 히스토리 로딩, 보는중/봤어요 알림 발송 |
-| `NotificationService.java` | 수정 | `MOVIE_THROW`, `MOVIE_THROW_WATCHING`, `MOVIE_THROW_WATCHED` 알림 추가 |
-| `NotificationController.java` | 수정 | 던지기 관련 알림 텍스트·링크 처리 추가 |
-| `schema.sql` | 수정 | `movie_throw` DROP 순서 수정 (인생영화 등록 버그 원인 해결) |
-| `templates/user-profile.html` | 수정 | 활성화/비활성화 버튼 분기, 툴팁, 모달 자동 열림 버그 수정 |
-| `templates/my-page.html` | 수정 | 던지기 히스토리 섹션 최상단 이동, 기본 탭 변경 |
-
----
-
-## 05-15 구현 사항
-
-### 소셜 게시물 댓글 및 알림
-
-- 게시물 상세 페이지에서 댓글 작성과 댓글 목록 조회를 지원합니다.
-- 댓글에는 작성자의 프로필 이미지, 닉네임, 작성일, 내용이 표시됩니다.
-- 프로필 이미지나 닉네임을 클릭하면 해당 사용자의 공개 프로필(`/users/{loginId}`)로 이동합니다.
-- 누군가 내 게시물에 댓글을 달면 `POST_COMMENT` 알림이 생성되며, 알림 클릭 시 해당 게시물 댓글 영역으로 이동합니다.
-- 기존 게시물 좋아요 기능은 유지되며, 좋아요 알림(`POST_LIKE`)도 계속 동작합니다.
-
-### 전역 피드
-
-- `/feed` 페이지를 추가해 전체 사용자의 최신 게시물을 세로 피드 형태로 볼 수 있습니다.
-- 최초 10개 게시물을 렌더링하고, 스크롤 하단 도달 시 다음 게시물을 추가로 불러옵니다.
-- 피드 카드에서 이미지 캐러셀, 좋아요, 댓글 수, 영화 태그, 팔로우 버튼을 사용할 수 있습니다.
-- 피드 상단의 `새 게시물 작성` 버튼을 통해 기존 게시물 작성 페이지(`/posts/create`)로 이동합니다.
-
-### 상단바/좌측바 정리
-
-- 상단바는 로고, 알림, 로그인/로그아웃 중심으로 단순화했습니다.
-- 좌측바는 `홈`, `랭킹차트`, `피드`, `친구`, `프로필` 메뉴로 통일했습니다.
-- 기존 People 모달 진입은 제거하고, `/people` 친구 페이지에서 사용자 검색과 팔로우/언팔로우를 관리합니다.
-- 공통 네비게이션 구조를 fragment와 정적 CSS/JS로 분리해 주요 페이지에 동일하게 적용했습니다.
-
----
-
-## 05-08 구현사항
-
-### 실시간 인기 작품 — TMDB trending/movie/day 연동
-
-기존 `TmdbTrendingChart`가 KOBIS 박스오피스만 사용하던 것을 TMDB trending 스냅샷 우선 → KOBIS fallback 구조로 전환했습니다.
-
-#### 데이터 우선순위
-
-1. **TMDB trending 스냅샷** (`tmdb_trending_chart` 테이블): TMDB 토큰 설정 시 서버 시작 때 24시간 경과 여부 확인 후 자동 갱신
-2. **KOBIS 일별 박스오피스** (TMDB 스냅샷 없을 때 fallback): `KOBIS_API_KEY` 환경변수 필요
-
-#### TMDB 갱신 정책 (`TmdbTrendingService.java`)
-
-- `@EventListener(ApplicationReadyEvent.class)` 로 서버 시작 시 자동 실행
-- 이미 DB에 있는 영화는 재사용, 없는 영화는 import → normalize → 태그 생성 후 편입
-- 수동 강제 갱신: `POST /admin/pipeline/tmdb-trending/refresh`
-
-**변경 파일:**
-
-| 파일                                      | 설명                                             |
-| ----------------------------------------- | ------------------------------------------------ |
-| `chart/algorithms/TmdbTrendingChart.java` | KOBIS 단독 → TMDB 우선 + KOBIS fallback으로 전환 |
-| `tmdb/TmdbTrendingService.java`           | TMDB trending/movie/day 갱신 서비스              |
-
----
-
-### 취향 유사도 도넛 차트 (타 유저 프로필)
-
-팔로잉한 유저의 프로필 페이지(`/users/{loginId}`)에 취향 유사도를 도넛 게이지로 표시합니다.
-
-- 유사도 계산: `user_preference_profile` 테이블의 feature 벡터를 이용한 **코사인 유사도** (0–100 정수)
-- SVG `stroke-dasharray` 단일 아크로 게이지 구현, 파란색(`#0048FF`) 채움
-- 데이터 없으면 위젯 숨김
-
-**변경 파일:**
-
-| 파일                          | 설명                                                                          |
-| ----------------------------- | ----------------------------------------------------------------------------- |
-| `MovieController.java`        | `computeCosineSimilarity()` 메서드 추가, `similarityPct` model attribute 주입 |
-| `templates/user-profile.html` | 도넛 게이지 위젯 HTML/CSS/JS 추가                                             |
-
----
-
-### 메인 페이지 카드 호버 줌 + 액션 버튼
-
-랭킹 페이지에만 있던 카드 호버 줌 효과와 액션 버튼을 메인 피드 캐러셀에도 적용했습니다.
-
-- 호버 시 `scale(1.32)` 확대
-- 확대 카드 가로 잘림 문제 해결: `scrollLeft` + `overflow-x: auto` → `transform: translateX` + `overflow-x: clip`
-- 액션 버튼 4종: 좋아요 / 싫어요 / 나중에 보기 / 컬렉션 추가
-
----
-
-### 액션 버튼 아이콘 통일
-
-영화 상세 페이지(`movie-detail.html`) 기준으로 랭킹·메인 페이지의 카드 액션 버튼 SVG를 통일했습니다.
-
-| 버튼        | 아이콘                  |
-| ----------- | ----------------------- |
-| 좋아요      | 하트 path               |
-| 싫어요      | 하트 + 사선 path        |
-| 나중에 보기 | 시계 circle + 바늘 path |
-| 컬렉션      | 북마크 path             |
-
----
-
-### 랭킹 차트 UI: 캐러셀 → 5×2 그리드
-
-랭킹 홈(`/ranking`) 각 차트 섹션의 영화 배열 방식을 변경했습니다.
-
-| 구분        | 변경 전             | 변경 후          |
-| ----------- | ------------------- | ---------------- |
-| 레이아웃    | 단일 행 수평 캐러셀 | 5열 × 2행 그리드 |
-| 포스터 크기 | 소형                | 대형             |
-| 스크롤 버튼 | 좌/우 버튼          | 없음 (전체 노출) |
-
-반응형: 960px 이하 → 3열, 768px 이하 → 2열
-
----
-
-### 랭킹 순위 누락 버그 수정
-
-SQL `LIMIT 10` 적용 후 Java에서 포스터 URL 없는 영화를 필터링해 중간 순위가 빠지는 버그를 수정했습니다.  
-`AbstractJdbcChartAlgorithm.runQuery()`의 포스터 필터 제거. 포스터 없는 경우 템플릿의 `card-poster-fallback`이 영화명으로 대체 표시합니다.
-
-영향 범위: `AbstractJdbcChartAlgorithm`을 상속하는 **모든 15개 차트 알고리즘**
-
----
-
-### 05-08 변경 파일 목록
-
-| 파일                                      | 유형 | 설명                                             |
-| ----------------------------------------- | ---- | ------------------------------------------------ |
-| `MovieController.java`                    | 수정 | 코사인 유사도 계산 메서드 추가                   |
-| `chart/AbstractJdbcChartAlgorithm.java`   | 수정 | 포스터 URL 필터 제거 (순위 누락 버그 수정)       |
-| `chart/algorithms/TmdbTrendingChart.java` | 수정 | TMDB 트렌딩 연동 + KOBIS fallback                |
-| `templates/user-profile.html`             | 수정 | 취향 유사도 도넛 차트 위젯 추가                  |
-| `templates/ranking.html`                  | 수정 | 카드 아이콘 통일, 캐러셀 → 5×2 그리드            |
-| `templates/ranking-detail.html`           | 수정 | 카드 아이콘 통일                                 |
-| `templates/index.html`                    | 수정 | 카드 호버 줌 + 액션 버튼, translateX 캐러셀 전환 |
-
----
-
-## 05-05 구현사항
-
-### 마이페이지 UI 전면 개편
-
-#### 취향 프로필 도넛 차트 (히어로 우측)
-
-- 히어로 영역 우측에 사용자의 장르 취향을 시각화하는 도넛 차트 위젯을 추가했습니다.
-- 서버에서 `user_movie_like`, `user_movie_watch` 기반으로 장르별 카운트 합계를 집계합니다.
-- Thymeleaf `th:inline="javascript"`가 Java Record를 직렬화하지 못하는 문제를 **HTML `data-*` 속성**으로 우회해 해결했습니다.
-  - `<span th:each="item : ${tasteChart}" th:attr="data-genre=${item.genre()},data-count=${item.count()},data-pct=${item.pct()}">` 방식
-- SVG `stroke-dasharray` + `rotate` transform으로 비율에 따른 도넛 슬라이스를 JS로 그립니다.
-- 차트 슬라이스에 마우스를 올리면 장르명 + 횟수 + 비율 툴팁이 표시됩니다.
-- 취향 데이터가 없으면 "아직 감상 기록이 없습니다" 안내 문구를 표시합니다.
-
-#### 팔로워 / 팔로잉 버튼 위치 변경
-
-- 기존 히어로 하단 외부에 있던 팔로워/팔로잉 버튼을 **히어로 내부**로 이동했습니다.
-- 인원수·좋아요 등 요약 카드 바로 위, 프로필 정보 아래에 배치했습니다.
-
-#### 요약 카드 아이콘 코딩
-
-- 7개 요약 카드(인원수, 좋아요, 컬렉션, 나중에볼게, 별로요, 보더라, 봤어요)에 영화 상세 페이지 버튼 활성화 상태와 동일한 그라데이션을 적용했습니다.
-- 각 카드마다 `.life`, `.like`, `.coll`, `.later`, `.bad`, `.watch`, `.done` CSS 클래스로 구분합니다.
-
-**변경 파일:**
-
-- `MovieController.java` → `fetchUserGenreChart()`, `fetchMoviesByTag()` 메서드 추가, `tasteChart` 모델 속성 주입
-- `templates/my-page.html` → 도넛 차트 위젯, 팔로워/팔로잉 위치 변경, 카드 아이콘 코딩
-
----
-
-### 회원가입 Cold-start 해소 → 온보딩 페이지
-
-회원가입 직후 취향이 전혀 없는 신규 사용자의 초기 추천 품질 문제(cold-start)를 해결하기 위해 2단계 가입 흐름을 도입했습니다.
-
-#### 흐름
-
-1. `POST /signup` → 기본 가입 완료 후 세션 생성 → `/onboarding` 리다이렉트
-2. `/onboarding` 페이지에서 5가지 태그(funny / tense / dark / emotional / romantic)별로 영화 5편씩, 총 25개 포스터를 보여줌
-3. 사용자가 마음에 드는 포스터를 클릭(다중 선택) → "선택 완료" 제출
-4. `POST /onboarding` → 선택한 영화들을 `user_movie_like (liked=TRUE)`로 DB에 저장 → `/` 홈으로 이동
-5. "건너뛰기" 선택 시 선택 없이 바로 홈으로 이동
-
-#### 구현 상세
-
-- `MovieController.java`에 `ONBOARDING_TAGS`, `GET /onboarding`, `POST /onboarding` 추가
-- `OnboardingTagGroup` Record로 태그 이름 + 영화 목록을 묶어 템플릿에 전달
-- 카드 클릭 시 `.selected` CSS 클래스 토글 + hidden `<input name="movieCodes">` 동적 추가/제거
-- 하단 스티키 푸터: 현재 선택 수 표시 + "건너뛰기" + "선택 완료 →" 버튼
-
-**변경 파일:**
-
-- `MovieController.java` → 온보딩 라우트 및 DB 저장 로직 추가
-- `templates/onboarding.html` → 신규 생성
-
----
-
-### 메인 홈 → 인스타그램 스타일 좌측 고정 사이드바
-
-- 홈 페이지(`/`) 좌측에 `position: fixed` 사이드바를 추가했습니다.
-- 아이콘 3개: 홈(집 모양), 알림(종 모양), 프로필(사람 모양)
-- 알림 버튼 클릭 시 `/api/notifications` API를 호출해 기존 상단 네비게이션과 동일한 알림 패널을 표시합니다.
-- 미확인 알림이 있으면 사이드바 벨 아이콘에 파란 배지를 표시하고, 상단 네비게이션 배지와 동기화됩니다.
-- 사이드바 너비 72px, `.page` 컨테이너에 `padding-left: 90px` 적용해 콘텐츠 영역이 가려지지 않도록 처리했습니다.
-
-**변경 파일:**
-
-- `templates/index.html` → `<aside class="sidebar">` 추가 및 CSS/JS 연동
-
----
-
-### 랭킹 페이지 → 넷플릭스 스타일 캐러셀 + 인터레이스 카드 확대
-
-#### 가로 슬라이딩 캐러셀
-
-- 각 차트 섹션을 가로 스크롤 캐러셀로 변경했습니다.
-- 좌/우 화살 버튼 클릭 시 `translateX`로 트랙을 이동합니다 (native scroll 미사용).
-- `DOMMatrix`로 현재 `translateX` 값을 읽어 경계 이탈을 방지합니다.
-- 전체보기 링크는 `ranking-detail.html`로 연결됩니다.
-
-#### CSS `overflow-x: clip` → 카드 확대 클리핑 문제 해결
-
-- `overflow-x: auto/hidden`을 사용하면 CSS 명세상 `overflow-y`도 강제로 `auto`가 되어 `transform: scale()` 시각적 출력이 잘립니다.
-- **`overflow-x: clip`** (CSS Overflow Level 3)은 `overflow-y: visible`을 유지할 수 있어, 가로 스크롤 영역 밖으로 카드가 나가지 않으면서 카드가 위/아래로 확대되는 것을 허용합니다.
-- `.carousel-clip { overflow-x: clip; overflow-y: visible; }` 적용.
-- `.movie-card:hover { transform: scale(1.38); z-index: 20; transition: transform 0.22s ease; }`
-
-#### 카드 호버 액션 버튼
-
-- 포스터 호버 시 `.card-hover` 오버레이가 나타나며 4가지 액션 버튼을 제공합니다 (좋아요, 별로요, 나중에볼게, 컬렉션에 추가).
-- 각 버튼 클릭 시 `POST /api/movies/{code}/{action}` API를 호출합니다.
-
----
-
-### 랭킹 상세 페이지 → 렌더링 버그 수정
-
-- `ranking-detail.html`에서 "전체보기"를 눌렀을 때 영화 목록이 아무것도 표시되지 않는 버그를 수정했습니다.
-- 원인: `th:each` 루프 내 `<a>` 태그에 `th:href` 속성이 누락되고 닫는 `>` 기호도 빠져있어 Thymeleaf가 영화 카드를 하나도 렌더링하지 못했습니다.
-- 수정: `th:href="@{|/movies/${row.movieCode()}|}"` 추가 및 태그 구문 교정.
-- 카드 호버 시 동일한 4가지 액션 버튼을 표시하도록 개선했습니다.
-
----
-
-### 05-05 변경 파일 목록
-
-| 파일                            | 유형 | 설명                                                       |
-| ------------------------------- | ---- | ---------------------------------------------------------- |
-| `MovieController.java`          | 수정 | 온보딩 라우트, 장르 차트 집계, TasteChartEntry Record 추가 |
-| `templates/my-page.html`        | 수정 | 도넛 차트 위젯, 팔로워/팔로잉 위치 변경, 카드 아이콘 코딩  |
-| `templates/onboarding.html`     | 신규 | Cold-start 해소용 태그 기반 영화 선택 UI                   |
-| `templates/index.html`          | 수정 | 인스타그램 스타일 좌측 고정 사이드바                       |
-| `templates/ranking.html`        | 수정 | 넷플릭스 스타일 캐러셀 + 인터레이스 카드 확대              |
-| `templates/ranking-detail.html` | 수정 | th:href 렌더링 버그 수정 + 호버 액션 버튼                  |
-
----
-
-## 05-04 구현사항
-
-### TMDB Trending 일 단위 갱신
-
-- TMDB `trending/movie/day` Top 10을 하루 단위로 갱신하는 기능을 추가했습니다.
-- 서버 시작 시 마지막 갱신 시점을 확인하고, 하루 이상 지났을 때만 새 데이터를 다시 가져오도록 구성했습니다.
-- 이미 DB에 있는 영화는 재사용하고, 없는 영화는 서비스 내부 데이터로 편입할 수 있도록 확장했습니다.
-- 관리자용 수동 갱신 endpoint도 함께 추가했습니다.
-
-### 영화 상세 페이지 리뷰 기능
-
-- 영화 상세 페이지에서 텍스트 리뷰를 작성할 수 있는 기능을 추가했습니다.
-- 리뷰는 `봤어요(WATCHED)` 상태인 사용자만 등록할 수 있습니다.
-- 영화별 리뷰 목록을 조회할 수 있으며, 리뷰 좋아요 기능도 함께 지원합니다.
-- 리뷰 좋아요 순위에 따라 인기 리뷰를 확인할 수 있습니다.
-
-### 영화 태그 기반 게시물 기능
-
-- 사용자가 특정 영화를 태그해서 게시물을 작성할 수 있는 기능을 추가했습니다.
-- 게시물 작성 시 영화 검색 후 태그할 수 있으며, 이미지와 설명을 함께 등록할 수 있습니다.
-- 게시물은 영화와 연결되어 영화 상세 페이지에서 함께 노출됩니다.
-- 게시물 작성 시 이미지를 최대 5장까지 업로드할 수 있도록 확장했습니다.
-- 첫 번째 이미지가 대표 이미지로 사용되며, 게시물 상세에서 이미지 캐러셀 형태로 확인할 수 있습니다.
-- 영화별 게시물 피드에서 여러 사용자의 게시물을 인스크롤 형태로 표시할 수 있습니다.
-
-### 게시물 상세 페이지
-
-- `/posts/{postId}` 게시물 상세 페이지를 추가했습니다.
-- 작성자 정보, 게시물 이미지, 설명, 태그된 영화 카드 등을 확인할 수 있습니다.
-- 본인 게시물이 아닌 경우 게시물 상세에서 바로 팔로우/언팔로우가 가능합니다.
-- 게시물 좋아요 기능도 함께 지원합니다.
-
-### 상단바 게시물 작성 버튼
-
-- 홈 페이지 상단 네비게이션에 `+` 버튼을 추가했습니다.
-- 버튼 클릭 시 게시물 작성 페이지로 이동할 수 있습니다.
-
-### 알림 시스템 확장
-
-기존 알림 기능을 확장해 다음 알림을 추가했습니다.
-
-- 내가 팔로우한 사용자의 새 게시물 알림
-- 내 게시물에 대한 좋아요 알림
-- 내 리뷰에 대한 좋아요 알림
-
-알림 클릭 시 관련 게시물, 영화 상세 페이지, 영화별 게시물 피드로 바로 이동할 수 있습니다.
-
-### 소셜 인터랙션 강화
-
-- 게시물 좋아요, 리뷰 좋아요, 팔로우 기능이 서로 연결되도록 확장했습니다.
-- 영화 상세 페이지, 게시물 상세 페이지, 영화별 게시물 피드에서 사용자 간 상호작용이 가능하도록 구성했습니다.
-
----
-
-## 04-30 변경사항 (2차 — 차트 알고리즘 확장 & 랭킹 UI 개편)
-
-### 새 차트 알고리즘 4개 추가
-
-기존 11개 차트에서 **15개**로 확장했습니다.
-
-#### 1. 평점 명작 (`high-rated`) — `HighRatedChart.java`
-
-- **카테고리**: `RATING` (신규 카테고리)
-- **기준**: TMDB `vote_average` 내림차순, `vote_count >= 200` 필터
-- **특징**: 박스오피스 흥행과 무관하게 관객 투표로 검증된 영화만 선별. 평점 8.5 이상이면 `★ 명작`, 8.0 이상이면 `★ 수작` 뱃지 표시
-
-#### 2. 세계 흥행 순위 (`global-hit`) — `GlobalHitChart.java`
-
-- **카테고리**: `BOXOFFICE`
-- **기준**: TMDB `revenue`(달러 기준) 내림차순, revenue > 0 필터
-- **특징**: 국내 박스오피스 데이터와 다른 시각으로 전 세계가 선택한 흥행작 제공. 10억 달러 이상 영화에 `10억$+` 뱃지 표시
-
-#### 3. 주연 배우 대표작 (`actor`) — `ActorChart.java`
-
-- **카테고리**: `PEOPLE`
-- **기준**: `movie_actor.display_order <= 3` 기준 주연 배우가 2편 이상 흥행작에 출연한 경우만 포함. 배우별 누적 관객 합계 내림차순
-- **특징**: 기존 `DirectorChart`와 동일한 집계 패턴을 배우에 적용. 배우명을 뱃지로 표시
-
-#### 4. 유저 추천 영화 (`most-liked`) — `UserLikedChart.java`
-
-- **카테고리**: `COMMUNITY` (신규 카테고리)
-- **기준**: 서비스 내 `user_movie_like.liked = TRUE` 집계 내림차순
-- **특징**: KOBIS / TMDB 외부 데이터가 아닌, 이 서비스 사용자들이 직접 좋아요를 누른 영화를 보여주는 커뮤니티 기반 차트
-
----
-
-### ChartCategory 확장
-
-- **파일**: `src/main/java/com/cinematch/chart/ChartCategory.java`
-- `RATING("평점")` 추가 → 평점 명작 차트를 위한 신규 카테고리
-- `COMMUNITY("커뮤니티")` 추가 → 유저 활동 기반 차트를 위한 신규 카테고리
-- 카테고리 탭 자동으로 포함됨 (`ChartController`가 `ChartCategory.values()`를 동적으로 읽음)
-
----
-
-### 랭킹 UI 전면 개편 — 헤브라이즌 스타일 포스터 그리드
-
-#### `ranking.html` 변경사항
-
-| 항목          | 변경 전                                | 변경 후                                                     |
-| ------------- | -------------------------------------- | ----------------------------------------------------------- |
-| 기본 레이아웃 | 순위번호 + 작은 포스터 + 텍스트 리스트 | 포스터 그리드 (5열, 2:3 비율)                               |
-| 순위 번호     | 왼쪽 고정 숫자                         | 포스터 하단 오버레이 (금/은/동 색상)                        |
-| 뱃지          | 포스터 좌상단 항상 노출                | 포스터 좌상단 오버레이                                      |
-| 지표 표시     | 오른쪽 이어 항상 노출                  | 호버 시 포스터 위의 오버레이로 등장                         |
-| 모바일        | 리스트 축소                            | 3열 그리드 (480px 이하 2열)                                 |
-| 뷰 전환       | 없음                                   | 그리드 ↔ 리스트 토글 버튼 추가 (선택값 `localStorage` 유지) |
-
-#### `ranking-detail.html` 변경사항
-
-| 항목           | 변경 전                               | 변경 후                               |
-| -------------- | ------------------------------------- | ------------------------------------- |
-| 레이아웃       | 카드형 리스트 (순위+포스터+정보+지표) | 포스터 그리드 (6열)                   |
-| 뷰 전환        | 없음                                  | 그리드 ↔ 리스트 토글 (우상단)         |
-| 결과 수 표시   | 없음                                  | "총 N개 영화" 카운트 표시             |
-| 빈 결과 메시지 | 단순 문구                             | "TMDB 동기화 후 채워집니다" 안내 추가 |
-
----
-
-### 04-30 (2차) 변경 파일 목록
-
-| 파일                                   | 유형 | 설명                                      |
-| -------------------------------------- | ---- | ----------------------------------------- |
-| `chart/ChartCategory.java`             | 수정 | RATING, COMMUNITY 카테고리 추가           |
-| `chart/algorithms/HighRatedChart.java` | 신규 | 평점 명작 차트                            |
-| `chart/algorithms/GlobalHitChart.java` | 신규 | 세계 흥행 순위 차트                       |
-| `chart/algorithms/ActorChart.java`     | 신규 | 주연 배우 대표작 차트                     |
-| `chart/algorithms/UserLikedChart.java` | 신규 | 유저 추천 영화 차트                       |
-| `templates/ranking.html`               | 수정 | 전면 재설계 → 헤브라이즌 스타일 그리드    |
-| `templates/ranking-detail.html`        | 수정 | 전면 재설계 → 포스터 그리드 + 리스트 토글 |
-
----
-
-## 04-30 변경사항 (1차)
-
-- TMDB Trending API를 연동해 `실시간 인기 작품` 카테고리를 추가
-  - TMDB `trending/movie/week` 기준 상위 10개 영화를 가져옴.
-  - 가져온 영화는 서비스 DB에 중복 없이 편입하고, chart 최상단 독립 카테고리로 노출
-- 공연/콘서트/스포츠 성격의 콘텐츠를 추천 대상과 게임 노출에서 제외
-- 메인 화면에 `{사용자명}님의 인생영화` 카테고리를 추가
-  - `user_preference_profile` 기반 코사인 유사도로 비슷한 사용자를 찾고,
-  - 유사 사용자의 `인생영화`만 모아 별도 필터링 추천으로 노출
-- 기존 콘텐츠 기반 개인화 추천 알고리즘의 품질을 보완
-  - 낮은 별점 (1~2점)을 부정 신호로 반영
-  - 배우/감독 선호 노이즈 축소
-  - 장르/태그 편향 완화
-  - 애니메이션 장르 과편향 추가 개선
-  - 개인화 추천 블록의 중복/반복을 줄이도록 diversity를 강화
-- 다른 사용자의 공개 프로필 페이지 추가
-  - 프로필 사진, 사용자 ID/이름, 팔로워/팔로잉 수, 팔로우/언팔로우 버튼
-  - 인생영화, 보더라, 봤어요/별점, 좋아요 목록에 이동할 수 있습니다.
-- 친구/팔로워/팔로잉/추천 친구 목록에서 프로필 사진과 사용자명 클릭 시 해당 사용자의 공개 프로필로 이동하도록 연결했습니다.
-
----
-
-# CineMatch — 프로젝트 전체 설명
-
-영화 메타데이터와 사용자 행동 기록을 기반으로 개인화 추천을 제공하는 Spring Boot 기반 영화 추천 웹 프로젝트입니다.
-
-이 프로젝트는 단순 영화 조회 사이트가 아니라, 아래 흐름이 하나로 연결된 서비스로 구성되어 있습니다.
-
-- KOBIS / TMDB 영화 데이터 수집
-- 영화 메타데이터 정규화
-- 추천용 태그 자동 생성
-- 사용자 행동 기반 취향 프로필 생성
-- 전체 개인화 랭킹 생성
-- 랭킹 기반 추천 블록 제공
-
-현재 코드 기준 패키지 루트는 `com.cinematch` 입니다.
-
----
-
-## 프로젝트 개요
-
-### 목표
-
-- 사용자의 취향에 맞는 영화를 추천한다.
-- 영화가 실제로 어느 OTT에서 제공되는지 함께 보여준다.
-- 좋아요, 봤어요, 나중에 볼거야, 인생영화 같은 명시적 행동을 추천에 반영한다.
-- 메인 홈은 추천 중심, 마이페이지는 행동 기록 중심으로 구성한다.
-- 추천 결과를 장르/배우/감독/태그/OTT 블록 형태로 재구성해 제공한다.
-
-### 핵심 차별점
-
-- 장르만 쓰지 않고 추천용 태그 레이어를 별도로 만든다.
-- 사용자 행동에 가중치를 두어 `취향 프로필`로 변환한다.
-- 전체 개인화 랭킹 1개를 먼저 만든 다음, 이를 다시 분류해 추천 블록을 만든다.
-- 추천 결과에 `reason_summary`를 저장해 설명 가능성을 확보한다.
-
----
-
-## 현재 구현 기능
-
-### 웹 기능
-
-- 로그인 / 회원가입 / 온보딩
-- 메인 홈 추천 row UI
-- 영화 상세 페이지
-- 마이페이지
-- 팔로우 / 팔로잉 기반 소셜 기능
-- 게시물 작성 / 리뷰 / 좋아요
-- 관리자 배치 실행 API
-- 추천 검증용 더미 사용자 / 더미 행동 데이터
-
-### 영화 상세 페이지 액션
-
-| 액션            | 설명                                        |
-| --------------- | ------------------------------------------- |
-| 별로요          | 부정 신호                                   |
-| 좋아요          | 긍정 신호                                   |
-| 나중에 볼거야   | 관심 신호                                   |
-| 보더라 / 봤어요 | `OFF → WATCHING → WATCHED → OFF` 3단계 토글 |
-| 별점            | 봤어요 상태에서만 1~5점 가능                |
-| 컬렉션 추가     | 컬렉션에 영화 추가                          |
-
-- 좋아요 / 별로요는 상호배타
-- 버튼 클릭은 AJAX 기반이라 뒤로가기 히스토리가 남지 않도록 처리
-
----
-
-## 기술 스택
-
-- Java 21, Spring Boot 3, Maven
-- JdbcTemplate, H2 Database (MySQL 호환 모드)
-- Thymeleaf, 순수 HTML/CSS/JS, Pretendard 폰트
-- KOBIS Open API, TMDB API
-
----
-
-## 실행 방법
-
-```powershell
-# 환경 변수 설정 (없으면 외부 API 기능 비활성화)
-$env:KOBIS_API_KEY="..."
-$env:TMDB_TOKEN="..."
-
-.\mvnw.cmd spring-boot:run
+# 전체 테스트
+./mvnw.cmd test
 ```
 
-기본 포트: `http://localhost:8080`
+- 접속: `http://localhost:8080`
+- H2 콘솔: `http://localhost:8080/h2-console`
+  (JDBC URL: `jdbc:h2:file:./data/kobisdb;MODE=MySQL`)
 
-H2 콘솔: `http://localhost:8080/h2-console`  
-DB 경로: `./data/kobisdb.mv.db`
+### 테스트 계정
 
----
-
-## 더미 계정
-
-추천 검증용 더미 계정이 준비되어 있습니다.
-
-- 계정: `testuser01` ~ `testuser16`
-- 비밀번호: `Test1234!`
+| 계정 | 비밀번호 |
+|------|----------|
+| `testuser01` ~ `testuser16` | `Test1234!` |
 
 ---
 
-## 프로젝트 구조
+## 👥 팀
 
-```
-src/main/java/com/cinematch
-├── admin            # 배치/자동화/검증용 관리자 기능
-├── chart            # 랭킹 차트 기능
-│   └── algorithms/  # 개별 차트 구현체 (15개)
-├── kobis            # KOBIS raw import / normalize
-├── recommendation   # 취향 프로필 / 랭킹 / 블록 / refresh
-├── tag              # 추천용 태그 생성
-├── tmdb             # TMDB raw import / normalize / trending
-├── MovieController  # 로그인 이후 주요 화면과 액션 처리
-└── LoginApplication # Spring Boot 시작점
-```
+**2026 문제해결프로그래밍설계 — AJ Team 2**
+
+<!-- 팀원 정보를 채워주세요 -->
+| 이름 | 역할 |
+|------|------|
+|  |  |
 
 ---
 
-## 데이터 처리 파이프라인
+<div align="center">
 
-1. KOBIS raw 수집 → 2. KOBIS 정규화 → 3. TMDB raw 수집 → 4. TMDB 정규화 → 5. 추천용 태그 생성 → 6. 사용자 행동 데이터 결합 → 7. 추천 프로필 / 랭킹 / 블록 생성
+**CineMatch** — *고민하는 시간보다, 영화 보는 시간을 더 길게.* 🍿
 
-- **KOBIS**: 국내 영화 기본 골격 생성 (movie, movie_genre, movie_director, movie_actor 등)
-- **TMDB**: KOBIS가 만든 영화 골격에 상세 메타데이터 보강 (포스터, 오버뷰, 평점, 키워드, OTT 제공처)
-
----
-
-## 태깅 시스템
-
-장르만으로는 추천 품질이 쉽게 떨어지기 때문에, 별도의 추천용 태그 레이어를 만듭니다.
-
-**핵심 파일**: `MovieTagService.java`, `MovieTagGenerator.java`, `DefaultRecommendationTagRules.java`
-
-**주요 태그 예시**: `tense`, `mystery`, `dark`, `healing`, `romantic`, `with_family`, `with_partner`, `investigation`, `coming_of_age`, `true_story`, `survival`, `revenge`
-
-- 성인 영화, 장르 없는 영화, 공연/콘서트 계열 제외
-- 태그 점수 threshold를 넘어야만 확정 태그로 채택
-- 태그 저장: `tag` (마스터), `movie_tag` (영화-태그 연결)
-
----
-
-## 추천 알고리즘 개요
-
-현재 추천은 **규칙 기반 태그 중심 하이브리드 콘텐츠 추천**입니다.
-
-**핵심 파일**: `UserPreferenceProfileService.java`, `RecommendationRankingService.java`, `RecommendationBlockService.java`
-
-### 가중치 우선순위 (현재 정책값)
-
-| 요소               | 가중치 |
-| ------------------ | ------ |
-| TAG                | 0.34   |
-| GENRE              | 0.18   |
-| PEOPLE (감독+배우) | 0.16   |
-| KEYWORD            | 0.08   |
-| POPULARITY         | 0.10   |
-| FRESHNESS          | 0.04   |
-| PROVIDER           | 0.02   |
-
-### 사용자 선호 가중치
-
-| 행동            | 가중치     |
-| --------------- | ---------- |
-| 인생영화        | 5.0        |
-| 좋아요          | 3.0        |
-| 봤어요 (기본)   | 2.2 × 0.70 |
-| 봤어요 + 별점 5 | 2.2 × 1.20 |
-| 나중에볼게      | 1.5        |
-
-### 추천 블록 생성
-
-전체 랭킹에서 slice를 가져와 TAG/GENRE/DIRECTOR/ACTOR/PROVIDER 기준으로 재묶어 블록 단위로 노출합니다. 블록 최소 크기를 만족하지 못하면 노출하지 않습니다.
-
----
-
-## 관리자 배치 엔드포인트
-
-| 엔드포인트                                   | 설명                                         |
-| -------------------------------------------- | -------------------------------------------- |
-| `POST /admin/pipeline/tmdb-trending/refresh` | TMDB 트렌딩 수동 갱신                        |
-| `POST /admin/pipeline/...`                   | KOBIS/TMDB import, normalize, 태그 재생성 등 |
+</div>

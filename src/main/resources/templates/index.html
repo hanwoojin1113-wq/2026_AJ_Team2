@@ -665,6 +665,9 @@
             transform-origin: center center;
             transition: transform 0.22s ease;
         }
+        .row-track .movie-card:first-child {
+            transform-origin: left center;
+        }
         .movie-card:hover {
             transform: scale(1.32);
             z-index: 20;
@@ -782,23 +785,6 @@
             color: var(--hp-text-sub);
             font-size: 0.85rem;
             font-weight: 600;
-        }
-        .poster-overlay {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: flex-end;
-            padding: 14px;
-            background: linear-gradient(to top, rgba(0,0,0,0.80), transparent 55%);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.18s ease;
-        }
-        .movie-card:hover .poster-overlay { opacity: 1; }
-        .poster-overlay span {
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: white;
         }
         .movie-title {
             margin-top: 10px;
@@ -1561,7 +1547,6 @@
                                         <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
                                         <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
                                     </div></div>
-                                    <div class="poster-overlay"><span>상세 보기</span></div>
                                 </div>
                                 <div class="movie-title" th:text="${movie.title}">영화 제목</div>
                                 <th:block th:with="kws=${trendingKeywordsByDetailUrl[movie.detailUrl]}">
@@ -1584,7 +1569,6 @@
                                     <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
                                         <span th:text="${movie.title}">영화 제목</span>
                                     </div>
-                                    <div class="poster-overlay"><span>상세 보기</span></div>
                                 </div>
                                 <div class="movie-title" th:text="${movie.title}">영화 제목</div>
                             </div>
@@ -1679,7 +1663,6 @@
                             <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
                             <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
                         </div></div>
-                        <div class="poster-overlay"><span>상세 보기</span></div>
                     </div>
                     <div class="movie-title" th:text="${movie.title}">영화 제목</div>
                     <th:block th:with="kws=${homeKeywordsByMovieCd[movie.movieCode]}">
@@ -1735,7 +1718,6 @@
                                 <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
                                 <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
                             </div></div>
-                            <div class="poster-overlay"><span>상세 보기</span></div>
                         </div>
                         <div class="movie-title" th:text="${movie.title}">영화 제목</div>
                         <th:block th:with="kws=${homeKeywordsByMovieCd[movie.movieCode]}">
@@ -1783,7 +1765,6 @@
                                 <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
                                 <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
                             </div></div>
-                            <div class="poster-overlay"><span>?곸꽭 蹂닿린</span></div>
                         </div>
                         <div class="movie-title" th:text="${movie.title}">?곹솕 ?쒕ぉ</div>
                         <th:block th:with="kws=${homeKeywordsByMovieCd[movie.movieCode]}">
@@ -1849,7 +1830,6 @@
                                     <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
                                     <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
                                 </div></div>
-                                <div class="poster-overlay"><span>상세 보기</span></div>
                                 <span class="rank-num-badge"
                                       th:classappend="${row.rankNo() == 1} ? ' top1' : (${row.rankNo() == 2} ? ' top2' : (${row.rankNo() == 3} ? ' top3' : ''))"
                                       th:text="${row.rankNo()}">1</span>
@@ -1900,7 +1880,6 @@
                             <button class="cact-btn" data-action="later" title="나중에 볼게요" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l3 2"/></svg></button>
                             <button class="cact-btn" data-action="collection" title="컬렉션" onclick="doAction(event,this)"><svg viewBox="0 0 24 24"><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13l-7.5-4.2L4.5 19V6A1.5 1.5 0 0 1 6 4.5Z"/></svg></button>
                         </div></div>
-                        <div class="poster-overlay"><span>상세 보기</span></div>
                     </div>
                     <div class="movie-title" th:text="${movie.movieName}">영화 제목</div>
                     <div class="movie-sub"
@@ -1930,7 +1909,6 @@
                     <div class="poster-fallback" th:if="${#strings.isEmpty(movie.posterImageUrl)}">
                         <span th:text="${movie.movieName}">영화 제목</span>
                     </div>
-                    <div class="poster-overlay"><span>상세 보기</span></div>
                 </div>
                 <div class="movie-title" th:text="${movie.movieName}">영화 제목</div>
                 <div class="movie-sub"

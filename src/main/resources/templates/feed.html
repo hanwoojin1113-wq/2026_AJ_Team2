@@ -380,6 +380,53 @@
             word-break: break-word;
             font-size: 0.96rem;
         }
+        .post-edit-btn {
+            justify-self: start;
+            border: none;
+            background: transparent;
+            padding: 0;
+            color: rgba(255,255,255,0.42);
+            font: inherit;
+            font-size: 0.78rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .post-edit-btn:hover { color: #60a5fa; }
+        .inline-edit-box { display: grid; gap: 8px; }
+        .inline-edit-box textarea {
+            width: 100%;
+            min-height: 80px;
+            box-sizing: border-box;
+            resize: vertical;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            font: inherit;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            outline: none;
+        }
+        .inline-edit-box textarea:focus { border-color: #024ad8; }
+        .inline-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+        .inline-edit-actions button {
+            height: 32px;
+            padding: 0 16px;
+            border-radius: 999px;
+            border: none;
+            font: inherit;
+            font-size: 0.8rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .inline-edit-cancel {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            color: rgba(255,255,255,0.65);
+        }
+        .inline-edit-save { background: #024ad8; color: #fff; }
+        .inline-edit-save:disabled { opacity: 0.5; cursor: not-allowed; }
         .post-actions {
             display: flex;
             align-items: center;
@@ -722,7 +769,7 @@
     </div>
 
     <div class="feed" id="feedList" th:if="${posts != null and !posts.isEmpty()}">
-        <article class="post-card" th:each="post : ${posts}" th:id="|post-${post.postId}|">
+        <article class="post-card" th:each="post : ${posts}" th:id="|post-${post.postId}|" th:attr="data-content=${post.content}">
             <header class="post-header">
                 <a class="author-link" th:href="@{|/users/${post.loginId}|}">
                     <div class="author-avatar" th:if="${post.profileImageUrl != null and !#strings.isEmpty(post.profileImageUrl)}">
@@ -847,6 +894,10 @@
                 <span class="post-type-badge" th:if="${post.postType == 'poll'}">☑ 투표</span>
                 <span class="post-type-badge" th:if="${post.postType == 'quiz'}">❓ 퀴즈</span>
                 <p class="post-content" th:if="${post.content != null and !#strings.isEmpty(post.content)}" th:text="${post.content}">게시물 설명</p>
+                <button class="post-edit-btn"
+                        type="button"
+                        th:if="${loginUserId != null and post.isMyPost}"
+                        th:attr="data-post-id=${post.postId}">수정</button>
                 <div class="post-actions">
                     <button class="icon-btn like-btn" type="button"
                             th:classappend="${post.likedByMe} ? ' liked' : ''"
@@ -1052,11 +1103,15 @@ window.addEventListener('pageshow', function(e) {
             ? ''
             : `<button class="follow-btn${following ? ' following' : ''}" type="button" data-follow-toggle data-login-id="${escapeHtml(post.loginId)}" data-following="${following}"><span>${following ? '팔로잉' : '팔로우'}</span></button>`;
         const content = post.content ? `<p class="post-content">${escapeHtml(post.content)}</p>` : '';
-        return `<article class="post-card" id="post-${post.postId}">
+        const editButton = post.isMyPost
+            ? `<button class="post-edit-btn" type="button" data-post-id="${post.postId}">수정</button>`
+            : '';
+        return `<article class="post-card" id="post-${post.postId}" data-content="${escapeHtml(post.content || '')}">
             <header class="post-header">${avatarMarkup(post)}${followButton}</header>
             ${carouselMarkup(post)}
             <div class="post-body">
                 ${content}
+                ${editButton}
                 <div class="post-actions">
                     <button class="icon-btn like-btn${liked ? ' liked' : ''}" type="button" data-post-id="${post.postId}" data-liked="${liked}" aria-label="좋아요">
                         <svg viewBox="0 0 24 24" fill="${liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M12 20s-6.5-4.2-8.3-8A4.7 4.7 0 0 1 8.2 5a4.9 4.9 0 0 1 3.8 1.9A4.9 4.9 0 0 1 15.8 5a4.7 4.7 0 0 1 4.5 7c-1.8 3.8-8.3 8-8.3 8Z"/></svg>
@@ -1245,7 +1300,74 @@ window.addEventListener('pageshow', function(e) {
         popLike(likeBtn);
     });
 
+    function startInlineEdit(displayEl, currentText, updateUrl, onSave) {
+        if (!displayEl || displayEl.nextElementSibling?.classList.contains('inline-edit-box')) return;
+        displayEl.style.display = 'none';
+        const box = document.createElement('div');
+        box.className = 'inline-edit-box';
+        const textarea = document.createElement('textarea');
+        textarea.maxLength = 1000;
+        textarea.value = currentText || '';
+        const actions = document.createElement('div');
+        actions.className = 'inline-edit-actions';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'inline-edit-cancel';
+        cancelBtn.textContent = '취소';
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'inline-edit-save';
+        saveBtn.textContent = '저장';
+        actions.append(cancelBtn, saveBtn);
+        box.append(textarea, actions);
+        displayEl.insertAdjacentElement('afterend', box);
+        textarea.focus();
+
+        const close = () => {
+            box.remove();
+            displayEl.style.display = '';
+        };
+        cancelBtn.addEventListener('click', close);
+        saveBtn.addEventListener('click', async () => {
+            const value = textarea.value.trim();
+            if (!value) return;
+            saveBtn.disabled = true;
+            try {
+                const response = await fetch(updateUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'content=' + encodeURIComponent(value)
+                });
+                if (!response.ok) throw new Error();
+                const data = await response.json();
+                if (!data.ok) throw new Error();
+                onSave(value);
+                close();
+            } catch (_) {
+                alert('수정에 실패했습니다.');
+                saveBtn.disabled = false;
+            }
+        });
+    }
+
     document.addEventListener('click', async (event) => {
+        const editButton = event.target.closest('.post-edit-btn');
+        if (editButton) {
+            const card = editButton.closest('.post-card');
+            if (!card) return;
+            let contentEl = card.querySelector('.post-content');
+            if (!contentEl) {
+                contentEl = document.createElement('p');
+                contentEl.className = 'post-content';
+                editButton.insertAdjacentElement('beforebegin', contentEl);
+            }
+            startInlineEdit(contentEl, card.dataset.content || '', `/api/posts/${editButton.dataset.postId}/update`, (value) => {
+                contentEl.textContent = value;
+                card.dataset.content = value;
+            });
+            return;
+        }
+
         const likeButton = event.target.closest('.like-btn[data-post-id]');
         if (likeButton) {
             const response = await fetch(`/api/posts/${likeButton.dataset.postId}/like`, { method: 'POST' });

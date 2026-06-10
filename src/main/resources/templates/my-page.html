@@ -1481,6 +1481,213 @@
     </section>
 
     <!-- ── 배지 컬렉션 섹션 ─────────────────────────────────────── -->
+    <section class="section" id="myActivitySection">
+        <style>
+            .activity-tab-row { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+            .activity-tab-btn { padding: 7px 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.62); font: inherit; font-size: 0.85rem; font-weight: 800; cursor: pointer; }
+            .activity-tab-btn.active { background: #024ad8; border-color: #024ad8; color: #fff; }
+            .activity-tab-panel { display: none; }
+            .activity-tab-panel.active { display: block; }
+            .activity-list { display: grid; gap: 12px; }
+            .activity-item { display: grid; grid-template-columns: 52px 1fr auto; gap: 14px; align-items: flex-start; padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); }
+            .activity-thumb { width: 52px; height: 72px; border-radius: 8px; object-fit: cover; background: rgba(255,255,255,0.08); }
+            .activity-thumb-fallback { width: 52px; height: 72px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 4px; color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.08); font-size: 0.65rem; text-align: center; }
+            .activity-body { min-width: 0; }
+            .activity-movie-link { display: inline-flex; margin-bottom: 6px; color: rgba(255,255,255,0.58); font-size: 0.78rem; font-weight: 800; text-decoration: none; }
+            .activity-movie-link:hover { color: #fff; }
+            .activity-content { color: rgba(255,255,255,0.86); font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+            .activity-meta { display: flex; align-items: center; gap: 8px; margin-top: 7px; color: rgba(255,255,255,0.38); font-size: 0.75rem; flex-wrap: wrap; }
+            .activity-rating { color: #fbbf24; font-weight: 900; }
+            .activity-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+            .activity-btn { height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); background: transparent; color: rgba(255,255,255,0.58); font: inherit; font-size: 0.74rem; font-weight: 800; cursor: pointer; }
+            .activity-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+            .activity-btn.delete-btn:hover { border-color: rgba(239,68,68,0.45); background: rgba(239,68,68,0.14); color: #f87171; }
+            .inline-edit-box { display: grid; gap: 8px; margin-top: 8px; }
+            .inline-edit-box textarea { width: 100%; min-height: 78px; box-sizing: border-box; resize: vertical; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #fff; font: inherit; font-size: 0.88rem; line-height: 1.5; outline: none; }
+            .inline-edit-box textarea:focus { border-color: #024ad8; }
+            .inline-edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
+            .inline-edit-actions button { height: 32px; padding: 0 15px; border-radius: 999px; border: none; font: inherit; font-size: 0.78rem; font-weight: 800; cursor: pointer; }
+            .inline-edit-cancel { background: transparent; border: 1px solid rgba(255,255,255,0.15) !important; color: rgba(255,255,255,0.65); }
+            .inline-edit-save { background: #024ad8; color: #fff; }
+            .inline-edit-save:disabled { opacity: 0.5; cursor: not-allowed; }
+            @media (max-width: 640px) {
+                .activity-item { grid-template-columns: 44px 1fr; }
+                .activity-actions { grid-column: 1 / -1; justify-content: flex-start; }
+                .activity-thumb, .activity-thumb-fallback { width: 44px; height: 62px; }
+            }
+        </style>
+
+        <div class="head">
+            <div>
+                <h2>내 활동</h2>
+                <p>내가 작성한 게시물과 리뷰를 관리하세요.</p>
+            </div>
+        </div>
+
+        <div class="activity-tab-row">
+            <button class="activity-tab-btn active" type="button" data-activity-tab="posts">게시물 (<span th:text="${myPostCount}">0</span>)</button>
+            <button class="activity-tab-btn" type="button" data-activity-tab="reviews">리뷰 (<span th:text="${myReviewCount}">0</span>)</button>
+        </div>
+
+        <div class="activity-tab-panel active" id="activity-panel-posts">
+            <div class="activity-list" th:if="${!#lists.isEmpty(myPosts)}">
+                <article class="activity-item" th:each="post : ${myPosts}" th:data-post-id="${post.postId}" th:data-content="${post.content}">
+                    <img class="activity-thumb" th:if="${!#strings.isEmpty(post.firstImageUrl)}" th:src="${post.firstImageUrl}" alt="게시물 이미지" loading="lazy">
+                    <div class="activity-thumb-fallback" th:if="${#strings.isEmpty(post.firstImageUrl)}" th:text="${post.postType}">post</div>
+                    <div class="activity-body">
+                        <a class="activity-movie-link" th:href="@{|/movies/${post.movieCode}|}" th:text="${post.movieTitle}">영화 제목</a>
+                        <div class="activity-content" th:text="${#strings.isEmpty(post.content) ? '내용 없는 게시물입니다.' : post.content}">게시물 내용</div>
+                        <div class="activity-meta">
+                            <span th:text="${post.createdAt}">2026.06.10</span>
+                            <span th:text="${post.postType}">photo</span>
+                            <span th:if="${post.imageCount != null and post.imageCount > 1}" th:text="${post.imageCount + '장'}">2장</span>
+                            <a class="activity-movie-link" th:href="@{|/posts/${post.postId}|}">전체 보기</a>
+                        </div>
+                    </div>
+                    <div class="activity-actions">
+                        <button class="activity-btn edit-post-btn" type="button">수정</button>
+                        <button class="activity-btn delete-btn delete-post-btn" type="button">삭제</button>
+                    </div>
+                </article>
+            </div>
+            <div class="empty" th:if="${#lists.isEmpty(myPosts)}">작성한 게시물이 없습니다.</div>
+        </div>
+
+        <div class="activity-tab-panel" id="activity-panel-reviews">
+            <div class="activity-list" th:if="${!#lists.isEmpty(myReviews)}">
+                <article class="activity-item" th:each="review : ${myReviews}" th:data-review-id="${review.reviewId}" th:data-content="${review.content}">
+                    <img class="activity-thumb" th:if="${!#strings.isEmpty(review.moviePosterUrl)}" th:src="${review.moviePosterUrl}" th:alt="${review.movieTitle}" loading="lazy">
+                    <div class="activity-thumb-fallback" th:if="${#strings.isEmpty(review.moviePosterUrl)}" th:text="${review.movieTitle}">movie</div>
+                    <div class="activity-body">
+                        <a class="activity-movie-link" th:href="@{|/movies/${review.movieCode}|}" th:text="${review.movieTitle}">영화 제목</a>
+                        <div class="activity-content" th:text="${review.content}">리뷰 내용</div>
+                        <div class="activity-meta">
+                            <span th:text="${review.createdAt}">2026.06.10</span>
+                            <span class="activity-rating" th:if="${review.rating != null}" th:text="${review.rating + '★'}">5★</span>
+                        </div>
+                    </div>
+                    <div class="activity-actions">
+                        <button class="activity-btn edit-review-btn" type="button">수정</button>
+                        <button class="activity-btn delete-btn delete-review-btn" type="button">삭제</button>
+                    </div>
+                </article>
+            </div>
+            <div class="empty" th:if="${#lists.isEmpty(myReviews)}">작성한 리뷰가 없습니다.</div>
+        </div>
+    </section>
+
+    <script>
+    (function () {
+        document.querySelectorAll('.activity-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.activity-tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.activity-tab-panel').forEach(panel => panel.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('activity-panel-' + btn.dataset.activityTab)?.classList.add('active');
+            });
+        });
+
+        function startInlineEdit(displayEl, currentText, updateUrl, onSave) {
+            if (!displayEl || displayEl.nextElementSibling?.classList.contains('inline-edit-box')) return;
+            displayEl.style.display = 'none';
+            const box = document.createElement('div');
+            box.className = 'inline-edit-box';
+            const textarea = document.createElement('textarea');
+            textarea.maxLength = 1000;
+            textarea.value = currentText || '';
+            const actions = document.createElement('div');
+            actions.className = 'inline-edit-actions';
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'inline-edit-cancel';
+            cancelBtn.textContent = '취소';
+            const saveBtn = document.createElement('button');
+            saveBtn.type = 'button';
+            saveBtn.className = 'inline-edit-save';
+            saveBtn.textContent = '저장';
+            actions.append(cancelBtn, saveBtn);
+            box.append(textarea, actions);
+            displayEl.insertAdjacentElement('afterend', box);
+            textarea.focus();
+
+            const close = () => { box.remove(); displayEl.style.display = ''; };
+            cancelBtn.addEventListener('click', close);
+            saveBtn.addEventListener('click', async () => {
+                const value = textarea.value.trim();
+                if (!value) return;
+                saveBtn.disabled = true;
+                try {
+                    const response = await fetch(updateUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'content=' + encodeURIComponent(value)
+                    });
+                    if (!response.ok) throw new Error();
+                    const data = await response.json();
+                    if (!data.ok) throw new Error();
+                    onSave(value);
+                    close();
+                } catch (_) {
+                    alert('수정에 실패했습니다.');
+                    saveBtn.disabled = false;
+                }
+            });
+        }
+
+        document.querySelectorAll('.edit-post-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = btn.closest('[data-post-id]');
+                const contentEl = item?.querySelector('.activity-content');
+                startInlineEdit(contentEl, item?.dataset.content || '', '/api/posts/' + item.dataset.postId + '/update', value => {
+                    contentEl.textContent = value;
+                    item.dataset.content = value;
+                });
+            });
+        });
+
+        document.querySelectorAll('.edit-review-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = btn.closest('[data-review-id]');
+                const contentEl = item?.querySelector('.activity-content');
+                startInlineEdit(contentEl, item?.dataset.content || '', '/api/reviews/' + item.dataset.reviewId + '/update', value => {
+                    contentEl.textContent = value;
+                    item.dataset.content = value;
+                });
+            });
+        });
+
+        document.querySelectorAll('.delete-post-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const item = btn.closest('[data-post-id]');
+                if (!item || !confirm('이 게시물을 삭제하시겠습니까?')) return;
+                try {
+                    const response = await fetch('/api/posts/' + item.dataset.postId + '/delete', { method: 'POST' });
+                    const data = await response.json();
+                    if (!response.ok || !data.ok) throw new Error();
+                    item.remove();
+                } catch (_) {
+                    alert('삭제에 실패했습니다.');
+                }
+            });
+        });
+
+        document.querySelectorAll('.delete-review-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const item = btn.closest('[data-review-id]');
+                if (!item || !confirm('이 리뷰를 삭제하시겠습니까?')) return;
+                try {
+                    const response = await fetch('/api/reviews/' + item.dataset.reviewId + '/delete', { method: 'POST' });
+                    const data = await response.json();
+                    if (!response.ok || !data.ok) throw new Error();
+                    item.remove();
+                } catch (_) {
+                    alert('삭제에 실패했습니다.');
+                }
+            });
+        });
+    })();
+    </script>
+
     <section class="section" id="badgeSection">
         <div class="head">
             <div>

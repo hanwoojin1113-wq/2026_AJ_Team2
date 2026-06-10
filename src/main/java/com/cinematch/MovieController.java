@@ -714,7 +714,124 @@ public class MovieController {
         model.addAttribute("selectedBadgeCode", badgeService.getSelectedBadgeCode(userId));
         model.addAttribute("ottProviders", ottCatalog.all());
         model.addAttribute("subscribedOttCodes", userOttSubscriptionService.findSubscribedCodes(userId));
+        model.addAttribute("myPosts", fetchMyPosts(userId, 20));
+        model.addAttribute("myPostCount", countMyPosts(userId));
+        model.addAttribute("myReviews", fetchMyReviews(userId, 20));
+        model.addAttribute("myReviewCount", countMyReviews(userId));
         return "my-page";
+    }
+
+    private List<Map<String, Object>> fetchMyPosts(Long userId, int limit) {
+        try {
+            return jdbcTemplate.query("""
+                    SELECT
+                        sp.id AS postId,
+                        sp.content,
+                        COALESCE(sp.post_type, 'photo') AS postType,
+                        sp.created_at AS createdAt,
+                        m.movie_cd AS movieCode,
+                        COALESCE(m.title, m.movie_name) AS movieTitle,
+                        m.poster_image_url AS moviePosterUrl,
+                        (
+                            SELECT spi.image_url
+                            FROM social_post_image spi
+                            WHERE spi.post_id = sp.id
+                            ORDER BY spi.display_order ASC
+                            LIMIT 1
+                        ) AS firstImageUrl,
+                        (
+                            SELECT COUNT(*)
+                            FROM social_post_image spi
+                            WHERE spi.post_id = sp.id
+                        ) AS imageCount
+                    FROM social_post sp
+                    JOIN movie m ON m.id = sp.movie_id
+                    WHERE sp.user_id = ?
+                      AND sp.is_deleted = FALSE
+                    ORDER BY sp.created_at DESC
+                    LIMIT ?
+                    """, (rs, rowNum) -> {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("postId", rs.getLong("postId"));
+                row.put("content", rs.getString("content"));
+                row.put("postType", rs.getString("postType"));
+                row.put("movieCode", rs.getString("movieCode"));
+                row.put("movieTitle", rs.getString("movieTitle"));
+                row.put("moviePosterUrl", rs.getString("moviePosterUrl"));
+                row.put("firstImageUrl", rs.getString("firstImageUrl"));
+                row.put("imageCount", rs.getInt("imageCount"));
+                java.sql.Timestamp createdAt = rs.getTimestamp("createdAt");
+                row.put("createdAt", createdAt == null ? "" : createdAt.toLocalDateTime()
+                        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")));
+                return row;
+            }, userId, limit);
+        } catch (Exception ignored) {
+            return List.of();
+        }
+    }
+
+    private int countMyPosts(Long userId) {
+        try {
+            Integer count = jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*)
+                    FROM social_post
+                    WHERE user_id = ?
+                      AND is_deleted = FALSE
+                    """, Integer.class, userId);
+            return count == null ? 0 : count;
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    private List<Map<String, Object>> fetchMyReviews(Long userId, int limit) {
+        try {
+            return jdbcTemplate.query("""
+                    SELECT
+                        r.id AS reviewId,
+                        r.content,
+                        r.created_at AS createdAt,
+                        umw.rating,
+                        m.movie_cd AS movieCode,
+                        COALESCE(m.title, m.movie_name) AS movieTitle,
+                        m.poster_image_url AS moviePosterUrl
+                    FROM movie_review r
+                    JOIN movie m ON m.id = r.movie_id
+                    LEFT JOIN user_movie_watched umw
+                           ON umw.user_id = r.user_id
+                          AND umw.movie_id = r.movie_id
+                    WHERE r.user_id = ?
+                    ORDER BY r.created_at DESC
+                    LIMIT ?
+                    """, (rs, rowNum) -> {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("reviewId", rs.getLong("reviewId"));
+                row.put("content", rs.getString("content"));
+                row.put("rating", rs.getObject("rating"));
+                row.put("movieCode", rs.getString("movieCode"));
+                row.put("movieTitle", rs.getString("movieTitle"));
+                row.put("moviePosterUrl", rs.getString("moviePosterUrl"));
+                java.sql.Timestamp createdAt = rs.getTimestamp("createdAt");
+                row.put("createdAt", createdAt == null ? "" : createdAt.toLocalDateTime()
+                        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")));
+                return row;
+            }, userId, limit);
+        } catch (Exception ignored) {
+            return List.of();
+        }
+    }
+
+    private int countMyReviews(Long userId) {
+        try {
+            Integer count = jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*)
+                    FROM movie_review
+                    WHERE user_id = ?
+                    """, Integer.class, userId);
+            return count == null ? 0 : count;
+        } catch (Exception ignored) {
+            return 0;
+        }
     }
 
     @PostMapping("/api/badges/select")
