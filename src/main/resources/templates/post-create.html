@@ -806,8 +806,15 @@ function removeImageAt(idx) {
     updateSubmit();
 }
 
+const ALLOWED_IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp']);
+
 function setImageFiles(files) {
-    imageFiles = Array.from(files || []).filter(f => f && f.size > 0);
+    const allFiles = Array.from(files || []).filter(f => f && f.size > 0);
+    const rejected = allFiles.filter(f => !ALLOWED_IMAGE_EXTS.has(f.name.split('.').pop().toLowerCase()));
+    if (rejected.length > 0) {
+        alert('이미지 파일(JPG, PNG, GIF, WEBP)만 첨부할 수 있습니다.\n다른 형식의 파일은 제외되었습니다.');
+    }
+    imageFiles = allFiles.filter(f => ALLOWED_IMAGE_EXTS.has(f.name.split('.').pop().toLowerCase()));
     if (imageFiles.length > 5) {
         alert('이미지는 최대 5장까지 업로드할 수 있습니다. 앞의 5장만 사용됩니다.');
         imageFiles = imageFiles.slice(0, 5);

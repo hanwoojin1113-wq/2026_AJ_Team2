@@ -310,6 +310,71 @@ public class ReviewController {
         return response;
     }
 
+    @PostMapping("/api/reviews/{reviewId}/update")
+    @ResponseBody
+    public Map<String, Object> updateReview(@PathVariable Long reviewId,
+                                            @RequestParam String content,
+                                            HttpSession session) {
+        initializeReviewTables();
+        String loginId = (String) session.getAttribute(LOGIN_SESSION_KEY);
+        if (loginId == null || loginId.isBlank()) {
+            throw new ResponseStatusException(UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+
+        String normalizedContent = content == null ? "" : content.trim();
+        if (normalizedContent.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "리뷰 내용을 입력해주세요.");
+        }
+        if (normalizedContent.length() > 1000) {
+            throw new ResponseStatusException(BAD_REQUEST, "리뷰는 최대 1000자까지 입력할 수 있습니다.");
+        }
+
+        Long userId = findUserIdByLoginId(loginId);
+        if (userId == null) {
+            throw new ResponseStatusException(UNAUTHORIZED);
+        }
+
+        Integer ownerCheck = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM movie_review
+                WHERE id = ? AND user_id = ?
+                """, Integer.class, reviewId, userId);
+        if (ownerCheck == null || ownerCheck == 0) {
+            throw new ResponseStatusException(UNAUTHORIZED, "수정 권한이 없습니다.");
+        }
+
+        jdbcTemplate.update("UPDATE movie_review SET content = ? WHERE id = ?", normalizedContent, reviewId);
+        return Map.of("ok", true);
+    }
+
+    @PostMapping("/api/reviews/{reviewId}/delete")
+    @ResponseBody
+    public Map<String, Object> deleteReview(@PathVariable Long reviewId, HttpSession session) {
+        initializeReviewTables();
+        String loginId = (String) session.getAttribute(LOGIN_SESSION_KEY);
+        if (loginId == null || loginId.isBlank()) {
+            throw new ResponseStatusException(UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+
+        Long userId = findUserIdByLoginId(loginId);
+        if (userId == null) {
+            throw new ResponseStatusException(UNAUTHORIZED);
+        }
+
+        Integer ownerCheck = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM movie_review
+                WHERE id = ? AND user_id = ?
+                """, Integer.class, reviewId, userId);
+        if (ownerCheck == null || ownerCheck == 0) {
+            throw new ResponseStatusException(UNAUTHORIZED, "삭제 권한이 없습니다.");
+        }
+
+        jdbcTemplate.update("DELETE FROM review_like WHERE review_id = ?", reviewId);
+        jdbcTemplate.update("DELETE FROM movie_review WHERE id = ?", reviewId);
+        return Map.of("ok", true);
+    }
+
     @GetMapping("/api/movies/{movieCode}/reviews")
     @ResponseBody
     public List<Map<String, Object>> fetchMovieReviews(@PathVariable String movieCode, HttpSession session) {

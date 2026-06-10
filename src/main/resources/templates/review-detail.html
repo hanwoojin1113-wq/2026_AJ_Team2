@@ -110,6 +110,28 @@
             white-space: pre-wrap;
             word-break: break-word;
         }
+        .review-edit-btn {
+            margin-top: 12px;
+            border: none; background: transparent; padding: 0;
+            color: rgba(255,255,255,0.4); font-size: 0.82rem; font-weight: 600; cursor: pointer;
+        }
+        .review-edit-btn:hover { color: #60a5fa; }
+        .inline-edit-box { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+        .inline-edit-box textarea {
+            width: 100%; box-sizing: border-box; padding: 12px 14px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px; color: #fff; font: inherit; font-size: 0.9rem;
+            resize: vertical; min-height: 100px; outline: none; line-height: 1.6;
+        }
+        .inline-edit-box textarea:focus { border-color: #024ad8; }
+        .inline-edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
+        .inline-edit-actions button {
+            padding: 0 18px; height: 36px; border-radius: 999px; border: none;
+            font: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+        }
+        .inline-edit-cancel { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); }
+        .inline-edit-save { background: #024ad8; color: #fff; }
+        .inline-edit-save:disabled { opacity: 0.5; cursor: not-allowed; }
         .movie-link {
             display: inline-flex;
             align-items: center;
@@ -173,10 +195,69 @@
             </div>
         </header>
         <div class="review-body">
-            <p class="review-content" th:text="${review.content}">리뷰 내용</p>
+            <p class="review-content" id="reviewContent" th:text="${review.content}" th:attr="data-review-id=${review.reviewId}">리뷰 내용</p>
+            <button class="review-edit-btn" type="button" id="reviewEditBtn"
+                    th:if="${loginUserId != null and loginUserId == review.loginId}">수정</button>
             <a class="movie-link" th:href="@{|/movies/${review.movieCode}|}">영화 정보 보기</a>
         </div>
     </article>
 </main>
+<script>
+(function () {
+    const editBtn = document.getElementById('reviewEditBtn');
+    if (!editBtn) return;
+    const contentEl = document.getElementById('reviewContent');
+
+    function startInlineEdit(displayEl, currentText, updateUrl, onSave) {
+        if (displayEl.nextElementSibling && displayEl.nextElementSibling.classList.contains('inline-edit-box')) return;
+        displayEl.style.display = 'none';
+        const box = document.createElement('div');
+        box.className = 'inline-edit-box';
+        const textarea = document.createElement('textarea');
+        textarea.maxLength = 1000;
+        textarea.value = currentText;
+        const actions = document.createElement('div');
+        actions.className = 'inline-edit-actions';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button'; cancelBtn.className = 'inline-edit-cancel'; cancelBtn.textContent = '취소';
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button'; saveBtn.className = 'inline-edit-save'; saveBtn.textContent = '저장';
+        actions.append(cancelBtn, saveBtn);
+        box.append(textarea, actions);
+        displayEl.insertAdjacentElement('afterend', box);
+        textarea.focus();
+
+        const close = () => { box.remove(); displayEl.style.display = ''; };
+        cancelBtn.addEventListener('click', close);
+        saveBtn.addEventListener('click', async () => {
+            const value = textarea.value.trim();
+            if (!value) return;
+            saveBtn.disabled = true;
+            try {
+                const response = await fetch(updateUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'content=' + encodeURIComponent(value)
+                });
+                if (!response.ok) throw new Error();
+                const data = await response.json();
+                if (!data.ok) throw new Error();
+                onSave(value);
+                close();
+            } catch (_) {
+                alert('수정에 실패했습니다.');
+                saveBtn.disabled = false;
+            }
+        });
+    }
+
+    editBtn.addEventListener('click', () => {
+        const reviewId = contentEl.dataset.reviewId;
+        startInlineEdit(contentEl, contentEl.textContent, `/api/reviews/${reviewId}/update`, (value) => {
+            contentEl.textContent = value;
+        });
+    });
+})();
+</script>
 </body>
 </html>

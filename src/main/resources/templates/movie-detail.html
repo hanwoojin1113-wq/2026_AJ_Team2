@@ -320,6 +320,28 @@
             white-space: pre-wrap;
             word-break: break-word;
         }
+        .review-edit-btn {
+            margin-top: 6px;
+            border: none; background: transparent; padding: 0;
+            color: rgba(255,255,255,0.4); font-size: 0.78rem; font-weight: 600; cursor: pointer;
+        }
+        .review-edit-btn:hover { color: #60a5fa; }
+        .inline-edit-box { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+        .inline-edit-box textarea {
+            width: 100%; box-sizing: border-box; padding: 10px 12px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px; color: #fff; font: inherit; font-size: 0.85rem;
+            resize: vertical; min-height: 80px; outline: none; line-height: 1.5;
+        }
+        .inline-edit-box textarea:focus { border-color: #024ad8; }
+        .inline-edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
+        .inline-edit-actions button {
+            padding: 0 16px; height: 32px; border-radius: 999px; border: none;
+            font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+        }
+        .inline-edit-cancel { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); }
+        .inline-edit-save { background: #024ad8; color: #fff; }
+        .inline-edit-save:disabled { opacity: 0.5; cursor: not-allowed; }
         .review-like-btn {
             display: flex;
             align-items: center;
@@ -416,7 +438,7 @@
         .watch-card { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:64px; padding:14px 16px; border-radius:16px; background:rgba(15,17,23,0.44); border:1px solid rgba(255,255,255,0.07); color:var(--hp-text); text-decoration:none; transition:transform 0.16s ease, border-color 0.16s ease, background 0.16s ease; }
         .watch-card:hover { transform:translateY(-1px); background:rgba(255,255,255,0.055); border-color:rgba(255,255,255,0.14); }
         .watch-provider { display:flex; align-items:center; gap:12px; min-width:0; }
-        .watch-logo { width:36px; height:36px; border-radius:10px; object-fit:cover; background:#fff; }
+        .watch-logo { width:36px; height:36px; border-radius:10px; object-fit:cover; }
         .watch-logo-fallback { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#111827,#334155); color:#fff; font-weight:900; font-size:0.9rem; }
         .watch-provider-name { font-size:0.98rem; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .watch-arrow { color:#7da2ff; font-size:0.9rem; font-weight:800; display:flex; align-items:center; gap:8px; white-space:nowrap; }
@@ -923,6 +945,7 @@
 <script th:inline="javascript">
 (function () {
     const reviewLoggedIn = /*[[${loginUserId != null}]]*/ false;
+    const currentLoginId = /*[[${loginUserId}]]*/ null;
     const ratingBox = document.getElementById('rating-box');
     const ratingNote = document.getElementById('rating-note');
 
@@ -1021,7 +1044,8 @@
                         </button>
                     </div>
                 </div>
-                <p class="review-content">${escapeHtml(item.content)}</p>
+                <p class="review-content" data-review-id="${item.reviewId}">${escapeHtml(item.content)}</p>
+                ${item.loginId === currentLoginId ? `<button class="review-edit-btn" type="button" data-review-id="${item.reviewId}">수정</button>` : ''}
             </div>
         `).join('');
     }
@@ -1036,7 +1060,62 @@
         }
     }
 
+    function startInlineEdit(displayEl, currentText, updateUrl, onSave) {
+        if (displayEl.nextElementSibling && displayEl.nextElementSibling.classList.contains('inline-edit-box')) return;
+        displayEl.style.display = 'none';
+        const box = document.createElement('div');
+        box.className = 'inline-edit-box';
+        const textarea = document.createElement('textarea');
+        textarea.maxLength = 1000;
+        textarea.value = currentText;
+        const actions = document.createElement('div');
+        actions.className = 'inline-edit-actions';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button'; cancelBtn.className = 'inline-edit-cancel'; cancelBtn.textContent = '취소';
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button'; saveBtn.className = 'inline-edit-save'; saveBtn.textContent = '저장';
+        actions.append(cancelBtn, saveBtn);
+        box.append(textarea, actions);
+        displayEl.insertAdjacentElement('afterend', box);
+        textarea.focus();
+
+        const close = () => { box.remove(); displayEl.style.display = ''; };
+        cancelBtn.addEventListener('click', close);
+        saveBtn.addEventListener('click', async () => {
+            const value = textarea.value.trim();
+            if (!value) return;
+            saveBtn.disabled = true;
+            try {
+                const response = await fetch(updateUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'content=' + encodeURIComponent(value)
+                });
+                if (!response.ok) throw new Error();
+                const data = await response.json();
+                if (!data.ok) throw new Error();
+                onSave(value);
+                close();
+            } catch (_) {
+                alert('수정에 실패했습니다.');
+                saveBtn.disabled = false;
+            }
+        });
+    }
+
     reviewList.addEventListener('click', async (event) => {
+        const editBtn = event.target.closest('.review-edit-btn');
+        if (editBtn) {
+            const reviewId = editBtn.dataset.reviewId;
+            const contentEl = reviewList.querySelector(`.review-content[data-review-id="${reviewId}"]`);
+            if (contentEl) {
+                startInlineEdit(contentEl, contentEl.textContent, `/api/reviews/${reviewId}/update`, (value) => {
+                    contentEl.textContent = value;
+                });
+            }
+            return;
+        }
+
         const button = event.target.closest('.review-like-btn');
         if (!button || !reviewLoggedIn) return;
 

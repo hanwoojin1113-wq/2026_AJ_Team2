@@ -19,10 +19,10 @@ import java.util.Set;
 public class OttWatchLinkService {
 
     private static final String COUPANG_PLAY_LOGO_URL = "/images/providers/coupang-play.png";
-    private static final String LAFTEL_LOGO_URL = "/images/providers/laftel.svg";
-    private static final String CGV_LOGO_URL = "/images/providers/cgv.svg";
-    private static final String LOTTE_CINEMA_LOGO_URL = "/images/providers/lotte-cinema.svg";
-    private static final String MEGABOX_LOGO_URL = "/images/providers/megabox.svg";
+    private static final String LAFTEL_LOGO_URL = "/images/providers/laftel.png";
+    private static final String CGV_LOGO_URL = "/images/providers/cgv.png";
+    private static final String LOTTE_CINEMA_LOGO_URL = "/images/providers/lotte-cinema.png";
+    private static final String MEGABOX_LOGO_URL = "/images/providers/megabox.png";
     private static final Set<String> TERMINAL_CRAWL_STATUSES = Set.of("SUCCESS", "NO_LINK", "NO_TITLE");
 
     private final JdbcTemplate jdbcTemplate;

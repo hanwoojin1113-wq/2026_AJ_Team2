@@ -256,7 +256,8 @@ public class PostController {
             }
             return "redirect:/movies/" + movieCode;
         } catch (ResponseStatusException e) {
-            throw e;
+            log.warn("게시물 저장 실패 (validation): {}", e.getReason());
+            return "redirect:/posts/create?error=true";
         } catch (Exception e) {
             log.error("게시물 저장 실패: {}", e.getMessage(), e);
             return "redirect:/posts/create?error=true";
@@ -625,6 +626,68 @@ public class PostController {
 
     // ── Private helpers: auth ──────────────────────────────────────────────────
 
+    @PostMapping("/api/posts/{postId}/update")
+    @ResponseBody
+    public Map<String, Object> updatePost(@PathVariable Long postId,
+                                          @RequestParam String content,
+                                          HttpSession session) {
+        initializeSocialTables();
+        if (!isLoggedIn(session)) {
+            throw new ResponseStatusException(UNAUTHORIZED);
+        }
+
+        Long userId = requireCurrentUserId(session);
+        String normalizedContent = normalizeContent(content);
+        if (normalizedContent == null || normalizedContent.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "내용을 입력해주세요.");
+        }
+        if (normalizedContent.length() > 1000) {
+            throw new ResponseStatusException(BAD_REQUEST, "내용은 최대 1000자까지 입력할 수 있습니다.");
+        }
+
+        Integer ownerCheck = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM social_post
+                WHERE id = ? AND user_id = ? AND is_deleted = FALSE
+                """, Integer.class, postId, userId);
+        if (ownerCheck == null || ownerCheck == 0) {
+            throw new ResponseStatusException(UNAUTHORIZED, "수정 권한이 없습니다.");
+        }
+
+        jdbcTemplate.update("""
+                UPDATE social_post
+                SET content = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """, normalizedContent, postId);
+        return Map.of("ok", true);
+    }
+
+    @PostMapping("/api/posts/{postId}/delete")
+    @ResponseBody
+    public Map<String, Object> deletePost(@PathVariable Long postId, HttpSession session) {
+        initializeSocialTables();
+        if (!isLoggedIn(session)) {
+            throw new ResponseStatusException(UNAUTHORIZED);
+        }
+
+        Long userId = requireCurrentUserId(session);
+        Integer ownerCheck = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM social_post
+                WHERE id = ? AND user_id = ? AND is_deleted = FALSE
+                """, Integer.class, postId, userId);
+        if (ownerCheck == null || ownerCheck == 0) {
+            throw new ResponseStatusException(UNAUTHORIZED, "삭제 권한이 없습니다.");
+        }
+
+        jdbcTemplate.update("""
+                UPDATE social_post
+                SET is_deleted = TRUE, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """, postId);
+        return Map.of("ok", true);
+    }
+
     private boolean isLoggedIn(HttpSession session) {
         return session.getAttribute(LOGIN_SESSION_KEY) != null;
     }
@@ -716,6 +779,7 @@ public class PostController {
         }
         return images.stream()
                 .filter(image -> image != null && !image.isEmpty())
+                .filter(image -> ALLOWED_IMAGE_EXTENSIONS.contains(extractExtension(image.getOriginalFilename())))
                 .toList();
     }
 
@@ -1086,6 +1150,9 @@ public class PostController {
         }
         params.add(normalizedLimit + 1);
 
+        String orderByClause = (feedCursor == null)
+                ? "ORDER BY RAND()"
+                : "ORDER BY sp.created_at DESC, sp.id DESC";
         List<Map<String, Object>> rows = jdbcTemplate.query("""
                 SELECT
                     sp.id AS postId,
@@ -1103,8 +1170,8 @@ public class PostController {
                 JOIN "USER" u ON u.id = sp.user_id
                 JOIN movie m ON m.id = sp.movie_id
                 WHERE sp.is_deleted = FALSE
-                """ + cursorClause + """
-                ORDER BY sp.created_at DESC, sp.id DESC
+                """ + cursorClause + orderByClause + """
+
                 LIMIT ?
                 """, (rs, rowNum) -> {
             Map<String, Object> row = new LinkedHashMap<>();

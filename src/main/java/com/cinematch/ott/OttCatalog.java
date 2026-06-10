@@ -35,15 +35,15 @@ public class OttCatalog {
     }
 
     private static final List<OttProvider> PROVIDERS = List.of(
-            new OttProvider("netflix", "Netflix", "넷플릭스", "/images/providers/netflix.svg"),
-            new OttProvider("tving", "TVING", "티빙", "/images/providers/tving.svg"),
-            new OttProvider("wavve", "Wavve", "웨이브", "/images/providers/wavve.svg"),
+            new OttProvider("netflix", "Netflix", "넷플릭스", "/images/providers/netflix.png"),
+            new OttProvider("tving", "TVING", "티빙", "/images/providers/tving.png"),
+            new OttProvider("wavve", "Wavve", "웨이브", "/images/providers/wavve.png"),
             new OttProvider("coupang", "Coupang Play", "쿠팡플레이", "/images/providers/coupang-play.png"),
-            new OttProvider("disney", "Disney+", "디즈니+", "/images/providers/disney-plus.svg"),
-            new OttProvider("watcha", "Watcha", "왓챠", "/images/providers/watcha.svg"),
-            new OttProvider("apple", "Apple TV", "애플 TV", "/images/providers/apple-tv.svg"),
-            new OttProvider("laftel", "Laftel", "라프텔", "/images/providers/laftel.svg"),
-            new OttProvider("prime", "Prime Video", "프라임 비디오", "/images/providers/prime-video.svg")
+            new OttProvider("disney", "Disney+", "디즈니+", "/images/providers/disney-plus.png"),
+            new OttProvider("watcha", "Watcha", "왓챠", "/images/providers/watcha.png"),
+            new OttProvider("apple", "Apple TV", "애플 TV", "/images/providers/apple-tv.png"),
+            new OttProvider("laftel", "Laftel", "라프텔", "/images/providers/laftel.png"),
+            new OttProvider("prime", "Prime Video", "프라임 비디오", "/images/providers/prime-video.png")
     );
 
     private static final Map<String, OttProvider> BY_CODE = new LinkedHashMap<>();
