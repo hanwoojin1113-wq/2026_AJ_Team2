@@ -71,20 +71,23 @@ public class MovieThrowService {
         }
 
         String fallbackSql =
+            "SELECT * FROM (" +
             "SELECT m.id, m.movie_cd," +
             "       COALESCE(m.title, m.movie_name) AS title," +
-            "       m.poster_image_url, m.production_year," +
+            "       m.poster_image_url, m.production_year, m.popularity," +
             "       (" +
             "           (SELECT COUNT(*) FROM movie_tag mt" +
+            "            JOIN tag t ON t.id = mt.tag_id" +
             "            JOIN user_preference_profile ua" +
             "              ON ua.user_id = ? AND ua.feature_type = 'TAG'" +
-            "             AND ua.feature_name = mt.tag_name AND ua.score > 0.2" +
+            "             AND ua.feature_name = t.tag_name AND ua.score > 0.2" +
             "            WHERE mt.movie_id = m.id)" +
             "         +" +
             "           (SELECT COUNT(*) FROM movie_tag mt" +
+            "            JOIN tag t ON t.id = mt.tag_id" +
             "            JOIN user_preference_profile ub" +
             "              ON ub.user_id = ? AND ub.feature_type = 'TAG'" +
-            "             AND ub.feature_name = mt.tag_name AND ub.score > 0.2" +
+            "             AND ub.feature_name = t.tag_name AND ub.score > 0.2" +
             "            WHERE mt.movie_id = m.id)" +
             "       ) AS combined_score" +
             " FROM movie m" +
@@ -99,7 +102,9 @@ public class MovieThrowService {
             "       WHERE (sender_user_id = ? AND receiver_user_id = ?)" +
             "          OR (sender_user_id = ? AND receiver_user_id = ?)" +
             "   )" +
-            " ORDER BY combined_score DESC, m.popularity DESC LIMIT 10";
+            ") ranked" +
+            " WHERE combined_score > 0" +
+            " ORDER BY combined_score DESC, popularity DESC LIMIT 10";
 
         List<Map<String, Object>> fallback = jdbcTemplate.query(fallbackSql,
                 (rs, rowNum) -> toMovieRow(rs),
